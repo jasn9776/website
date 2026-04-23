@@ -1,0 +1,10 @@
+{
+  "order": 1,
+  "title": "Helix — a variant-calling workflow",
+  "description": "A reproducible Nextflow pipeline for germline variant calling across population-scale cohorts. Sensible defaults baked in, escape hatches everywhere.",
+  "image": "/images/projects/helix.svg",
+  "github_url": "https://github.com/example/helix",
+  "blog_post": "helix",
+  "category": "Pipelines",
+  "year": 2026
+}

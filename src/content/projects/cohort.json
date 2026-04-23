@@ -1,0 +1,9 @@
+{
+  "order": 3,
+  "title": "Cohort — clinical genomics platform",
+  "description": "Notes on shipping a phenotype-to-genotype query layer for a 50,000-patient study in eleven weeks — and the things we'd do differently next round.",
+  "image": "/images/projects/cohort.svg",
+  "github_url": "https://github.com/example/cohort",
+  "category": "Platform",
+  "year": 2025
+}

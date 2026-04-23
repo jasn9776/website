@@ -1,0 +1,54 @@
+---
+title: "Allele — designing a population genetics viewer with communities, not for them"
+date: 2025-11-08
+heroImage: /images/blog/allele-hero.svg
+description: "Building an allele frequency dashboard for Pacific Island populations meant rethinking who data tools are actually built for."
+---
+
+import Caption from '../../components/Caption.astro';
+
+## Starting with the wrong question
+
+The original brief was: *"build a dashboard so researchers can explore allele frequencies in our Pacific cohort."* The data was already collected. The analysis was done. We just needed a way to look at it.
+
+I spent the first two weeks building exactly that — a clean, fast interface for filtering by population, gene, and variant type. It worked. It was also, I realised, almost entirely useless to the people whose data it contained.
+
+<Caption
+  src="/images/projects/allele.svg"
+  alt="Allele frequency interface"
+  caption="Figure 1. Early prototype of the frequency explorer. Fast, functional, and built entirely without community input."
+/>
+
+## A different kind of design meeting
+
+The community engagement team set up a series of conversations with representatives from the participating communities. I went along mostly to listen.
+
+What I heard: people wanted to be able to look up their own variants. They wanted to understand what the numbers meant without a genomics PhD. They wanted to know *who* could access their community's data, and they wanted that to be visible in the interface, not buried in a policy document.
+
+None of that was in the original spec.
+
+## What changed
+
+**Contextual explanation over raw numbers.** Allele frequencies are shown alongside plain-language descriptions of what they mean in population terms. A frequency of 0.08 is not just 0.08 — it's "found in about 1 in 12 people in this population."
+
+**Visibility of access controls.** Each dataset now shows a clear provenance tag indicating which community contributed it and what access restrictions apply. Researchers see this at point of query, not after.
+
+**A community review layer.** Before any new dataset is added to the viewer, a designated contact at the contributing community can preview how it will be displayed. This added a few weeks to the release timeline. It was worth it.
+
+<Caption
+  src="/images/projects/cohort.svg"
+  alt="Revised interface with community access tags"
+  caption="Figure 2. The revised frequency explorer, with provenance tags and contextual frequency descriptions."
+/>
+
+## Technical notes
+
+The stack is SvelteKit on the frontend, with a PostgREST API sitting in front of a PostgreSQL database. The row-level security policies in Postgres handle the access control — each dataset has a set of roles, and the API enforces them without any application-layer logic.
+
+Search uses pg_trgm for fuzzy gene name matching, which turned out to be fast enough that we didn't need Elasticsearch.
+
+## What I'd do differently
+
+Start the community engagement before any code is written. Not after the first prototype, not halfway through — before. The design decisions that would have been cheap at week zero cost us significant refactoring at week six.
+
+The interface is still primarily English. Supporting te reo Māori and Samoan is on the roadmap; it wasn't achievable in the initial timeline, and that's a genuine gap.

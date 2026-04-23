@@ -1,0 +1,81 @@
+---
+const navLinks = [
+  { label: 'Work',    href: '/#work' },
+  { label: 'Journal', href: '/blog' },
+  { label: 'Contact', href: '/#contact' },
+];
+---
+
+<header class="site-header">
+  <div class="wrap inner">
+    <a href="/" class="logo">Mara <em>Voss</em></a>
+    <nav class="primary-nav" aria-label="Primary navigation">
+      {navLinks.map(({ label, href }) => (
+        <a href={href}>{label}</a>
+      ))}
+    </nav>
+  </div>
+</header>
+
+<style>
+  .site-header {
+    padding: 28px 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .logo {
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    font-size: 22px;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .logo em {
+    font-style: italic;
+    font-feature-settings: "ss01";
+  }
+
+  .primary-nav {
+    display: flex;
+    gap: 36px;
+    font-size: 14px;
+  }
+
+  .primary-nav a {
+    color: var(--ink-soft);
+    text-decoration: none;
+    position: relative;
+    transition: color 0.2s ease;
+  }
+
+  .primary-nav a::after {
+    content: "";
+    position: absolute;
+    bottom: -3px;
+    left: 0;
+    width: 0;
+    height: 1px;
+    background: var(--accent);
+    transition: width 0.3s ease;
+  }
+
+  .primary-nav a:hover {
+    color: var(--ink);
+  }
+
+  .primary-nav a:hover::after {
+    width: 100%;
+  }
+
+  @media (max-width: 720px) {
+    .primary-nav { display: none; }
+  }
+</style>

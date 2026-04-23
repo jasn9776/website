@@ -1,0 +1,76 @@
+---
+title: "Helix — building a reproducible variant-calling workflow"
+date: 2026-03-15
+heroImage: /images/blog/helix-hero.svg
+description: "How I designed a Nextflow pipeline for germline variant calling that scales to population cohorts while staying easy to debug locally."
+---
+
+import Caption from '../../components/Caption.astro';
+
+## The problem with bespoke pipelines
+
+Every lab I've worked in had its own variant-calling script. Usually a shell file, somewhere between 80 and 400 lines, with a comment near the top that said something like *"do not touch — works on the cluster"*. The actual logic was fine. The fragility was the problem: one GATK version bump, one path change, one missing index file, and the whole thing silently produced wrong numbers.
+
+Helix started as an attempt to fix that for our team. It ended up being something I'd actually want to use myself.
+
+<Caption
+  src="/images/projects/helix.svg"
+  alt="Helix pipeline DAG"
+  caption="Figure 1. The Helix pipeline DAG. Inputs flow left to right through alignment, duplicate marking, base-quality recalibration, and joint genotyping."
+/>
+
+## Why Nextflow
+
+The short answer: it makes the cluster/local distinction almost invisible. You write the logic once, and the same workflow runs on your laptop with Docker or on an HPC with SLURM — no changes to the pipeline code itself.
+
+The slightly longer answer: Nextflow's DSL2 module system is genuinely good. Each process is isolated, versioned, and testable. I can swap in a different aligner by changing one line in the config file. The workflow definition stays readable.
+
+## Sensible defaults
+
+Helix ships with defaults tuned for human germline WGS at 30× coverage. They're not magic — they're just the GATK best practices, encoded so you don't have to remember the flags every time.
+
+The defaults live in `conf/base.config`. Everything is overridable. If you're working with exome data, you point to an interval list. If you want to use DeepVariant instead of HaplotypeCaller, that's a one-line config change.
+
+```nextflow
+process HAPLOTYPECALLER {
+  input:
+    tuple val(meta), path(bam), path(bai)
+    path fasta
+    path intervals
+
+  output:
+    tuple val(meta), path("*.g.vcf.gz"), path("*.g.vcf.gz.tbi")
+
+  script:
+  """
+  gatk HaplotypeCaller \\
+    -R $fasta \\
+    -I $bam \\
+    -O ${meta.id}.g.vcf.gz \\
+    -ERC GVCF \\
+    -L $intervals
+  """
+}
+```
+
+## What I'd change
+
+Joint genotyping with GenomicsDBImport is still slow for large cohorts. The current workaround is parallelising by chromosome, which helps but adds complexity. In the next release I want to explore scattered interval lists with a smarter merge strategy.
+
+The test suite is also thin. There's a small synthetic dataset for CI, but it doesn't cover edge cases like multi-sample inputs with mismatched read groups. That's next on the list.
+
+<Caption
+  src="/images/blog/allele-hero.svg"
+  alt="Variant density plot across chromosomes"
+  caption="Figure 2. Variant density per chromosome in the test cohort, post-filtering. Chr6 MHC region excluded."
+/>
+
+## Getting started
+
+```bash
+git clone https://github.com/example/helix
+cd helix
+nextflow run main.nf -profile docker --input samplesheet.csv --genome GRCh38
+```
+
+Full documentation is in the `docs/` folder, including a guide for setting up the reference genome bundle and a walkthrough of the config options.

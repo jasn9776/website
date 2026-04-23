@@ -1,0 +1,74 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import BlogPostCard from '../../components/BlogPostCard.astro';
+import { getCollection } from 'astro:content';
+
+const posts = (await getCollection('blog')).sort(
+  (a, b) => b.data.date.valueOf() - a.data.date.valueOf()
+);
+---
+
+<BaseLayout title="Journal" description="Writing on genomics, tools, and the work behind the work.">
+  <section class="blog-index">
+    <div class="wrap">
+      <header class="page-header">
+        <span class="label">(03) — Journal</span>
+        <h1>Writing on <em>genomics</em>, tools, and the work behind the work.</h1>
+      </header>
+
+      <div class="posts-grid">
+        {posts.map((post) => (
+          <BlogPostCard post={post} />
+        ))}
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .blog-index {
+    padding: 80px 0 120px;
+  }
+
+  .page-header {
+    margin-bottom: 56px;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 40px;
+  }
+
+  .label {
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ink-muted);
+    margin-bottom: 20px;
+  }
+
+  h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 460;
+    font-size: clamp(36px, 5vw, 64px);
+    letter-spacing: -0.04em;
+    line-height: 1.0;
+    color: var(--ink);
+    max-width: 22ch;
+  }
+
+  h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .posts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 24px;
+  }
+
+  @media (max-width: 720px) {
+    .blog-index { padding: 56px 0 80px; }
+    .posts-grid { grid-template-columns: 1fr; }
+  }
+</style>

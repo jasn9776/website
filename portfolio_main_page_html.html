@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mara Voss — Bioinformatician</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Geist:wght@300..600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #E9EEF6;
+    --bg-card: #DDE5F0;
+    --ink: #0B1730;
+    --ink-soft: #2C3E5E;
+    --ink-muted: #6B7A94;
+    --line: #C5D0E1;
+    --line-soft: #D4DCEA;
+    --accent: #1E47E6;
+    --accent-soft: #A8BDF5;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Geist', system-ui, sans-serif;
+    font-weight: 400;
+    line-height: 1.5;
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+    min-height: 100vh;
+    position: relative;
+  }
+
+  /* subtle grain texture */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 100;
+    opacity: 0.35;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.04 0 0 0 0 0.09 0 0 0 0 0.18 0 0 0 0.06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .wrap {
+    max-width: 1320px;
+    margin: 0 auto;
+    padding: 0 32px;
+  }
+
+  /* ---------- HEADER ---------- */
+  header.site {
+    padding: 28px 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .site .wrap {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .logo {
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    font-size: 22px;
+    letter-spacing: -0.01em;
+  }
+  .logo em {
+    font-style: italic;
+    font-feature-settings: "ss01";
+  }
+
+  nav.primary {
+    display: flex;
+    gap: 36px;
+    font-size: 14px;
+    color: var(--ink-soft);
+  }
+  nav.primary a {
+    color: inherit;
+    text-decoration: none;
+    position: relative;
+    transition: color 0.2s ease;
+  }
+  nav.primary a::after {
+    content: "";
+    position: absolute;
+    bottom: -3px;
+    left: 0;
+    width: 0;
+    height: 1px;
+    background: var(--accent);
+    transition: width 0.3s ease;
+  }
+  nav.primary a:hover { color: var(--ink); }
+  nav.primary a:hover::after { width: 100%; }
+
+  /* ---------- HERO ---------- */
+  .hero {
+    padding: 96px 0 120px;
+    position: relative;
+  }
+
+  .status {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 8px 14px 8px 12px;
+    border: 1px solid var(--line);
+    border-radius: 100px;
+    margin-bottom: 56px;
+    background: rgba(255,255,255,0.3);
+    animation: fadeUp 0.8s ease both;
+  }
+  .status .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #4A8F3F;
+    box-shadow: 0 0 0 0 rgba(74,143,63,0.6);
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(74,143,63,0.5); }
+    50% { box-shadow: 0 0 0 6px rgba(74,143,63,0); }
+  }
+
+  .hero h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 460;
+    font-size: clamp(48px, 7vw, 104px);
+    line-height: 0.98;
+    letter-spacing: -0.045em;
+    max-width: 14ch;
+    margin-bottom: 56px;
+    color: var(--ink);
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "ss01", "kern";
+    animation: fadeUp 0.9s 0.15s ease both;
+  }
+  .hero h1 em {
+    font-style: italic;
+    font-weight: 460;
+    color: var(--accent);
+    font-feature-settings: "ss01";
+  }
+  .hero h1 .pill {
+    display: inline-block;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--bg);
+    font-style: normal;
+    transform: translateY(-6px);
+    font-size: 0.82em;
+  }
+
+  .hero-meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 48px;
+    padding-top: 32px;
+    border-top: 1px solid var(--line);
+    max-width: 920px;
+    animation: fadeUp 1s 0.3s ease both;
+  }
+  .hero-meta .col h4 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-muted);
+    margin-bottom: 14px;
+    font-weight: 500;
+  }
+  .hero-meta .col p {
+    font-size: 15px;
+    color: var(--ink-soft);
+    line-height: 1.55;
+  }
+  .hero-meta .col a {
+    color: var(--ink);
+    text-decoration: none;
+    border-bottom: 1px solid var(--line);
+    transition: border-color 0.2s ease;
+  }
+  .hero-meta .col a:hover { border-color: var(--accent); }
+
+  /* decorative corner mark */
+  .corner-mark {
+    position: absolute;
+    top: 96px;
+    right: 32px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    text-align: right;
+    line-height: 1.7;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ---------- PROJECTS ---------- */
+  section.projects {
+    padding: 80px 0 120px;
+    border-top: 1px solid var(--line);
+  }
+
+  .section-head {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: end;
+    gap: 32px;
+    margin-bottom: 56px;
+    padding: 0 32px;
+    max-width: 1320px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .section-head .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ink-muted);
+    margin-bottom: 16px;
+    display: block;
+  }
+  .section-head h2 {
+    font-family: 'Fraunces', serif;
+    font-weight: 460;
+    font-size: clamp(36px, 4.5vw, 60px);
+    letter-spacing: -0.035em;
+    line-height: 0.98;
+    color: var(--ink);
+  }
+  .section-head h2 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .scroll-hint {
+    justify-self: end;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .scroll-hint span {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ink-muted);
+  }
+  .scroll-buttons { display: flex; gap: 8px; }
+  .scroll-buttons button {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--ink);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+  .scroll-buttons button:hover {
+    background: var(--ink);
+    color: var(--bg);
+    border-color: var(--ink);
+  }
+  .scroll-buttons button:active { transform: scale(0.95); }
+
+  /* horizontal scroller */
+  .scroller-outer {
+    position: relative;
+  }
+  .scroller {
+    display: flex;
+    gap: 24px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    padding: 8px 32px 32px;
+    scroll-padding-left: 32px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--ink-muted) transparent;
+    -webkit-overflow-scrolling: touch;
+  }
+  .scroller::-webkit-scrollbar { height: 6px; }
+  .scroller::-webkit-scrollbar-track { background: transparent; }
+  .scroller::-webkit-scrollbar-thumb {
+    background: var(--line);
+    border-radius: 4px;
+  }
+  .scroller::-webkit-scrollbar-thumb:hover { background: var(--ink-muted); }
+
+  /* edge fade */
+  .scroller-outer::after, .scroller-outer::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 60px;
+    pointer-events: none;
+    z-index: 2;
+  }
+  .scroller-outer::before {
+    left: 0;
+    background: linear-gradient(to right, var(--bg), transparent);
+  }
+  .scroller-outer::after {
+    right: 0;
+    background: linear-gradient(to left, var(--bg), transparent);
+  }
+
+  .card {
+    flex: 0 0 380px;
+    scroll-snap-align: start;
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.4s ease, border-color 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 24px 48px -20px rgba(26, 24, 21, 0.18);
+    border-color: var(--ink-soft);
+  }
+
+  .card-visual {
+    aspect-ratio: 4 / 3;
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    margin-bottom: 22px;
+  }
+
+  /* unique visuals per card */
+  .visual-1 {
+    background:
+      radial-gradient(circle at 50% 50%, #1E47E6 0%, #1E47E6 14%, transparent 14.5%),
+      radial-gradient(circle at 50% 50%, transparent 24%, #0B1730 24.5%, #0B1730 26%, transparent 26.5%),
+      radial-gradient(circle at 50% 50%, transparent 36%, #0B1730 36.5%, #0B1730 38%, transparent 38.5%),
+      radial-gradient(circle at 50% 50%, transparent 48%, #0B1730 48.5%, #0B1730 50%, transparent 50.5%),
+      #E9EEF6;
+  }
+
+  .visual-2 {
+    background:
+      repeating-linear-gradient(135deg, #0B1730 0 1px, transparent 1px 14px),
+      linear-gradient(160deg, #A8BDF5 0%, #1E47E6 100%);
+  }
+
+  .visual-3 {
+    background-color: #0B1730;
+    background-image:
+      linear-gradient(rgba(233, 238, 246, 0.18) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(233, 238, 246, 0.18) 1px, transparent 1px);
+    background-size: 24px 24px;
+    position: relative;
+  }
+  .visual-3::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 70% 30%, rgba(30, 71, 230, 0.65) 0%, transparent 50%);
+  }
+
+  .visual-4 {
+    background:
+      radial-gradient(circle at 20% 30%, #1E47E6 0%, transparent 45%),
+      radial-gradient(circle at 80% 70%, #4A6E9E 0%, transparent 50%),
+      radial-gradient(circle at 50% 90%, #A8BDF5 0%, transparent 55%),
+      #E9EEF6;
+    filter: blur(0px);
+  }
+
+  .visual-5 {
+    background: #DDE5F0;
+    position: relative;
+    overflow: hidden;
+  }
+  .visual-5::before {
+    content: "";
+    position: absolute;
+    width: 70%; height: 70%;
+    background: #0B1730;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%) rotate(45deg);
+  }
+  .visual-5::after {
+    content: "";
+    position: absolute;
+    width: 35%; height: 35%;
+    background: #1E47E6;
+    border-radius: 50%;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .visual-6 {
+    background:
+      repeating-radial-gradient(circle at 50% 100%, transparent 0 18px, #0B1730 18px 19px),
+      linear-gradient(180deg, #E9EEF6 0%, #A8BDF5 100%);
+  }
+
+  .card-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    padding: 0 4px 4px;
+  }
+
+  .meta-row {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-muted);
+    margin-bottom: 14px;
+  }
+
+  .card h3 {
+    font-family: 'Fraunces', serif;
+    font-weight: 460;
+    font-size: 26px;
+    line-height: 1.12;
+    letter-spacing: -0.025em;
+    margin-bottom: 12px;
+  }
+  .card h3 a {
+    color: var(--ink);
+    text-decoration: none;
+    background-image: linear-gradient(currentColor, currentColor);
+    background-size: 0% 1px;
+    background-repeat: no-repeat;
+    background-position: 0 100%;
+    transition: background-size 0.4s ease;
+    padding-bottom: 2px;
+  }
+  .card h3 a:hover {
+    background-size: 100% 1px;
+    color: var(--accent);
+  }
+
+  .card p {
+    font-size: 14.5px;
+    color: var(--ink-soft);
+    line-height: 1.55;
+    margin-bottom: 22px;
+    flex: 1;
+  }
+
+  .card-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink);
+    text-decoration: none;
+    align-self: flex-start;
+    transition: gap 0.3s ease, color 0.2s ease;
+  }
+  .card-link:hover {
+    gap: 14px;
+    color: var(--accent);
+  }
+  .card-link svg {
+    transition: transform 0.3s ease;
+  }
+  .card:hover .card-link svg {
+    transform: translateX(4px);
+  }
+
+  /* ---------- FOOTER ---------- */
+  footer {
+    border-top: 1px solid var(--line);
+    padding: 56px 0 48px;
+  }
+  footer .wrap {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+  footer h3 {
+    font-family: 'Fraunces', serif;
+    font-weight: 440;
+    font-style: italic;
+    font-size: clamp(28px, 3.5vw, 48px);
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+    max-width: 14ch;
+  }
+  footer h3 a {
+    color: var(--accent);
+    text-decoration: none;
+    border-bottom: 2px solid var(--accent-soft);
+    transition: border-color 0.2s ease;
+  }
+  footer h3 a:hover { border-color: var(--accent); }
+
+  .footer-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-muted);
+    text-align: right;
+    line-height: 1.8;
+  }
+
+  /* ---------- RESPONSIVE ---------- */
+  @media (max-width: 720px) {
+    .wrap { padding: 0 20px; }
+    nav.primary { display: none; }
+    .corner-mark { display: none; }
+    .hero { padding: 56px 0 80px; }
+    .hero h1 { margin-bottom: 40px; }
+    .hero-meta {
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+    .section-head {
+      grid-template-columns: 1fr;
+      padding: 0 20px;
+      margin-bottom: 40px;
+    }
+    .scroll-hint { justify-self: start; }
+    .scroller { padding: 8px 20px 32px; scroll-padding-left: 20px; }
+    .card { flex-basis: 78vw; }
+    section.projects { padding: 56px 0 80px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap">
+    <div class="logo">Mara <em>Voss</em></div>
+    <nav class="primary">
+      <a href="#work">Work</a>
+      <a href="#about">About</a>
+      <a href="#journal">Journal</a>
+      <a href="#contact">Contact</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="wrap">
+      <div class="corner-mark">
+        N° 026<br>
+        Portfolio · MMXXVI
+      </div>
+
+      <div class="status">
+        <span class="dot"></span>
+        Available · Apr — Jul 2026
+      </div>
+
+      <h1><em>Bioinformatician</em> shaping <em>quiet</em>, considered tools for <span class="pill">genomics</span>.</h1>
+
+      <div class="hero-meta">
+        <div class="col">
+          <h4>Currently</h4>
+          <p>Building genomic analysis pipelines at <a href="#">Field Lab</a>, with a focus on single-cell methods and reproducibility.</p>
+        </div>
+        <div class="col">
+          <h4>Previously</h4>
+          <p>Computational biology at the Garvan Institute, EMBL-EBI, and a handful of academic labs across Berlin & Melbourne.</p>
+        </div>
+        <div class="col">
+          <h4>Elsewhere</h4>
+          <p><a href="#">Github</a> · <a href="#">ORCID</a> · <a href="#">Bluesky</a> · <a href="#">Email</a></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="projects" id="work">
+    <div class="section-head">
+      <div>
+        <span class="label">(02) — Selected Work</span>
+        <h2>Recent <em>projects</em>, written up.</h2>
+      </div>
+      <div class="scroll-hint">
+        <span>Scroll →</span>
+        <div class="scroll-buttons">
+          <button id="prev" aria-label="Scroll left">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <button id="next" aria-label="Scroll right">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 18l6-6-6-6"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="scroller-outer">
+      <div class="scroller" id="scroller">
+
+        <article class="card">
+          <div class="card-visual visual-1"></div>
+          <div class="card-body">
+            <div class="meta-row"><span>Pipelines</span><span>2026</span></div>
+            <h3><a href="#post-helix">Helix — a variant-calling workflow</a></h3>
+            <p>A reproducible Nextflow pipeline for germline variant calling across population-scale cohorts. Sensible defaults baked in, escape hatches everywhere.</p>
+            <a href="#post-helix" class="card-link">
+              Read the post
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+            </a>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-visual visual-2"></div>
+          <div class="card-body">
+            <div class="meta-row"><span>Web App</span><span>2025</span></div>
+            <h3><a href="#post-allele">Allele — a population genetics viewer</a></h3>
+            <p>An interactive dashboard for allele frequencies across Pacific Island populations. Designed in close collaboration with the communities whose data it represents.</p>
+            <a href="#post-allele" class="card-link">
+              Read the post
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+            </a>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-visual visual-3"></div>
+          <div class="card-body">
+            <div class="meta-row"><span>Platform</span><span>2025</span></div>
+            <h3><a href="#post-cohort">Cohort — clinical genomics platform</a></h3>
+            <p>Notes on shipping a phenotype-to-genotype query layer for a 50,000-patient study in eleven weeks — and the things we'd do differently next round.</p>
+            <a href="#post-cohort" class="card-link">
+              Read the post
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+            </a>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-visual visual-4"></div>
+          <div class="card-body">
+            <div class="meta-row"><span>Preprint</span><span>2025</span></div>
+            <h3><a href="#post-thresholds">Thresholds — selection in low-coverage aDNA</a></h3>
+            <p>A new method for detecting selection signatures in low-coverage ancient DNA. Co-authored with Anya Tomas; currently under review at <em>Nature Methods</em>.</p>
+            <a href="#post-thresholds" class="card-link">
+              Read the post
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+            </a>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-visual visual-5"></div>
+          <div class="card-body">
+            <div class="meta-row"><span>Toolkit</span><span>2024</span></div>
+            <h3><a href="#post-meridian">Meridian — methylation analysis toolkit</a></h3>
+            <p>A complete refactor of an aging methylation pipeline — from CpG calling through differential analysis, with a calmer plotting layer on top.</p>
+            <a href="#post-meridian" class="card-link">
+              Read the post
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+            </a>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-visual visual-6"></div>
+          <div class="card-body">
+            <div class="meta-row"><span>Open Source</span><span>2024</span></div>
+            <h3><a href="#post-fern">Fern — a tiny FASTA parser</a></h3>
+            <p>An opinionated 8KB Rust crate for streaming sequence files. Why I started over from scratch and what survived from the parsers that came before.</p>
+            <a href="#post-fern" class="card-link">
+              Read the post
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+            </a>
+          </div>
+        </article>
+
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer id="contact">
+  <div class="wrap">
+    <h3>Got a project in mind? <a href="mailto:hello@maravoss.com">Say hello →</a></h3>
+    <div class="footer-meta">
+      © Mara Voss · MMXXVI<br>
+      Made carefully in Naarm / Melbourne
+    </div>
+  </div>
+</footer>
+
+<script>
+  const scroller = document.getElementById('scroller');
+  const prev = document.getElementById('prev');
+  const next = document.getElementById('next');
+
+  const scrollAmount = () => {
+    const card = scroller.querySelector('.card');
+    if (!card) return 380;
+    return card.getBoundingClientRect().width + 24; // card + gap
+  };
+
+  prev.addEventListener('click', () => {
+    scroller.scrollBy({ left: -scrollAmount(), behavior: 'smooth' });
+  });
+  next.addEventListener('click', () => {
+    scroller.scrollBy({ left: scrollAmount(), behavior: 'smooth' });
+  });
+
+  // Allow horizontal scroll with vertical mouse wheel when hovering scroller
+  scroller.addEventListener('wheel', (e) => {
+    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+      e.preventDefault();
+      scroller.scrollLeft += e.deltaY;
+    }
+  }, { passive: false });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//usr/local/**)",
+      "Read(//Users/Jason/.nvm/**)",
+      "Read(//opt/homebrew/bin/**)"
+    ]
+  }
+}

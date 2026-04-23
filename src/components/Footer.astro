@@ -1,0 +1,61 @@
+---
+---
+
+<footer id="contact">
+  <div class="wrap inner">
+    <h3>
+      Got a project in mind?{' '}
+      <a href="mailto:hello@maravoss.com">Say hello →</a>
+    </h3>
+    <div class="footer-meta">
+      © Mara Voss · MMXXVI<br />
+      Made carefully.
+    </div>
+  </div>
+</footer>
+
+<style>
+  footer {
+    border-top: 1px solid var(--line);
+    padding: 56px 0 48px;
+  }
+
+  .inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+
+  footer h3 {
+    font-family: 'Fraunces', serif;
+    font-weight: 440;
+    font-style: italic;
+    font-size: clamp(28px, 3.5vw, 48px);
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+    max-width: 16ch;
+  }
+
+  footer h3 a {
+    color: var(--accent);
+    text-decoration: none;
+    border-bottom: 2px solid var(--accent-soft);
+    transition: border-color 0.2s ease;
+  }
+
+  footer h3 a:hover {
+    border-color: var(--accent);
+  }
+
+  .footer-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-muted);
+    text-align: right;
+    line-height: 1.8;
+  }
+</style>

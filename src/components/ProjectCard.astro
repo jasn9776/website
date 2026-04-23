@@ -1,0 +1,195 @@
+---
+interface Props {
+  title: string;
+  description: string;
+  image: string;
+  github_url: string;
+  blog_post?: string;
+  category: string;
+  year: number;
+}
+
+const { title, description, image, github_url, blog_post, category, year } = Astro.props;
+const postHref = blog_post ? `/blog/${blog_post}` : null;
+---
+
+<article class="card">
+  <div class="card-visual">
+    {postHref
+      ? <a href={postHref} tabindex="-1" aria-hidden="true"><img src={image} alt={title} /></a>
+      : <img src={image} alt={title} />
+    }
+  </div>
+  <div class="card-body">
+    <div class="meta-row">
+      <span>{category}</span>
+      <span>{year}</span>
+    </div>
+    <h3>
+      {postHref
+        ? <a href={postHref}>{title}</a>
+        : title
+      }
+    </h3>
+    <p>{description}</p>
+    <div class="card-actions">
+      {postHref && (
+        <a href={postHref} class="card-link">
+          Read the post
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <path d="M5 12h14M13 5l7 7-7 7"/>
+          </svg>
+        </a>
+      )}
+      <a href={github_url} class="card-link github" target="_blank" rel="noopener noreferrer">
+        GitHub
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+          <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>
+        </svg>
+      </a>
+    </div>
+  </div>
+</article>
+
+<style>
+  .card {
+    flex: 0 0 380px;
+    scroll-snap-align: start;
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    transition:
+      transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1),
+      box-shadow 0.4s ease,
+      border-color 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 24px 48px -20px rgba(11, 23, 48, 0.18);
+    border-color: var(--ink-soft);
+  }
+
+  .card-visual {
+    aspect-ratio: 4 / 3;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 22px;
+  }
+
+  .card-visual a {
+    display: block;
+    height: 100%;
+  }
+
+  .card-visual img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .card-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    padding: 0 4px 4px;
+  }
+
+  .meta-row {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-muted);
+    margin-bottom: 14px;
+  }
+
+  .card h3 {
+    font-family: 'Fraunces', serif;
+    font-weight: 460;
+    font-size: 26px;
+    line-height: 1.12;
+    letter-spacing: -0.025em;
+    margin-bottom: 12px;
+    color: var(--ink);
+  }
+
+  .card h3 a {
+    color: inherit;
+    text-decoration: none;
+    background-image: linear-gradient(currentColor, currentColor);
+    background-size: 0% 1px;
+    background-repeat: no-repeat;
+    background-position: 0 100%;
+    padding-bottom: 2px;
+    transition: background-size 0.4s ease, color 0.2s ease;
+  }
+
+  .card h3 a:hover {
+    background-size: 100% 1px;
+    color: var(--accent);
+  }
+
+  .card p {
+    font-size: 14.5px;
+    color: var(--ink-soft);
+    line-height: 1.55;
+    margin-bottom: 22px;
+    flex: 1;
+  }
+
+  .card-actions {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+  }
+
+  .card-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink);
+    text-decoration: none;
+    transition: gap 0.3s ease, color 0.2s ease;
+  }
+
+  .card-link:hover {
+    gap: 14px;
+    color: var(--accent);
+  }
+
+  .card-link svg {
+    flex-shrink: 0;
+    transition: transform 0.3s ease;
+  }
+
+  .card:hover .card-link svg {
+    transform: translateX(3px);
+  }
+
+  .card-link.github {
+    color: var(--ink-muted);
+    margin-left: auto;
+  }
+
+  .card-link.github:hover {
+    color: var(--ink);
+    gap: 12px;
+  }
+
+  @media (max-width: 720px) {
+    .card { flex-basis: 78vw; }
+  }
+</style>

@@ -1,0 +1,10 @@
+{
+  "order": 2,
+  "title": "Allele — a population genetics viewer",
+  "description": "An interactive dashboard for allele frequencies across Pacific Island populations. Designed in close collaboration with the communities whose data it represents.",
+  "image": "/images/projects/allele.svg",
+  "github_url": "https://github.com/example/allele",
+  "blog_post": "allele",
+  "category": "Web App",
+  "year": 2025
+}
