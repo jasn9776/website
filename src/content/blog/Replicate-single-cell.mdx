@@ -1,0 +1,73 @@
+---
+title: "Replicating and exploring single-cell papers using AI"
+date: 2026-04-24
+heroImage: /images/blog/code-single-cell-example.png
+description: "Prolonged Cytopenia is a common side effect of leukaemia treatment, A first look at using frontier AI models (Opus 4.7) for replicating scientfic papers."
+---
+
+import Caption from '../../components/Caption.astro';
+
+## The puzzle
+
+My first task was to build an Akari solver. Akari is a logic game where the goal is to place light bulbs on an n×n grid so that every white cell is illuminated, no two bulbs see each other along a row or column, and the number of bulbs adjacent to each numbered black cell matches its clue. Black cells without a number act purely as walls. Diagonal adjacency doesn't count.
+
+<Caption
+  src="/images/blog/lightup.png"
+  alt="An example 7x7 Akari puzzle"
+  caption="Figure 1. A 7×7 Akari puzzle. Numbered black cells constrain how many adjacent cells can hold bulbs."
+/>
+
+A live version is available at [puzzle-light-up.com](https://www.puzzle-light-up.com/).
+
+## Starting with the wrong approach
+
+I uploaded a puzzle into Claude and asked it to solve it directly. In text-based reasoning mode, it made errors a human probably wouldn't — misreading cells, losing track of the grid state, tripping over its own partial deductions. It wasn't that the model couldn't reason about the puzzle; it was that the puzzle is fundamentally spatial, and flattening a 9×9 grid into a token stream strips away most of what makes it tractable.
+
+When I asked what the best approach would be, Claude suggested the right thing: don't try to solve it through text reasoning — write code to solve it instead. It even drafted the prompt I should use.
+
+This was the first useful lesson: **the AI can help you prompt it, if you ask**.
+
+## From prompt to working code
+
+I ran the prompt Claude had suggested. Within a minute, it produced a working solver — though in HTML and JavaScript rather than Python as I'd wanted. One re-prompt later, I had a working Python version running locally.
+
+The solver uses two techniques in combination: **forced deductions** (placing or forbidding bulbs in any cell where logic uniquely determines the answer), followed by **backtracking** for cells where logic runs out and a choice has to be made. Claude explained this reasoning clearly, which let me verify the approach before trusting the output.
+
+<Caption
+  src="/images/blog/akari-solved.png"
+  alt="The Akari solver showing a solved puzzle with orange bulbs"
+  caption="Figure 2. The Python GUI version of the solver. White cells are shaded pale amber when illuminated."
+/>
+
+## The trust problem
+
+The core challenge with AI-generated code isn't producing something that *looks* right — it's knowing whether it *is* right. A solver that works on every puzzle I hand-tested could still be silently broken on cases I never thought to try.
+
+So I asked Claude to write tests. It produced a `unittest` suite covering:
+
+- **Helper functions** in isolation — `is_black`, `neighbors`, line-of-sight calculations
+- **Known-answer puzzles** — golden tests pinned to solutions I had independently verified
+- **Solution validity** — an independent verifier that re-checks every output against the rules from scratch, using a separate code path from the solver itself
+- **Edge cases** — 1×1 grids, impossible puzzles, puzzles with multiple valid solutions, performance on the largest supported grid
+
+The edge-case tests were particularly valuable: they actually caught me getting the Akari rules wrong twice while writing them. That's the real payoff — tests force the kind of re-examination that reveals mistakes in your own understanding, not just in the code.
+
+Another technique I used was asking Claude to produce pseudocode  - that is essentially explanatory code written in plain english - for the Python code that it produced, so I could verify the structure and logic of the code. 
+
+## What I'd do differently for the next project
+
+Having experienced the power of Claude Opus 4.7, I believe thinking about the specification will be the main bottleneck in AI-driven development. This means the WHAT of the project is more important than the HOW. I could think about what features I most want and how I want the app to look before prompting AI to code it. 
+
+I would also like to learn more about HTML and the reason I asked Claude to code in Python was because of my lack of familiarity with the javascript language that is used alongside HTML. This would allow for easier web access for users.
+
+## Takeaways
+
+Three things stood out from this project:
+
+AI reasons better through code than through prose when the problem is structured. Asking Claude to write a solver produced a correct answer quickly; asking it to solve the puzzle directly produced plausible but flawed reasoning. Matching the tool to the problem shape matters.
+
+Prompting is itself a skill the AI can help you develop. When I was stuck, asking *"what's the best way to ask an AI to do this?"* produced better results than any refinement I would have written myself.
+
+AI can write tests for its own work, and should. Without the test suite, I'd have had a solver I *hoped* was correct. With it, I have a solver I've actually verified — and a scaffold that will catch regressions if I ever modify it.
+
+This was my first extended project using Claude Opus 4.7, and it showed me what frontier models are now capable of: work that would have taken me days or weeks — particularly the frontend, which isn't my strong suit — compressed into minutes. The AI bridged a knowledge gap I felt acutely. What made the experience trustworthy wasn't the speed; it was that my existing coding background let me verify the output rather than just accept it. The combination is what made it productive.
