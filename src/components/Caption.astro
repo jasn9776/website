@@ -6,7 +6,7 @@ interface Props {
 }
 
 const { src, alt, caption } = Astro.props;
-const imageSrc = `${import.meta.env.BASE_URL}${src.replace(/^\//, '')}`;
+const imageSrc = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/${src.replace(/^\//, '')}`;
 ---
 
 <figure class="caption-figure">

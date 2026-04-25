@@ -10,9 +10,9 @@ interface Props {
 }
 
 const { title, description, image, github_url, blog_post, category, year } = Astro.props;
-const base = import.meta.env.BASE_URL;
-const postHref = blog_post ? `${base}blog/${blog_post}` : null;
-const imageSrc = `${base}${image.replace(/^\//, '')}`;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const postHref = blog_post ? `${base}/blog/${blog_post}` : null;
+const imageSrc = `${base}/${image.replace(/^\//, '')}`;
 ---
 
 <article class="card">
