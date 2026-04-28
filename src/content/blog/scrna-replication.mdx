@@ -11,17 +11,12 @@ import Caption from '../../components/Caption.astro';
 
 Could a frontier AI model meaningfully assist in replicating a scientific paper? If so, it would help in two ways: verifying the claims in the torrent of published research, and lowering the barrier for researchers without strong computational backgrounds to implement protocols from other labs.
 
-The paper I picked was a study on CAR-T cell therapy. CAR-T is a treatment where a patient's own T cells are engineered to attack their cancer — remarkably effective for certain blood cancers, but with significant side effects. One of those is **prolonged cytopenia (PC)**: persistently low levels of blood cells (white, red, or platelets) after treatment. The paper I wanted to replicate investigated *why* some patients develop PC and others don't.
+The paper I picked was a study on CAR-T cell therapy available [here](https://www.doi.org/10.1016/j.xcrm.2023.101158). CAR-T is a treatment where a patient's own T cells are engineered to attack their cancer — remarkably effective for certain blood cancers, but with significant side effects. One of those is **prolonged cytopenia (PC)**: persistently low levels of blood cells (white, red, or platelets) after treatment. The paper I wanted to replicate investigated *why* some patients develop PC and others don't.
 
 The main finding was that patients with PC had a "bone marrow infiltration of clonally expanded IFNγ-expressing CD8 T cells." The authors reached this conclusion through single-cell RNA sequencing of bone marrow samples from healthy donors and rrLBCL patients (a type of aggressive non-Hodgkin lymphoma that has relapsed or failed to respond to initial chemotherapy), comparing those with and without PC.
 
 For simplicity, I focused on the single-cell RNA-seq analysis and skipped the flow cytometry validation experiments.
 
-<Caption
-  src="/images/blog/pseudocode-scrna-rep.png"
-  alt="UMAP visualization of CD8 T cell subclusters"
-  caption="Figure 1. The replicated analysis — CD8 T cells from bone marrow samples, clustered and split by PC status."
-/>
 
 ## Setting up the replication
 
@@ -29,7 +24,7 @@ I gave Claude two links — one to the paper and one to the publicly available d
 
 Within minutes of my answers, Claude had read the paper, understood the context, and produced a modular Python pipeline — four scripts covering download, clustering, composition analysis, and CD8 subclustering. What impressed me was that it did this **without being able to see the dataset itself**. When it didn't know what a column would be named, it wrote defensive code that tried common alternatives and printed a helpful error if none matched. It even recommended a specific Python version (3.11) based on the dependency compatibility of the packages involved.
 
-## The trust problem, part one: running the code
+## Part one: Running the code
 
 Inevitably, the code didn't run perfectly the first time — Claude's sandbox doesn't have access to the actual data, so some errors only surfaced once I ran it locally. But the troubleshooting loop was fast. Each error I pasted back got a considered response: an explanation of the root cause, a fix, and often a link to the relevant GitHub issue or documentation page. Some examples:
 
@@ -39,13 +34,39 @@ Inevitably, the code didn't run perfectly the first time — Claude's sandbox do
 
 This was the first useful lesson: **Claude can debug errors in code it wrote without seeing the runtime environment, as long as you feed back the traceback**.
 
-## The trust problem, part two: verifying the results
+## Part two: Refinement of clustering and checking AI generated justifications
+
+The initial clustering for all cells produced a similar number of clusters to the original paper (I obtained 22 as opposed to the paper's 26). 
+When I uploadded the figure to claude (in image format), it was able to directly interpret the .png file and accurately described the produced plot from the analysis, showcasing the increased multi-modal capabilities of these models. 
+When questioned as to how it obtained these cell markers, it said that it used the paper's own markers combined with standard scanpy/seurat tutorials and domain knowledge from training. 
+When i googled each marker to check if it was a legitimate gene marker for each cell type, there seemed to be results from published literature that indicated they were indeed correct (so no obvious hallucinations). 
+
+<Caption
+  src="images/blog/dotplot_markers_overall.png"
+  alt="Fig. 1. The AI generated dotplot of all clusters with AI selected marker genes for each cell type"
+  caption="Figure 1. The AI generated dotplot of all clusters with AI selected marker genes for each cell type"
+/>
+
+Whilst the original paper found a significant result, our analysis found that none of the clusters were significantly different in proportion. This may be due to the fact that we used fewer cells. The AI helped me in the analysis by stating that 
+while the scCODA analysis did reveal a moderate effect for cluster 7, reporting an inclusion probability of 0.67. 
+
+|Covariate              |Cell Type|Final Parameter|HDI 3%|HDI 97%|SD   |Inclusion probability|Expected Sample   |log2-fold change|credible|
+|-----------------------|---------|---------------|------|-------|-----|---------------------|------------------|----------------|--------|
+|C(analysis_group)[T.PC]|7        |0.0            |-0.104|0.872  |0.276|0.6714               |155.82945766982400|0.0             |FALSE   |
+
+_Selected sCODA result from the AI generated pipeline showing the moderate but not significant effect of cluster 7 between the No PC vs PC groups_
+
+
+After replicating the main clustering, the paper also looked at the CD8 T-cells separately and subclustered them.  
 
 Getting the code to run is a much weaker bar than getting it to produce the *right* answer. I was able to replicate the main finding — a CX3CR1ʰⁱ CD8 effector T cell population enriched in PC patients, with exactly the marker signature the paper reported (granzymes GZMA, GZMB, GZMH; FGFBP2; CX3CR1). But getting there wasn't a single clean run.
 
-What surprised me was Claude's ability to **push me toward analyses I wouldn't have thought to do**. After an initial clustering looked plausible, it suggested I check the per-patient composition of each cluster — something I'd have skipped. That check revealed the CX3CR1ʰⁱ cluster was dominated by patient 7 (around 40% of cells) and patient 9. Was this a batch effect (Harmony failing to integrate), a contamination issue (NK cells being miscalled as CD8s), or actual biology (those two patients having genuinely clonally expanded T cells, as the paper describes)?
+What surprised me was Claude's ability to **push me toward analyses to diagnose and troubleshoot issues**. After an initial clustering looked plausible, it suggested I check the per-patient composition of each cluster. That check revealed the CX3CR1ʰⁱ cluster was dominated by patient 7 (around 40% of cells) and patient 9. Was this a batch effect (Harmony failing to integrate), a contamination issue (NK cells being miscalled as CD8s), or actual biology (those two patients having genuinely clonally expanded T cells, as the paper describes)?
 
-Claude proposed three concrete diagnostics to distinguish these, and walked me through interpreting the output. The diagnosis: my initial CD8 identification was too loose and had let in NK cells (TYROBP+, FCER1G+, KLRF1+) and γδ T cells (TRDC+), which share the cytotoxic expression program and cluster nearby. After tightening the cell-type detection and increasing Harmony's batch-correction strength, the contamination was resolved, and the patient 7/9 pattern partially persisted — exactly as the paper predicts for genuine clonal expansion.
+Claude proposed three concrete diagnostics to distinguish these, and walked me through interpreting the output. The AI's diagnosis: my initial CD8 identification was too loose and had let in
+NK cells (TYROBP+, FCER1G+, KLRF1+) and γδ T cells (TRDC+), which share the cytotoxic expression program and cluster nearby. 
+After tightening the cell-type detection and increasing Harmony's batch-correction strength, the contamination was resolved, 
+and the patient 7/9 pattern partially persisted — exactly as the paper predicts for genuine clonal expansion.
 
 ## Using pseudocode to verify logic
 
@@ -61,20 +82,31 @@ There were aspects of the code I couldn't immediately verify by reading it — c
 
 ## Limits of what I could verify
 
-Not everything was verifiable by me alone. I have domain knowledge of the biology but not of every library call — I can't independently tell you whether scanpy's `seurat_v3` HVG flavor is truly equivalent to Seurat's VST in R. I could verify:
+Not everything was verifiable by me alone. While I have some domain knowledge in biology, I do not know if the cell markers identified by the AI are accurate (alhough a quick online search did not reveal any obvious errors).
+
+I could verify:
 
 - The marker genes Claude identified for each cluster matched the paper's description.
-- The statistical tests were appropriate (Wilcoxon for per-sample proportions, scCODA for compositional analysis — both used in the original).
-- The pipeline structure matched what the paper described in its methods.
+- The overall pipeline structure matched what the paper described in its methods: preprocessing, clustering
 
 I could not easily verify:
 
-- The exact numerical equivalence between the paper's Seurat/R pipeline and my scanpy/Python version.
-- Whether subtle choices (HVG flavor, Harmony theta parameter) would have been made differently by a more experienced single-cell analyst.
+- Whether the slight differences in my results compared to the paper were do to with my undersampling (I only used 50% of the data as I ran all analyses on my laptop with 16GB ram), 
+differences in the algorithms (the paper used R/Seurat wheras I used Python/Scanpy)
+- whether the biological justifications made by the AI were completely accurate, such as key genes used to identify different cell types.
+- whether the code was completely accurate and without errors
+- whether any of the conclusions were accurate or AI hallucinations to achieve its goal of seeming to replicate the paper
+- whether AI models are becoming more reliable or whether the hallucinations are just less obvious
 
+What I chose not to try and replicate:
+- The paper had a custom method for 
 
 ## What worked and what didn't
 
+what didn't:
+While the main logic was sound, certain details were implemented differently to the paper. For example in the paper it states 
+"Analysis of the frequency of each cell cluster relative to all cells from each sample identified a single subset of CD8 T cells"
+while the AI, as it seemms for covenience, opted to use all CD8 cells instead of ALL Cells. 
 
 ## Takeaways
 
@@ -90,3 +122,4 @@ Notably, I did not observe obvious hallucinations — every gene, method, and li
 
 The AI-generated repo is available here: [github.com/jasn9776/singleCellReplication](https://github.com/jasn9776/singleCellReplication)
 
+_Note this article was edited by Opus 4.7. These are my thoughts and reflections, not associated with any organisation._

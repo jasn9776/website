@@ -1,9 +1,0 @@
-{
-  "order": 5,
-  "title": "Meridian — methylation analysis toolkit",
-  "description": "A complete refactor of an aging methylation pipeline — from CpG calling through differential analysis, with a calmer plotting layer on top.",
-  "image": "/images/projects/meridian.svg",
-  "github_url": "https://github.com/example/meridian",
-  "category": "Toolkit",
-  "year": 2024
-}

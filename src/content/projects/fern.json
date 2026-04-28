@@ -1,9 +1,0 @@
-{
-  "order": 6,
-  "title": "Fern — a tiny FASTA parser",
-  "description": "An opinionated 8KB Rust crate for streaming sequence files. Why I started over from scratch and what survived from the parsers that came before.",
-  "image": "/images/projects/fern.svg",
-  "github_url": "https://github.com/example/fern",
-  "category": "Open Source",
-  "year": 2024
-}

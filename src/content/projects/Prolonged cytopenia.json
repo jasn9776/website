@@ -1,0 +1,10 @@
+{
+  "order": 2,
+  "title": "Prolonged cytopenia following CD19 CAR T cell therapy (leukaemia)",
+  "description": "Replicating a single cell scientific paper",
+  "image": "/images/blog/code-single-cell-example.png",
+  "github_url": "https://github.com/jasn9776/singleCellReplication",
+  "blog_post": "scrna-replication",
+  "category": "Analysis",
+  "year": 2026
+}
