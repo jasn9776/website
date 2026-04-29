@@ -1,9 +1,9 @@
 {
   "order": 4,
   "title": "Thresholds — selection in low-coverage aDNA",
-  "description": "A new method for detecting selection signatures in low-coverage ancient DNA. Co-authored with Anya Tomas; currently under review at Nature Methods.",
+  "description": "Example only: A new method for detecting selection signatures in low-coverage ancient DNA. Co-authored with Anya Tomas; currently under review at Nature Methods.",
   "image": "/images/projects/thresholds.svg",
   "github_url": "https://github.com/example/thresholds",
-  "category": "Preprint",
-  "year": 2025
+  "category": "Placeholder",
+  "year": 2000
 }

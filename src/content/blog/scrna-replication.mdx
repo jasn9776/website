@@ -37,9 +37,9 @@ This was the first useful lesson: **Claude can debug errors in code it wrote wit
 ## Part two: Refinement of clustering and checking AI generated justifications
 
 The initial clustering for all cells produced a similar number of clusters to the original paper (I obtained 22 as opposed to the paper's 26). 
-When I uploadded the figure to claude (in image format), it was able to directly interpret the .png file and accurately described the produced plot from the analysis, showcasing the increased multi-modal capabilities of these models. 
+When I uploaded the figure to claude (in image format), it was able to directly interpret the .png file and accurately described the produced plot from the analysis, showcasing the increased multi-modal capabilities of these models. 
 When questioned as to how it obtained these cell markers, it said that it used the paper's own markers combined with standard scanpy/seurat tutorials and domain knowledge from training. 
-When i googled each marker to check if it was a legitimate gene marker for each cell type, there seemed to be results from published literature that indicated they were indeed correct (so no obvious hallucinations). 
+When I googled each marker to check if it was a legitimate gene marker for each cell type, there seemed to be results from published literature that indicated they were indeed correct (so no obvious hallucinations). 
 
 <Caption
   src="images/blog/dotplot_markers_overall.png"
@@ -47,15 +47,42 @@ When i googled each marker to check if it was a legitimate gene marker for each 
   caption="Figure 1. The AI generated dotplot of all clusters with AI selected marker genes for each cell type"
 />
 
-Whilst the original paper found a significant result, our analysis found that none of the clusters were significantly different in proportion. This may be due to the fact that we used fewer cells. The AI helped me in the analysis by stating that 
-while the scCODA analysis did reveal a moderate effect for cluster 7, reporting an inclusion probability of 0.67. 
+Whilst the original paper found a significant result, our analysis intially found that none of the clusters were significantly different in proportion. I initially hypothesised that 
+this may be due to the fact that we used fewer cells (although I had my doubts since the power of the statistical test should mainly depend on the number of patients, 
+not the number of cells per patient). The AI helped me in the analysis by stating that 
+while the scCODA analysis did reveal a moderate effect for cluster 7, reporting an inclusion probability of 0.67, 
+although this did not meet the threshold of 0.05 FDR.
 
 |Covariate              |Cell Type|Final Parameter|HDI 3%|HDI 97%|SD   |Inclusion probability|Expected Sample   |log2-fold change|credible|
 |-----------------------|---------|---------------|------|-------|-----|---------------------|------------------|----------------|--------|
 |C(analysis_group)[T.PC]|7        |0.0            |-0.104|0.872  |0.276|0.6714               |155.82945766982400|0.0             |FALSE   |
 
-_Selected sCODA result from the AI generated pipeline showing the moderate but not significant effect of cluster 7 between the No PC vs PC groups_
+_Selected sCODA result (now proven incorrect) from the AI generated pipeline showing the moderate but not significant effect of cluster 7 between the No PC vs PC groups_
 
+The AI was really hopeful (perhaps a slight bit of reinforcement learning induced overoptimism) that cluster 7 was the CX3CR1ʰⁱ TEFF cluster the paper was talking about. 
+However, it was careful to not state it as fact, but as something that should be checked. 
+
+And indeed, when i dug a bit deeper, i discovered that cluster 0 was the main CX3CR1ʰⁱ TEFF cluster (based on both the number of cells as well as the AI's debugging that asked me to print out the levels of the key marker genes for each cluster - something I wouldn't have the biological knowledge to do).
+It was able to characterise cluster 7 as being different from cluster 0 (cluster vs. cluster comparison) based on mainly on a comparison on a geneset of the key marker genes. 
+It concluded that Cluster 7 was a "less extreme" version of Cluster 0 and that it had the "same biological state" just lower magnitude on every cytoxic marker. This is something I will need to verify once i have time. 
+
+However, upon further inspection of cluster 7, guided by the AI, I found out that cluster 7 should really be merged with cluster 0.
+
+However, I was still confused at why the paper had found a signficant finding and why we had not. The answer turned out to be a combination of things which the AI diagnosed
+ as soon as I pasted the output from the code that the AI had asked me to write:
+ - I had accidentally run an older version of the script and had forgotten to filter the other categories of patients to only include "PC" vs "No PC"
+ - the sCODA analysis by default was selecting the largest cluster instead of the most stable (the one that changes least depending on PC status)
+
+After correcting these changes, I was able to find that the merged cluster of cluster 0 and 7, was now signficant (well within FDR < 0.05):
+
+|Covariate              |Cell Type    |Final Parameter  |HDI 3%|HDI 97%|SD   |Inclusion probability|Expected Sample  |log2-fold change |credible|
+|-----------------------|-------------|-----------------|------|-------|-----|---------------------|-----------------|-----------------|--------|
+|C(analysis_group)[T.PC]|CX3CR1hi_TEFF|0.786154303083837|0.285 |1.292  |0.279|0.9909333333333330   |525.1653864044870|0.944046996876554|TRUE    |
+
+_The sCODA result (correct version) from the AI generated pipeline showing the now significantly different proportion of the CX3CR1ʰⁱ TEFF high cluster (clusters 0 and 7 combined)
+between the No PC vs PC groups_
+
+## Part three: CD8 T-cell subclustering analysis
 
 After replicating the main clustering, the paper also looked at the CD8 T-cells separately and subclustered them.  
 
@@ -68,17 +95,28 @@ NK cells (TYROBP+, FCER1G+, KLRF1+) and γδ T cells (TRDC+), which share the cy
 After tightening the cell-type detection and increasing Harmony's batch-correction strength, the contamination was resolved, 
 and the patient 7/9 pattern partially persisted — exactly as the paper predicts for genuine clonal expansion.
 
-## Using pseudocode to verify logic
-
-There were aspects of the code I couldn't immediately verify by reading it — complex cell-type detection, statistical model setup, embedding corrections. Borrowing a technique from my previous project, I asked Claude to produce **pseudocode** (plain-English explanatory code) for each script. This let me check the logic independently of the implementation and catch places where I disagreed with the approach before running anything.
+After the refinements, I ended up with 7 sub-clusters of CD8 T-cells (compared to the original paper's 6). These clusters and along with key marker genes are below:
 
 <Caption
-  src="/images/blog/pseudocode-scrna-rep.png"
-  alt="UMAP visualization of CD8 T cell subclusters"
-  caption="Figure 1. The replicated analysis — CD8 T cells from bone marrow samples, clustered and split by PC status."
+  src="/images/blog/dotplot__cd8_markers_dotplot.png"
+  alt="dotplot of CD8 T cell subclusters with key marker genes"
+  caption="Figure 2. dotplot of CD8 T cell subclusters with key marker genes."
 />
 
-[**Space for your own reflection here**: what specifically did you learn from the pseudocode step on this project, if anything? Did it catch anything, or mostly just build confidence?]
+It identified clusters 0 and 1 as the CX3CR1ʰⁱ subclusters based on high levels of FGFBP2 and granzymes. 
+
+After the reclustering the comparison between cluster 0 and cluster 1 (top differentiating genes) told a story that matched closely with the original papers finding:
+
+<Caption
+  src="/images/blog/claude-cluster_1-v-cluster_0-genes.png"
+  alt="claude's summary of key differentiating genes between cluster 0 and cluster 1"
+  caption="Figure 3. claude's summary of key differentiating genes between cluster 0 and cluster 1. Note this was based on output from the script that I pasted."
+/>
+
+
+After this I went on to verify that the IFNG fraction of the PC patients had increased, which Claude also gave me a fully wokring script for. 
+I was able to ask questions about how the script worked and it even gave a toy example when asked so I could verify the correctness.
+In the end I verfied that the PC patients had 2x more IFNG+ CD8 T cells (expression above zero) cells than No-PC patients. 
 
 ## Limits of what I could verify
 
@@ -86,27 +124,27 @@ Not everything was verifiable by me alone. While I have some domain knowledge in
 
 I could verify:
 
-- The marker genes Claude identified for each cluster matched the paper's description.
-- The overall pipeline structure matched what the paper described in its methods: preprocessing, clustering
+- The marker genes Claude identified for identifying the type of each cluster seemed to be supported by literature
+- The overall pipeline structure matched what the paper described in its methods: preprocessing, clustering, statistical analyses
 
 I could not easily verify:
 
-- Whether the slight differences in my results compared to the paper were do to with my undersampling (I only used 50% of the data as I ran all analyses on my laptop with 16GB ram), 
-differences in the algorithms (the paper used R/Seurat wheras I used Python/Scanpy)
+- Whether the slight differences in my results compared to the paper were do to with my undersampling (I only used a random 65% of the cells as I ran all analyses on my laptop with 16GB ram), 
+differences in the algorithms (the paper used R/Seurat wheras I used Python/Scanpy) or differences in how the AI implemented the tests.
 - whether the biological justifications made by the AI were completely accurate, such as key genes used to identify different cell types.
 - whether the code was completely accurate and without errors
 - whether any of the conclusions were accurate or AI hallucinations to achieve its goal of seeming to replicate the paper
 - whether AI models are becoming more reliable or whether the hallucinations are just less obvious
 
 What I chose not to try and replicate:
-- The paper had a custom method for 
+- The paper had a custom method for cell type annotation based on another dataset. For simnplisticity, I opted to just use known cell markers. This approach was sufficient to replicate the main finding.
 
-## What worked and what didn't
+what I didn't attempt:
 
-what didn't:
-While the main logic was sound, certain details were implemented differently to the paper. For example in the paper it states 
+- While the main logic was sound, certain details were implemented differently to the paper. For example in the paper it states 
 "Analysis of the frequency of each cell cluster relative to all cells from each sample identified a single subset of CD8 T cells"
-while the AI, as it seemms for covenience, opted to use all CD8 cells instead of ALL Cells. 
+while the AI, as it seems for covenience, opted to use all CD8 cells instead of ALL Cells. This was probably the reason for patients 7 and 9 having a very large fraction of their cells being of the CX3CR1ʰⁱ clusters.
+- I did not try to do this in an environment where the AI had direct access to the files (which would have prevented many errors). Currently Claude code only uses up to Opus 4.6.
 
 ## Takeaways
 
@@ -116,10 +154,10 @@ Three things stood out:
 
 **The interview pattern is the right starting point for open-ended tasks.** Rather than specifying the project upfront, asking Claude to question me produced a scoped, prioritized plan that avoided wasted work on parts of the paper I didn't care about.
 
-**Domain knowledge is still the critical input.** I was able to verify that the recovered markers matched the paper's signature because I recognize what FGFBP2 and CX3CR1 mean biologically. Without that background, I could have accepted a plausible-looking but incorrect result. AI lowers the coding barrier but doesn't eliminate the need for subject-matter judgment.
-
-Notably, I did not observe obvious hallucinations — every gene, method, and library call I checked was correct. That's not a guarantee nothing was subtly wrong, but it's a stronger track record than I expected.
+**Domain and technical/coding knowledge is still critical.** I was not too confident of the specific genes and cell classification steps because I lack that deep biological knowledge to verify that 
+what the AI claimed was in fact correct. Whilst a quick google search seemed to confirm these markers, it still is an advanatage to have someone with deep knowledge of the field.
+Notably, I did not observe obvious hallucinations — every gene, method, and library call I checked seemed correct. My coding background gave me a bit more confidence to trust and verify the AI output and ask for clarifications for things I was not sure were totally correct.
 
 The AI-generated repo is available here: [github.com/jasn9776/singleCellReplication](https://github.com/jasn9776/singleCellReplication)
 
-_Note this article was edited by Opus 4.7. These are my thoughts and reflections, not associated with any organisation._
+_Note this article was edited by Opus 4.7. These are my thoughts and reflections, not associated with any organisation. For non-profit use only. No text pasted into the AI directly or used for training. Information is not final._
