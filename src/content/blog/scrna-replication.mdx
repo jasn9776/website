@@ -63,13 +63,12 @@ The AI was really hopeful (perhaps a slight bit of reinforcement learning induce
 However, it was careful to not state it as fact, but as something that should be checked. 
 
 And indeed, when i dug a bit deeper, i discovered that cluster 0 was the main CX3CR1ʰⁱ TEFF cluster (based on both the number of cells as well as the AI's debugging that asked me to print out the levels of the key marker genes for each cluster - something I wouldn't have the biological knowledge to do).
-It was able to characterise cluster 7 as being different from cluster 0 (cluster vs. cluster comparison) based on mainly on a comparison on a geneset of the key marker genes. 
-It concluded that Cluster 7 was a "less extreme" version of Cluster 0 and that it had the "same biological state" just lower magnitude on every cytoxic marker. This is something I will need to verify once i have time. 
-
-However, upon further inspection of cluster 7, guided by the AI, I found out that cluster 7 should really be merged with cluster 0.
+It was able to characterise cluster 7 as being different from cluster 0 (cluster vs. cluster comparison) based on mainly on a comparison of the key marker genes. 
+It concluded that Cluster 7 was a "less extreme" version of Cluster 0 and that it had the "same biological state" just lower magnitude on every cytoxic marker (this is something i also verified). It also stated cluster 0 had slightly higher levels of key memory cell markers - suggesting cluster 0 was a less terminally differentiated version of cluster 7. 
+Percentages of Cluster 0 and 7 were also strongly correlated among all patients, so I decided that cluster 7 should really be merged with cluster 0.
 
 However, I was still confused at why the paper had found a signficant finding and why we had not. The answer turned out to be a combination of things which the AI diagnosed
- as soon as I pasted the output from the code that the AI had asked me to write:
+ as soon as I pasted the output from the code that the AI had asked me to run:
  - I had accidentally run an older version of the script and had forgotten to filter the other categories of patients to only include "PC" vs "No PC"
  - the sCODA analysis by default was selecting the largest cluster instead of the most stable (the one that changes least depending on PC status)
 
@@ -114,9 +113,9 @@ After the reclustering the comparison between cluster 0 and cluster 1 (top diffe
 />
 
 
-After this I went on to verify that the IFNG fraction of the PC patients had increased, which Claude also gave me a fully wokring script for. 
+After this I went on to verify that the IFNγ fraction of the PC patients had increased, which Claude also gave me a fully wokring script for. 
 I was able to ask questions about how the script worked and it even gave a toy example when asked so I could verify the correctness.
-In the end I verfied that the PC patients had 2x more IFNG+ CD8 T cells (expression above zero) cells than No-PC patients. 
+In the end I verfied that the PC patients had 2x more IFNγ- CD8 T cells (expression above zero) cells than No-PC patients. I will need to verify that the cluster itself had more IFNγ- expression.
 
 ## Limits of what I could verify
 
@@ -133,7 +132,7 @@ I could not easily verify:
 differences in the algorithms (the paper used R/Seurat wheras I used Python/Scanpy) or differences in how the AI implemented the tests.
 - whether the biological justifications made by the AI were completely accurate, such as key genes used to identify different cell types.
 - whether the code was completely accurate and without errors
-- whether any of the conclusions were accurate or AI hallucinations to achieve its goal of seeming to replicate the paper
+- whether some of the conclusions were accurate or AI hallucinations to achieve its goal of seeming to replicate the paper
 - whether AI models are becoming more reliable or whether the hallucinations are just less obvious
 
 What I chose not to try and replicate:
