@@ -21,7 +21,7 @@ A live version is available at [puzzle-light-up.com](https://www.puzzle-light-up
 
 ## Starting with the wrong approach
 
-I uploaded a puzzle into Claude and asked it to solve it directly. In text-based reasoning mode, it made errors a human probably wouldn't — misreading cells, losing track of the grid state, tripping over its own partial deductions. It wasn't that the model couldn't reason about the puzzle; it was that the puzzle is fundamentally spatial, and flattening a 9×9 grid into a token stream strips away most of what makes it tractable.
+I uploaded a puzzle (in image form) - (which it transcribed accurately - although this is something you absolutely need to check as LLM models currently struggle with visual input) into Claude and asked it to solve it directly. In text-based reasoning mode, it made errors a human probably wouldn't — misreading cells, losing track of the grid state, tripping over its own partial deductions. It wasn't that the model couldn't reason about the puzzle; it was that the puzzle is fundamentally spatial, and flattening a 9×9 grid into a token stream strips away most of what makes it tractable.
 
 When I asked what the best approach would be, Claude suggested the right thing: don't try to solve it through text reasoning — write code to solve it instead. It even drafted the prompt I should use.
 

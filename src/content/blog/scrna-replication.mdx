@@ -37,7 +37,7 @@ This was the first useful lesson: **Claude can debug errors in code it wrote wit
 ## Part two: Refinement of clustering and checking AI generated justifications
 
 The initial clustering for all cells produced a similar number of clusters to the original paper (I obtained 22 as opposed to the paper's 26). 
-When I uploaded the figure to claude (in image format), it was able to directly interpret the .png file and accurately described the produced plot from the analysis, showcasing the increased multi-modal capabilities of these models. 
+When I uploaded the figure to claude (in image format), it was able to directly interpret the .png file and seemed to accurately described the produced plot from the analysis (see pitfalls section about visual interpretation of images by LLMs), showcasing the increased multi-modal capabilities of these models. 
 When questioned as to how it obtained these cell markers, it said that it used the paper's own markers combined with standard scanpy/seurat tutorials and domain knowledge from training. 
 When I googled each marker to check if it was a legitimate gene marker for each cell type, there seemed to be results from published literature that indicated they were indeed correct (so no obvious hallucinations). 
 
@@ -102,9 +102,22 @@ After the refinements, I ended up with 7 sub-clusters of CD8 T-cells (compared t
   caption="Figure 2. dotplot of CD8 T cell subclusters with key marker genes."
 />
 
-It identified clusters 0 and 1 as the CX3CR1ʰⁱ subclusters based on high levels of FGFBP2 and granzymes. 
+It is important to note that it **misinterpreted the visual plot**. It said that cluster 5 had high KLRB1, when in fact it was cluster 4 (the cluster immediately above).
+This highlights a key limitation in its visual processing abilities. After I questioned it, it was able to see that i was correct and asked me to run a script to obtain
+the raw expression levels in text-format, which it was able to accurately interpret.
 
-After the reclustering the comparison between cluster 0 and cluster 1 (top differentiating genes) told a story that matched closely with the original papers finding:
+After the text-based data was given to Opus 4.7, it classified each of the clusters:
+
+- Cluster 0: CX3CR1ʰⁱ TEFF (most terminal)
+- Cluster 1 — Less-terminal TEFF (same biology as BMMC-level cluster 7 )
+- Cluster 2 — Naive / central memory CD8 (after asking me for more verfication output (level of CD4 was roughly equal CD8A), it concluded it was actually CD4 T-cell contamination.)
+- Cluster 3 — GZMK+ effector memory CD8
+- Cluster 4 — NK / NK-like contamination, NOT MAIT
+- Cluster 5 — TEFF (essentially identical to cluster 0)
+- Cluster 6 — Empty / artifact
+
+
+The comparison between cluster 0 and cluster 1 (top differentiating genes) told a story that matched closely with the original papers finding:
 
 <Caption
   src="/images/blog/claude-cluster_1-v-cluster_0-genes.png"
@@ -119,7 +132,9 @@ In the end I verfied that the PC patients had 2x more IFNγ- CD8 T cells (expres
 
 ## Limits of what I could verify
 
-Not everything was verifiable by me alone. While I have some domain knowledge in biology, I do not know if the cell markers identified by the AI are accurate (alhough a quick online search did not reveal any obvious errors).
+This was not an effort to faithfully replicate every aspect of the paper, rather it was just a test run to get a good feel of where the capabilities of frontier AI models currently lie.
+
+Additionally, not everything was verifiable by me alone. While I have some domain knowledge in biology, I do not know if the cell markers identified by the AI are accurate (alhough a quick online search did not reveal any obvious errors).
 
 I could verify:
 
@@ -145,6 +160,17 @@ what I didn't attempt:
 while the AI, as it seems for covenience, opted to use all CD8 cells instead of ALL Cells. This was probably the reason for patients 7 and 9 having a very large fraction of their cells being of the CX3CR1ʰⁱ clusters.
 - I did not try to do this in an environment where the AI had direct access to the files (which would have prevented many errors). Currently Claude code only uses up to Opus 4.6.
 
+## Pitfalls
+
+What was not immediately obvious was that the AI had not precisely read my inputted .png file for the CD8 subclustering. When asked, the AI explained that visual interpretation was one of its weakest features as it is trained to 
+be a text-reasoning model and so images are compressed into tokens representing patches of the image. It also currently doesn't have well calibrated uncertainty about what they are seeing. 
+
+<Caption
+  src="/images/blog/visual_interpretation_pitfall.png"
+  alt="AI admits its mistake of incorrectly interpreting visual dotplot"
+  caption="Figure 3. AI admits its mistake of incorrectly interpreting visual dotplot"
+/>
+
 ## Takeaways
 
 Three things stood out:
@@ -157,6 +183,13 @@ Three things stood out:
 what the AI claimed was in fact correct. Whilst a quick google search seemed to confirm these markers, it still is an advanatage to have someone with deep knowledge of the field.
 Notably, I did not observe obvious hallucinations — every gene, method, and library call I checked seemed correct. My coding background gave me a bit more confidence to trust and verify the AI output and ask for clarifications for things I was not sure were totally correct.
 
+It is important to question AI's conclusions. This was highlighted in the visual interpretation of the uploaded .png file. 
+It confidently stated what was incorrect due to its current lack of visual interpretation abilities. It also highlights that AI often tries to justify the conclusion that best fits the narrative. 
+
 The AI-generated repo is available here: [github.com/jasn9776/singleCellReplication](https://github.com/jasn9776/singleCellReplication)
 
-_Note this article was edited by Opus 4.7. These are my thoughts and reflections, not associated with any organisation. For non-profit use only. No text pasted into the AI directly or used for training. Information is not final._
+## Changelog
+
+01-05-2026 - Added pitfalls section after realising AI had misinterpreted the uploaded image. Added more reflections about this. Updated the CD8 subclustering information to be more accurate.
+
+_Note parts of this article was written/edited by Opus 4.7. These are my thoughts and reflections, not associated with any organisation. For non-profit use only. No text pasted into the AI directly or used for training. Information is not final._
