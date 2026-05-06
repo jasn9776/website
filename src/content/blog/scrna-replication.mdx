@@ -57,20 +57,20 @@ although this did not meet the threshold of 0.05 FDR.
 |-----------------------|---------|---------------|------|-------|-----|---------------------|------------------|----------------|--------|
 |C(analysis_group)[T.PC]|7        |0.0            |-0.104|0.872  |0.276|0.6714               |155.82945766982400|0.0             |FALSE   |
 
-_Selected sCODA result (now proven incorrect) from the AI generated pipeline showing the moderate but not significant effect of cluster 7 between the No PC vs PC groups_
+_Selected scCODA result (now proven incorrect) from the AI generated pipeline showing the moderate but not significant effect of cluster 7 between the No PC vs PC groups_
 
 The AI was really hopeful (perhaps a slight bit of reinforcement learning induced overoptimism) that cluster 7 was the CX3CR1ʰⁱ TEFF cluster the paper was talking about. 
 However, it was careful to not state it as fact, but as something that should be checked. 
 
-And indeed, when i dug a bit deeper, i discovered that cluster 0 was the main CX3CR1ʰⁱ TEFF cluster (based on both the number of cells as well as the AI's debugging that asked me to print out the levels of the key marker genes for each cluster - something I wouldn't have the biological knowledge to do).
-It was able to characterise cluster 7 as being different from cluster 0 (cluster vs. cluster comparison) based on mainly on a comparison of the key marker genes. 
-It concluded that Cluster 7 was a "less extreme" version of Cluster 0 and that it had the "same biological state" just lower magnitude on every cytoxic marker (this is something i also verified). It also stated cluster 0 had slightly higher levels of key memory cell markers - suggesting cluster 0 was a less terminally differentiated version of cluster 7. 
+And indeed, when I dug a bit deeper, I discovered that cluster 0 was the more terminal CX3CR1ʰⁱ TEFF cluster (but the number of cells for each clusters 0 and 7 were broadly similar as well for all patients).
+The AI told me to print out the levels of the key marker genes (especially cytotoxic T cell markers and memory cell markers) for the clusters and it was able to characterise cluster 7 as being different from cluster 0 (cluster vs. cluster comparison) based on mainly on a comparison of the key marker genes. 
+It concluded that Cluster 7 was a "less extreme" version of Cluster 0 and that it had the "same biological state" just lower magnitude on every cytoxic marker (this is something I also verified). It also stated cluster 0 had slightly higher levels of key memory cell markers - suggesting cluster 0 was a less terminally differentiated version of cluster 7. 
 Percentages of Cluster 0 and 7 were also strongly correlated among all patients, so I decided that cluster 7 should really be merged with cluster 0.
 
 However, I was still confused at why the paper had found a signficant finding and why we had not. The answer turned out to be a combination of things which the AI diagnosed
  as soon as I pasted the output from the code that the AI had asked me to run:
+ - the scCODA analysis (by default) was selecting the largest cluster instead of the most stable (the one that changes least depending on PC status)
  - I had accidentally run an older version of the script and had forgotten to filter the other categories of patients to only include "PC" vs "No PC"
- - the sCODA analysis by default was selecting the largest cluster instead of the most stable (the one that changes least depending on PC status)
 
 After correcting these changes, I was able to find that the merged cluster of cluster 0 and 7, was now signficant (well within FDR < 0.05):
 
@@ -78,7 +78,7 @@ After correcting these changes, I was able to find that the merged cluster of cl
 |-----------------------|-------------|-----------------|------|-------|-----|---------------------|-----------------|-----------------|--------|
 |C(analysis_group)[T.PC]|CX3CR1hi_TEFF|0.786154303083837|0.285 |1.292  |0.279|0.9909333333333330   |525.1653864044870|0.944046996876554|TRUE    |
 
-_The sCODA result (correct version) from the AI generated pipeline showing the now significantly different proportion of the CX3CR1ʰⁱ TEFF high cluster (clusters 0 and 7 combined)
+_The scCODA result (correct version) from the AI generated pipeline showing the now significantly different proportion of the CX3CR1ʰⁱ TEFF high cluster (clusters 0 and 7 combined)
 between the No PC vs PC groups_
 
 ## Part three: CD8 T-cell subclustering analysis
@@ -103,7 +103,7 @@ After the refinements, I ended up with 7 sub-clusters of CD8 T-cells (compared t
 />
 
 It is important to note that it **misinterpreted the visual plot**. It said that cluster 5 had high KLRB1, when in fact it was cluster 4 (the cluster immediately above).
-This highlights a key limitation in its visual processing abilities. After I questioned it, it was able to see that i was correct and asked me to run a script to obtain
+This highlights a key limitation in its visual processing abilities. After I questioned it, it was able to see that I was correct and asked me to run a script to obtain
 the raw expression levels in text-format, which it was able to accurately interpret.
 
 After the text-based data was given to Opus 4.7, it classified each of the clusters:
@@ -126,7 +126,7 @@ The comparison between cluster 0 and cluster 1 (top differentiating genes) told 
 />
 
 
-After this I went on to verify that the IFNγ fraction of the PC patients had increased, which Claude also gave me a fully wokring script for. 
+After this I went on to verify that the IFNγ fraction of the PC patients had increased, which Claude also gave me a fully working script for. 
 I was able to ask questions about how the script worked and it even gave a toy example when asked so I could verify the correctness.
 In the end I verfied that the PC patients had 2x more IFNγ- CD8 T cells (expression above zero) cells than No-PC patients. I will need to verify that the cluster itself had more IFNγ- expression.
 
@@ -151,24 +151,21 @@ differences in the algorithms (the paper used R/Seurat wheras I used Python/Scan
 - whether AI models are becoming more reliable or whether the hallucinations are just less obvious
 
 What I chose not to try and replicate:
-- The paper had a custom method for cell type annotation based on another dataset. For simnplisticity, I opted to just use known cell markers. This approach was sufficient to replicate the main finding.
+- The paper had a custom method for cell type annotation based on another dataset. For simplisticity, I opted to just use known cell markers. This approach was sufficient to replicate the main finding.
 
 what I didn't attempt:
 
-- While the main logic was sound, certain details were implemented differently to the paper. For example in the paper it states 
-"Analysis of the frequency of each cell cluster relative to all cells from each sample identified a single subset of CD8 T cells"
-while the AI, as it seems for covenience, opted to use all CD8 cells instead of ALL Cells. This was probably the reason for patients 7 and 9 having a very large fraction of their cells being of the CX3CR1ʰⁱ clusters.
 - I did not try to do this in an environment where the AI had direct access to the files (which would have prevented many errors). Currently Claude code only uses up to Opus 4.6.
 
 ## Pitfalls
 
 What was not immediately obvious was that the AI had not precisely read my inputted .png file for the CD8 subclustering. When asked, the AI explained that visual interpretation was one of its weakest features as it is trained to 
-be a text-reasoning model and so images are compressed into tokens representing patches of the image. It also currently doesn't have well calibrated uncertainty about what they are seeing. 
+be a text-reasoning model and so images are compressed into tokens representing patches of the image. It also currently doesn't have well calibrated uncertainty about what it is seeing. In my experience ChatGPT's visual processing is a bit better.
 
 <Caption
-  src="/images/blog/visual_interpretation_pitfall.png"
-  alt="AI admits its mistake of incorrectly interpreting visual dotplot"
-  caption="Figure 3. AI admits its mistake of incorrectly interpreting visual dotplot"
+  src="/images/blog/AI_hallcuination_discussion.png"
+  alt="AI comments on its mistake of incorrectly interpreting visual dotplot"
+  caption="Figure 3. AI comments on its mistake of incorrectly interpreting visual dotplot"
 />
 
 ## Takeaways
@@ -188,8 +185,9 @@ It confidently stated what was incorrect due to its current lack of visual inter
 
 The AI-generated repo is available here: [github.com/jasn9776/singleCellReplication](https://github.com/jasn9776/singleCellReplication)
 
-## Changelog
+## Changelog 
 
 01-05-2026 - Added pitfalls section after realising AI had misinterpreted the uploaded image. Added more reflections about this. Updated the CD8 subclustering information to be more accurate.
+06-05-2026 - Fixed a few typos and updated inaccurate information about cluster 0 having more cells than cluster 7 in the subclustering analysis
 
-_Note parts of this article was written/edited by Opus 4.7. These are my thoughts and reflections, not associated with any organisation. For non-profit use only. No text pasted into the AI directly or used for training. Information is not final._
+_Note parts of this article was written/edited by Opus 4.7. These are my thoughts and reflections, not associated with any organisation. THis article was produced for non-profit use only and should only be used as such. This AI chat was not used for training the AI. Information is not final._
