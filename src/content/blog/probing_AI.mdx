@@ -14,7 +14,7 @@ import Caption from '../../components/Caption.astro';
 AI systems are complex. ChatBots such as ChatGPT, Grok, Gemini, Claude, Deepseek are all large langauge models (LLMs). 
 That means they have many layers and are trained on lots and lots of text. However, due to this complexity, it is hard to know what the model is doing inside its layers.
 One such behaviour we wish to study is sycophancy, which is exactly what it sounds like: the model is overly tuned to please the user and agree with them. In this study we are 
-study a very simple model of only 2B parameters (compared to the > 1 trillion in today's frontier models). We use SAEs and Linear Probes to try to peer into this model and study 
+study a very simple model of only 2B parameters (compared to the &gt; 1 trillion in today's frontier models). We use SAEs and Linear Probes to try to peer into this model and study 
 what activates when it is being sycophantic vs. when it is not. The findings should be treated with caution as this is a very small scale model that may not generalise to 
 current systems and was done in two days as part of a personal project. Nethertheless, the findings suggest that SAEs, unlike recent criticism, actually do capture most of the 
 information assocaited with the model being sycophantic just not when you look at the features individually. When you look at all the features together in a linear model, it is able to predict sycophancy.
@@ -49,7 +49,7 @@ A second contribution: applying recent findings on probe inflation (Boxo et al. 
 
 **Three analyses on the balanced sample:**
 
-1. *Univariate SAE differential expression.* For each SAE feature active on ≥5% of examples in at least one group: two-sided Mann-Whitney U with Benjamini-Hochberg FDR correction across kept features. Cliff's delta for effect size. Features flagged if q < 0.05 and |δ| > 0.2. This is *more rigorous* than typical published SAE contrastive analyses, which usually rank features by mean activation difference with no significance testing.
+1. *Univariate SAE differential expression.* For each SAE feature active on ≥5% of examples in at least one group: two-sided Mann-Whitney U with Benjamini-Hochberg FDR correction across kept features. Cliff's delta for effect size. Features flagged if q &lt; 0.05 and |δ| &gt; 0.2. This is *more rigorous* than typical published SAE contrastive analyses, which usually rank features by mean activation difference with no significance testing.
 
 2. *Linear probe on SAE features.* Logistic regression (sklearn defaults, L2 penalty C=1.0), 5-fold stratified cross-validation, AUROC as the metric. Input: 16384-dim sparse feature vector.
 
@@ -65,7 +65,7 @@ On the unbalanced N=400 sample, raw-residual probes achieve AUROC 0.74 / 0.82 / 
 
 ### The three methods diverge sharply once letter is controlled
 
-| Layer | Raw-residual probe AUROC | SAE-feature probe AUROC | Univariate SAE features (q<0.05, \|δ\|>0.2) |
+| Layer | Raw-residual probe AUROC | SAE-feature probe AUROC | Univariate SAE features (`q<0.05`, `|δ|>0.2`) |
 |---|---|---|---|
 | 6 | 0.596 ± 0.113 | 0.586 ± 0.199 | 0 |
 | 12 | 0.788 ± 0.103 | 0.745 ± 0.121 | 0 |
@@ -77,7 +77,7 @@ The probe results are robust to overfitting checks. Shuffled-label baselines giv
 
 SAE-feature probe AUROC tracks raw-residual probe AUROC within 0.02-0.04 at every layer. The SAE encoder preserves nearly all linearly-accessible behavioural information; it is the univariate analysis applied to that encoding that discards it.
 
-The clearest case is layer 12. The univariate test finds zero features at q<0.05 and |δ|>0.2. A logistic regression on the same SAE features achieves AUROC 0.745. The information that lets the classifier separate the conditions is present in the feature space but distributed across enough features that none individually pass FDR-corrected significance. The standard "top features by mean activation difference" pipeline — which doesn't even include FDR correction — would simply report nothing at this layer.
+The clearest case is layer 12. The univariate test finds zero features at `q<0.05` and `|δ|>0.2`. A logistic regression on the same SAE features achieves AUROC 0.745. The information that lets the classifier separate the conditions is present in the feature space but distributed across enough features that none individually pass FDR-corrected significance. The standard "top features by mean activation difference" pipeline — which doesn't even include FDR correction — would simply report nothing at this layer.
 
 This is consistent with feature absorption (Chanin et al. 2025) and the broader finding that SAEs do not find canonical units (Leask et al., ICLR 2025): the model's representation of sycophancy at layer 12 is not concentrated in a single SAE feature but spread across many. Whether this distribution is the model's "real" representation or an artifact of how the SAE carved the activation space is a further question — Heap et al.'s FaithfulSAE work (2025) suggests SAEs trained on general data can learn features that don't correspond to model-internal features at all.
 
