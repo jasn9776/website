@@ -3,7 +3,8 @@
     "allow": [
       "Read(//usr/local/**)",
       "Read(//Users/Jason/.nvm/**)",
-      "Read(//opt/homebrew/bin/**)"
+      "Read(//opt/homebrew/bin/**)",
+      "Bash(python3:*)"
     ]
   }
 }

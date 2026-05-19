@@ -59,7 +59,7 @@ A second contribution: applying recent findings on probe inflation (Boxo et al. 
 
 ## Findings
 
-### Without letter control, every method appears to find substantial signal — and most of it isn't sycophancy
+### Without letter control, every method appears to find substantial signal and most of it isn't sycophancy
 
 On the unbalanced N=400 sample, raw-residual probes achieve AUROC 0.74 / 0.82 / 0.93 at layers 6 / 12 / 20. A probe predicting the *letter* (A vs B) — which is not the target behaviour — achieves similar performance at the same layers. The naive univariate SAE analysis identifies many features per layer. None of this is informative until letter is controlled, because the residual stream at the answer position cleanly encodes the model's pending letter output.
 
@@ -75,7 +75,7 @@ The probe results are robust to overfitting checks. Shuffled-label baselines giv
 
 ### The information is in the SAE basis; univariate analysis is the lossy step
 
-SAE-feature probe AUROC tracks raw-residual probe AUROC within 0.02–0.04 at every layer. The SAE encoder preserves nearly all linearly-accessible behavioural information; it is the univariate analysis applied to that encoding that discards it.
+SAE-feature probe AUROC tracks raw-residual probe AUROC within 0.02-0.04 at every layer. The SAE encoder preserves nearly all linearly-accessible behavioural information; it is the univariate analysis applied to that encoding that discards it.
 
 The clearest case is layer 12. The univariate test finds zero features at q<0.05 and |δ|>0.2. A logistic regression on the same SAE features achieves AUROC 0.745. The information that lets the classifier separate the conditions is present in the feature space but distributed across enough features that none individually pass FDR-corrected significance. The standard "top features by mean activation difference" pipeline — which doesn't even include FDR correction — would simply report nothing at this layer.
 
@@ -87,7 +87,7 @@ The 0.97 AUROC at layer 20 looks like a strong positive finding. It is not. Thre
 
 First, late layers concentrate residual stream importance on the most recent positions. The Layer-wise Positional Bias paper (Jan 2026) finds that "positional importance increases monotonically toward more recent input positions, with all layers assigning higher importance to tokens closer to the prediction point. This effect strengthens with depth: later layers increasingly concentrate importance on the most recent positions." By layer 20 of 26 in Gemma 2 2B, the residual stream at the answer position is dominated by the pending output decision — what letter is about to be emitted — rather than abstract behavioural state.
 
-Second, and most directly relevant: Boxo et al. ("Linear probes rely on textual evidence," March 2026) evaluated linear probes for sandbagging, sycophancy, and bias under conditions that filter out textual evidence of the target behaviour. They report AUROC reductions of 10–30 points across settings, including a drop from 0.94 to 0.57 for sandbagging on a "model organism" stripped of behavioural verbalization, and 0.74 to 0.57 for bias. Applied to my setup: probes at the answer position are plausibly detecting "I am about to emit the sycophantic letter" rather than "I have an internal sycophancy state." Letter matching partially controls for letter category, but does not remove the broader textual-commitment signal — the residual stream still contains information about which specific letter is being prepared, which tokens will follow, and other surface properties correlating with the labeled behaviour.
+Second, and most directly relevant: Boxo et al. ("Linear probes rely on textual evidence," March 2026) evaluated linear probes for sandbagging, sycophancy, and bias under conditions that filter out textual evidence of the target behaviour. They report AUROC reductions of 10-30 points across settings, including a drop from 0.94 to 0.57 for sandbagging on a "model organism" stripped of behavioural verbalization, and 0.74 to 0.57 for bias. Applied to my setup: probes at the answer position are plausibly detecting "I am about to emit the sycophantic letter" rather than "I have an internal sycophancy state." Letter matching partially controls for letter category, but does not remove the broader textual-commitment signal — the residual stream still contains information about which specific letter is being prepared, which tokens will follow, and other surface properties correlating with the labeled behaviour.
 
 Third, the MCQ format itself introduces additional confounds. "Mind the Gap" (2025) finds accuracy differences of up to 11% from tokenization choices around the answer position; "My Answer is C" (Lyu et al. 2024) finds first-token probability evaluation can diverge from text output by 60% or more in instruction-tuned models. Both effects mean "sycophantic at the first-token logit comparison" is not a clean operationalization of cognitive sycophancy.
 
@@ -97,11 +97,11 @@ The layer 12 result (0.79 / 0.75 / 0) is more defensible because it sits before 
 
 ## What this means
 
-**Univariate SAE analysis is the wrong default for behavioural detection.** The standard pipeline — rank SAE features by mean activation difference, optionally apply significance testing, report top features — is well-suited to concentrated representations and badly-suited to distributed ones. For sycophancy in Gemma 2 2B at the answer position, the representation is distributed across enough features that the univariate approach reports null findings where the actual signal is substantial. A negative result from univariate SAE analysis is uninformative about whether the model represents the concept.
+**Univariate SAE analysis is the wrong default for behavioural detection.** The standard pipeline: rank SAE features by mean activation difference, optionally apply significance testing, report top features — is well-suited to concentrated representations and badly-suited to distributed ones. For sycophancy in Gemma 2 2B at the answer position, the representation is distributed across enough features that the univariate approach reports null findings where the actual signal is substantial. A negative result from univariate SAE analysis is uninformative about whether the model represents the concept.
 
 **The "probes beat SAEs" finding is more precisely "probes beat *single-feature analyses applied to* SAEs."** Once you train a multivariate classifier on SAE features, the gap to raw-residual probes nearly disappears (0.04 AUROC). The recent papers showing probes outperform SAEs (Kantamneni et al. 2025; GDM 2025) do partially address this — k-sparse probes with k>1 perform better than k=1 — but the standard SAE-evaluation methodology that drives published "feature discovery" work continues to focus on individual features. The corrective is not to abandon SAEs but to pair them with multivariate analysis.
 
-**MCQ contrasts are systematically confounded by letter and by output-commitment effects.** Letter confounds inflate apparent feature counts by an order of magnitude. Output-commitment effects inflate late-layer last-token probe AUROCs by 10–30 points. Neither is visible without explicit controls. Any contrastive analysis on MCQ-format safety benchmarks should at minimum: match on letter or adjust statistically; report results at multiple positions, not just the answer token; treat late-layer last-token AUROC > 0.9 as a flag for likely leakage rather than evidence of cognitive representation.
+**MCQ contrasts are systematically confounded by letter and by output-commitment effects.** Letter confounds inflate apparent feature counts by an order of magnitude. Output-commitment effects inflate late-layer last-token probe AUROCs by 10-30 points. Neither is visible without explicit controls. Any contrastive analysis on MCQ-format safety benchmarks should at minimum: match on letter or adjust statistically; report results at multiple positions, not just the answer token; treat late-layer last-token AUROC > 0.9 as a flag for likely leakage rather than evidence of cognitive representation.
 
 ## Limitations
 
@@ -118,7 +118,7 @@ The substantive limitations of this work:
 
 The methodology I applied has direct precedents:
 
-- **Probes outperforming SAEs.** Kantamneni et al. ("Are Sparse Autoencoders Useful?" Feb 2025); the GDM Mech Interp Team's "Negative Results for SAEs" (March 2025); Bricken et al. ("Using SAEs for harmful intent detection" Anthropic 2024); the "Sanity Checks for SAEs" paper (Feb 2026).
+- **Probes outperforming SAEs.** Kantamneni et al. ("Are Sparse Autoencoders Useful?" Febƒ 2025); the GDM Mech Interp Team's "Negative Results for SAEs" (March 2025); Bricken et al. ("Using SAEs for harmful intent detection" Anthropic 2024); the "Sanity Checks for SAEs" paper (Feb 2026).
 - **Probe leakage on textual evidence.** Boxo et al. ("Linear probes rely on textual evidence" March 2026) — the closest precedent for my layer-20 caveat, tested specifically on sycophancy among other behaviours.
 - **Multiple-testing in SAE feature discovery.** "Which Sparse Autoencoder Features Are Real? Model-X Knockoffs for FDR Control" (Nov 2025) is the first paper I am aware of to apply formal FDR control to SAE feature significance testing. My use of Benjamini-Hochberg correction follows similar logic, applied earlier in the pipeline.
 - **Letter / position confounds in MCQ evaluation.** "Mind the Gap" (2025) on MCQ tokenization effects; "My Answer is C" (Lyu et al. 2024) on first-token-vs-text-output divergence.
