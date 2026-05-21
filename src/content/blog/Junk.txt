@@ -1,0 +1,20 @@
+Scenario C:
+
+We have a diet survey for 50: 10 controls, 20 patients with no cancer and 20 with cancer. We want to know what nutrients affect whether they are in the no cancer vs. cancer group.
+We have 30 different nutrient variables. 
+
+Firstly, this is challenging for a logisitic regression model or its mixed extensions. Mainly due to the number of variables and small sample size for the number of variables. We could try combining variables together.
+I would consult with a experienced biostatistician if unsure. 
+
+perhaps we end up with something like:
+
+(cancer_group ~ Age + Sex + BMI + Smoking_status + vit_A_total + minerals + fats + sugars + Number_of_co_morbid_conditions + (1|subject))
+
+where vit_A_total + minerals + fats + sugars are arbitrary groups of nutrients. 
+
+A statistician may 
+
+
+
+Let's say 
+

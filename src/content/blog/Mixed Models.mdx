@@ -1,0 +1,135 @@
+---
+title: "Mixed Models: A simple guide"
+date: 2026-05-19
+heroImage: /images/projects/blog_splash_mixed_models.svg
+description: "A simple guide on mixed models for life scientists, clinician-researchers and others from someone from a bioinformatics background"
+---
+
+import Caption from '../../components/Caption.astro';
+
+## Context
+
+Mixed effects models are a type of model that extends the traditional linear regression (or logisitic regression). They work by separating effects into fixed and random. 
+Fixed effects are typically things we want to measure directly for example, the effect of the treatment (or lack of), age, sex, smoking status 
+and other relevant factors. Random effects on the other hand are things that we want to control for but want to generalise beyond them. For example,
+ there could be a patient specific effect for each of the research subjects. You could also introduce a random effect for each hospital site if you 
+ suspect the specific hospital would affect the outcome. However, if there are only a small number of hospital sites for example, only 3, then fixed 
+ effects are usually better. (a rule of thumb is to only use random effects if there are more than 5). This is because of a statistical method used 
+ to calculate the random effect for each hospital, and this works best when there are alot of hospitals. (this is very much related to why scientists always want to measure at least 3 samples of each group - to get an idea of the variance. So that we can use this information to generalise to new examples.)
+ A very common use case for mixed models is correlated data (such as those when subjects are measured repeatedly over time). Time can be incorporated as both a fixed or random 
+ effect and which one you use depends on the situation (please consult with a statistician if unsure.)
+
+
+
+## How to choose between fixed and random effects
+
+Fixed effects are similar to variables in linear or logistic regression. 
+Random effects are what mixed models add. They allow you to define an effect for something that you want to control for but you don't necessarily want to measure it specifically. For example,
+patient specific effects, or a patient trajectory of change (slope over time - maybe some patients just recover quicker over time for example). 
+You could also have a random effect for hospital site (to control for the fact that each hospital may different levels of care or measuring biases). 
+However, as I mentioned, usually random effects require at least around 5 of each group to be effective.
+So if you only have 3 hospitals, it may be better to put it as a fixed effect (as a categorical variable).
+ Or if you think that you've already controlled it well, you may even choose to leave it out. 
+ (again please consult a suitably qualified statistician if unsure)
+
+
+# How to specify the model in R 
+
+Once you have chosen the correct structure for your model, it is time to specify it in R. Common packages include lmer and lme4.
+
+Here's some notation you should know:
+
+A * B is a shortcut that automatically creates the main effects of A and B, plus their interaction (A + B + A:B).
+
+A:B (for example time:group) (where time is a continuous variable - say we have 30 time points and group may be control vs treatment). Measures the interaction between time and group. Usually if we include the interaction effect, we should also include the main effects. So is rarely used by itself.
+
+(1| subject) - here subject could also be called patient or whatever you named it - but bascially it says for everything on the right hand side (in this case for each subject),
+we want a 1 (a constant) so essentially it translates to: for each subject we want a random constant (a random effect for each subject)
+
+(1 + time | subject) - For each subject, we want both a constant (1) and a constant * time variable - so essentially we want both a random effect and a slope based on time for each patient - a trajectory of change if you like to think of it that way.
+
+Age + Sex + bodyweight - Age, Sex and Body weight will be fixed effects. 
+
+# Examples
+
+I have 40 subjects - 15 control and 20 treatment. I am measuring IFN-γ levels. We hypothesise that the treatment will increase patients IFN-γ levels. We measured at 30 time points. 
+We suspect each subject will respond differently due to random variation that we cannot control so they will each have a random effect. We also suspect each subject will have their own trajectory of change (so we want a random slope/trajectory based on time).
+We have also measured Age, Sex, Bodyweight (or BMI), cholesterol levels as we beleive these are clincially relevant variables we want to control for. 
+
+We take the log of the ifng variable as is often normal in medicial contexts. After log transforming the variable looks approximately normally distributed. If it already looked normally distributed, we wouldn't transform it. 
+(this is another area a speciailised statistician can help you with)
+
+So the formula would go something like this:
+
+log_ifng ~ treatment:time + Age + Sex + BMI + Cholesterol + (1 + time | patient_id) , if we want a random trajectory for each patient.
+
+The choice depends on whether we think the model can reliably estimate a random trajecotry for each patient. For example, if there are only 3 time points, 
+it may be unastable. Again this may be a reason to consult with a statistician as although I can fit the model to your specifications, I do not have the depth of knowledge or experience 
+to tell which model is most effective in every scenario. I can try to compare models using a Likelihood ratio test to see if we have enough data, 
+however, I cannot guarantee my judgement will align with an experienced biostatistician.
+Random slopes for time are theoretically desirable but often overfit small clinical datasets and fail to converge (especially if not enough time points)
+
+For example, if we only had 3 timepoints in R, we would write it as:
+
+log_ifng ~ treatment*time + Age + Sex + Cholesterol + (1 | patient_id) instead (leave out the random slope for each patient)
+
+treatment -  a categorical variable either control or treatment\
+time - a series of integers e.g. 0,1,2,3,4,5,6,7 if we think there is a continuous relationship or categorical e.g. 
+"Baseline", "Week_4", "Week_12" if we don't think there is a continuous relationship over time.\
+Age - A continuous variable\
+Sex -  a Categorical variable: "Male" / "Female" / "Intersex (if applicable)"\
+Cholesterol - a continuous variable e.g. 0-50
+
+Scenario B:
+
+Lets say we have 6 mice (3 control and 3 treatment). We have measured their tumour size and body weight at 30 days. We want to know if the treatment affects the 
+tumour size. 
+
+Since we only have one measurement per mouse, we cannot use a mixed model, so we just use a normal linear regression:
+
+tumour_size ~ treatment + body_weight
+
+time is not in the formula because we only have one timepoint
+
+
+we we had time measurements it might look like this: 
+
+tumour_size ~ treatment*time + body_weight + (1|mouse_id)
+
+where time is 0, 5, 10, 15, 20, 25, 30 for example
+(1|mouse_id) - Controls for individual variation within each mouse.\
+whether to use (1|mouse_id) or (1+time|mouse_id) could be decided by consulting a statistician or running a Log-likelihood test for both models (if budget does not allow for such a consult or you are confident in your abiltiies).
+
+Lets just code this in R so the first scenario would look like: 
+
+```python
+library(lme4)
+library(lmerTest)
+library(emmeans)
+
+model <- lmer(log_ifng ~ treatment * time + Age + Sex + BMI +
+                (1 + time | patient_id),
+              data = df)
+
+summary(model)
+```
+
+
+This summary will give you:
+The intercept - IFNG at time 0 for the reference group
+treatmentActive — treatment vs control difference at time = 0 only
+time — slope (change per week) in the controls
+treatmentActive:time — how much steeper (or shallower) the Treatment groups's slope is compared to controls
+
+However, this only gives you information compared to the reference groups (time = 0 and Controls)
+
+If we want other comparisons we need to use emmeans. For example, what is the treatment effect at week 7?
+
+## Limitations
+
+I am a bioinformatician, not necessarily a biostatistician. While I have some statistical training, aspects of mixed models and complicated study designs are out of my expertise. While I can confidently fit a simple mixed model to specification, I cannot always recommend the best model to use in the first place, nor have the judgement that an experienced statistican may have. 
+
+## Acknowledgements
+
+This work was assisted using Claude Sonnet 4.6 (Anthropic).
+---
