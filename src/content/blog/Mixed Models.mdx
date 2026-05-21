@@ -1,6 +1,6 @@
 ---
 title: "Mixed Models: A simple guide"
-date: 2026-05-19
+date: 2026-05-21
 heroImage: /images/projects/blog_splash_mixed_models.svg
 description: "A simple guide on mixed models for life scientists, clinician-researchers and others from someone from a bioinformatics background"
 ---
@@ -255,7 +255,7 @@ FDR / Benjamini-Hochberg (BH) — for exploratory analyses with many comparisons
 None — a single pre-specified primary comparison defined before data collection. Must be stated in your analysis plan in advance.\
 As a general rule: the more comparisons you make, the more you need to adjust — but the harder it becomes to detect real effects. Pre-specifying your primary comparison before collecting data is the best way to reduce this tension.
 
-### Prism vs. R
+### PRISM vs. R
 PRISM is an excellent tool for many standard analyses, but its mixed model implementation has some notable limitations.\
 The post-hoc comparisons are applied automatically rather than letting you choose explicitly, and the model specification options are more constrained — meaning the results can be sensitive to how you set up your variables.\
 For complex designs, this lack of transparency can be a problem. ***The mixed models in PRISM should be thought of as equivalent to a repeated measures ANOVA, along with all its limitations. In the documentation of PRISM it explicitly states that "When fitting a mixed effects model in Prism, think of it as repeated measures ANOVA that allows missing values."
@@ -266,7 +266,8 @@ That said — a poorly specified model in R is worse than a correctly applied an
 
 ### Limitations
 
-I am a bioinformatician, not a biostatistician. I have statistical training and can confidently fit straightforward mixed models, but the judgement required to choose the best model for a given design — particularly in complex or ambiguous scenarios — is the domain of an experienced biostatistician, and I would not claim to substitute for one. If you are planning to publish or make clinical decisions based on your analysis, please consult a qualified statistician before finalising your approach.
+I am a bioinformatician, not a biostatistician. I have statistical training and can confidently fit straightforward mixed models, but the judgement required to choose the best model for a given design — particularly in complex or ambiguous scenarios — is the domain of an experienced biostatistician, and I would not claim to substitute for one. 
+If you are planning to publish or make clinical decisions based on your analysis, please consult a qualified statistician before finalising your approach (often it is best to approach them to help plan the experiment).
 
 This article was written in my own time, and may contain errors or omissions. It is intended as an introductory reference, not a definitive guide.
 
