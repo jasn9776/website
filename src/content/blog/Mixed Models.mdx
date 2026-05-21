@@ -9,111 +9,111 @@ import Caption from '../../components/Caption.astro';
 
 ## Context
 
-Mixed effects models are a type of model that extends the traditional linear regression (or logisitic regression) models. Linear regression (and its logistic regression counterpart), assume that all observations are independent.
-However, this is not always the case: you may be measuring the same patient over more than one timepoint and you need to account for the patient specifc effect or perhaps you suspect that results from the same site/hospitals may be more similar (correlated).  They work by separating effects into fixed and random. 
-Fixed effects (similar to linear/logisitic regression variables) are typically things we want to measure directly for example, the effect of the treatment (or lack of), age, sex, smoking status 
-and other relevant factors. ***Random effects are designed for the structured variation that you want to account for but generalise beyond (individual patients, hospital sites). 
-In order to use random effects, we need to have repeated measures for each unit (e.g. subject/hospital). These would commonly be the same patient measured across at least 2 timepoints. Or each hospital needs at least 2 people if you want a random effect per hospital.***
- For example,
- there could be a patient specific effect (a random effect) for each of the research subjects. You could also introduce a random effect for each hospital site if you 
- suspect the specific hospital would affect the outcome. However, if there are only a small number of hospital sites for example, only 3, then fixed 
- effects are usually better (you could also leave it out altogether if you don't think it will affect the outcome in a systematic way). (a rule of thumb is to only use random effects if there are more than 5). This is because of a statistical method used 
- to calculate the random effect for each hospital, and this works best when there are a lot of hospitals (or subjects/patients/etc.).
- ***A very common use case for mixed models is correlated data (such as those when subjects are measured repeatedly over time). 
- This is a more flexible alternative to repeated measured ANOVA.***
+Mixed effects models are a type of model that extends the traditional linear regression (or logistic regression) models. Linear regression (and its logistic regression counterpart) assume that all observations are independent.
+However, this is not always the case: you may be measuring the same patient over more than one timepoint and you need to account for the patient-specific effect, or perhaps you suspect that results from the same site or hospital may be more similar (correlated). They work by separating effects into fixed and random.
+Fixed effects (similar to linear/logistic regression variables) are typically things we want to measure directly — for example, the effect of the treatment (or lack thereof), age, sex, smoking status,
+and other relevant factors. ***Random effects are designed for the structured variation that you want to account for but generalise beyond (individual patients, hospital sites).
+In order to use random effects, we need to have repeated measures for each unit (e.g. subject/hospital). These would commonly be the same patient measured across at least 2 timepoints, or each hospital needs at least 2 patients if you want a random effect per hospital.***
+For example,
+there could be a patient-specific effect (a random effect) for each of the research subjects. You could also introduce a random effect for each hospital site if you
+suspect the specific hospital would affect the outcome. However, if there are only a small number of hospital sites — for example, only 3 — then fixed
+effects are usually better (you could also leave it out altogether if you don't think it will affect the outcome in a systematic way). A rule of thumb is to only use random effects if there are more than 5 groups. This is because of a statistical method used
+to calculate the random effect for each hospital, and this works best when there are many hospitals (or subjects/patients/etc.).
+***A very common use case for mixed models is correlated data (such as when subjects are measured repeatedly over time).
+This is a more flexible alternative to repeated measures ANOVA.***
 
 
 
 ## How to choose between fixed and random effects
 
-Fixed effects are similar to variables in linear or logistic regression. 
-Random effects are what mixed models add and they allow you to account for the correlation structure of your data. ***However, random effects require multiple measurements per subject. So if you have only one measurement per patient, you will be unable to generate a random effect per patient, but you might still be able to generate a random effect per hospital provided each hospital has at least 2 patients.***
- They allow you to define an effect for something that you want to control for but you don't necessarily want to measure it specifically. For example,
-patient specific effects, or a patient trajectory of change (slope over time - maybe some patients just recover quicker over time for example). 
-You could also have a random effect for hospital site (to control for the fact that each hospital may different levels of care or measuring biases). 
-However, as I mentioned, usually random effects require at least around 5 of each group to be effective.
-So if you only have 3 hospitals, it may be better to put it as a fixed effect (as a categorical variable).
- Or if you think that you've already controlled it well, you may even choose to leave it out. 
- (again please consult a suitably qualified statistician if unsure)
+Fixed effects are similar to variables in linear or logistic regression.
+Random effects are what mixed models add and they allow you to account for the correlation structure of your data. ***However, random effects require multiple measurements per subject. So if you have only one measurement per patient, you will be unable to generate a random effect per patient, but you might still be able to generate a random effect per hospital, provided each hospital has at least 2 patients.***
+They allow you to define an effect for something that you want to control for but do not necessarily want to measure specifically. For example,
+patient-specific effects, or a patient trajectory of change (slope over time — maybe some patients just recover more quickly over time, for example).
+You could also have a random effect for hospital site (to control for the fact that each hospital may have different levels of care or measurement biases).
+However, as mentioned, random effects usually require at least around 5 of each group to be effective.
+So if you only have 3 hospitals, it may be better to treat it as a fixed effect (as a categorical variable).
+Or if you think that you have already controlled it well, you may even choose to leave it out.
+(Again, please consult a suitably qualified statistician if unsure.)
 
 
-# How to specify the model in R 
+# How to specify the model in R
 
-Once you have chosen the correct structure for your model, it is time to specify it in R. Common packages include lmer and lmerTest. Most R statistics packages use very similar syntax.
+Once you have chosen the correct structure for your model, it is time to specify it in R. Common packages include lme4 and lmerTest. Most R statistics packages use very similar syntax.
 
 Here's some notation you should know:
 
 A * B is a shortcut that automatically creates the main effects of A and B, plus their interaction (A + B + A:B).
 
-A:B (for example time:group) (where time is a continuous variable - say we have 30 time points and group may be control vs treatment). ***Measures the interaction between time and group. Usually if we include the interaction effect, we should also include the main effects. So is rarely used by itself.***
+A:B (for example time:group) (where time is a continuous variable — say we have 30 time points and group may be control vs treatment). ***Measures the interaction between time and group. Usually if we include the interaction effect, we should also include the main effects. So it is rarely used by itself.***
 
-(1| subject) - here subject could also be called patient or whatever you named it - but bascially it says for everything on the right hand side (in this case for each subject),
-we want a 1 (a constant) so essentially it translates to: for each subject we want a random constant (a random effect for each subject)
+(1| subject) - here subject could also be called patient or whatever you named it — but basically it says for everything on the right-hand side (in this case for each subject),
+we want a 1 (an intercept), so essentially it translates to: for each subject we want a random intercept (a random effect for each subject).
 
-(1 + time | subject) - For each subject, we want both a constant (1) and a constant * time variable - so essentially we want both a random effect and a random slope based on time for each patient - a trajectory of change if you like to think of it that way.
+(1 + time | subject) - For each subject, we want both a constant (1) and a slope for time — so essentially we want both a random intercept and a random slope based on time for each patient: a trajectory of change, if you like to think of it that way.
 
-Age + Sex + BMI - Age, Sex and BMI will be fixed effects. 
+Age + Sex + BMI - Age, Sex and BMI will be fixed effects.
 
 # Examples
 
 ### Scenario A
 
-I have 40 subjects - 20 control and 20 treatment. I am measuring IFN-γ levels. We hypothesise that the treatment will increase patients IFN-γ levels. We measured at 5 week intervals, ending at week 30.
-Since measurements from each subject will be correlated we will need to introduce a random effect per subject. We also suspect each subject will have their own trajectory of change (so we want a random slope/trajectory based on time).
-We have also measured Age, Sex, Bodyweight (or BMI), cholesterol levels as we believe these are clincially relevant variables we want to control for. 
+I have 40 subjects — 20 control and 20 treatment. I am measuring IFN-γ levels. We hypothesise that the treatment will increase patients' IFN-γ levels. We measured at 5-week intervals, ending at week 30.
+Since measurements from each subject will be correlated, we will need to introduce a random effect per subject. We also suspect each subject will have their own trajectory of change (so we want a random slope/trajectory based on time).
+We have also measured age, sex, bodyweight (or BMI), and cholesterol levels, as we believe these are clinically relevant variables we want to control for.
 
-We take the log of the IFN-γ variable as is often normal in medical contexts. After log transforming the variable looks approximately normally distributed. If it already looked normally distributed, we wouldn't transform it. 
-(this is another area a speciailised statistician can help you with)
+We take the log of the IFN-γ variable, as is often the norm in medical contexts. After log-transforming, the variable looks approximately normally distributed. If it already looked normally distributed, we would not transform it.
+(This is another area a specialised statistician can help you with.)
 
 So the formula would go something like this:
 
-log_infg ~ treatment*time + Age + Sex + BMI + Cholesterol + (1 + time | patient_id) , if we want a random slope/trajectory for each patient/subject.
+log_infg ~ treatment*time + Age + Sex + BMI + Cholesterol + (1 + time | patient_id), if we want a random slope/trajectory for each patient/subject.
 
-The choice depends on whether we think the model can reliably estimate a random slope/trajectory for each patient. For example, if there are only 3 time points, 
-it may be unstable. Again this may be a reason to consult with a statistician as although I can fit the model to your specifications, I do not have the depth of knowledge or experience 
-to tell which model is most effective in every scenario. I can try to compare models using a Likelihood ratio test to see if we have enough data, 
-however, I cannot guarantee my judgement will align with an experienced biostatistician.
-Random slopes for time are theoretically desirable but often overfit small clinical datasets and fail to converge (especially if not enough time points)
+The choice depends on whether we think the model can reliably estimate a random slope/trajectory for each patient. For example, if there are only 3 time points,
+it may be unstable. Again, this may be a reason to consult with a statistician, as although I can fit the model to your specifications, I do not have the depth of knowledge or experience
+to determine which model is most effective in every scenario. I can try to compare models using a likelihood ratio test to see if we have enough data,
+however, I cannot guarantee my judgement will align with that of an experienced biostatistician.
+Random slopes for time are theoretically desirable but often overfit small clinical datasets and fail to converge (especially with too few time points).
 
-For example, if we only had 3 timepoints in R, we would write it as:
+For example, if we only had 3 timepoints, we would write it in R as:
 
-log_infg ~ treatment*time + Age + Sex + BMI + Cholesterol + (1 | patient_id) instead (leave out the random slope for each patient)
+log_infg ~ treatment*time + Age + Sex + BMI + Cholesterol + (1 | patient_id) instead (leaving out the random slope for each patient).
 
-treatment -  a categorical variable either control or treatment\
-time - a series of integers e.g. 0,5,10,15,20,25,30 if we think there is a continuous relationship or categorical e.g. 
+treatment - a categorical variable: either control or treatment\
+time - a series of integers e.g. 0,5,10,15,20,25,30 if we think there is a continuous relationship, or categorical e.g.
 "Baseline", "Week_4", "Week_12" if we don't think there is a continuous relationship over time.\
-Age - A continuous variable\
-Sex -  a Categorical variable: "Male" / "Female" / "Intersex (if applicable)"\
-Cholesterol - a continuous variable e.g. 0-50
+Age - a continuous variable\
+Sex - a categorical variable: "Male" / "Female" / "Intersex" (if applicable)\
+Cholesterol - a continuous variable e.g. 0–50\
 patient_id - a unique identifier per patient
 
-treatment*time means we mant the main effect and the interaction effect between treatment and time. equivalent to `treatment + time + treatment:time`
+treatment*time means we want the main effect and the interaction effect between treatment and time. Equivalent to `treatment + time + treatment:time`.
 
 ### Scenario B:
 
-Lets say we have 6 mice (3 control and 3 treatment). We have measured their tumour size and body weight at 30 days. We want to know if the treatment affects the 
-tumour size. 
+Let's say we have 6 mice (3 control and 3 treatment). We have measured their tumour size and body weight at 30 days. We want to know if the treatment affects the
+tumour size.
 
 Since we only have one measurement per mouse, we cannot use a mixed model, so we just use a normal linear regression:
 
 tumour_size ~ treatment + body_weight
 
-time is not in the formula because we only have one timepoint
+Time is not in the formula because we only have one timepoint.
 
-If we had multiple time measurements it might look like this: 
+If we had multiple time measurements it might look like this:
 
 tumour_size ~ treatment*time + body_weight + (1|mouse_id)
 
-where time is 0, 5, 10, 15, 20, 25, 30 for example or "time_1", "time_2", "time_3" for categorical if we don't think there is a trend\
+where time is 0, 5, 10, 15, 20, 25, 30 for example, or "time_1", "time_2", "time_3" for categorical if we don't think there is a trend\
 (1|mouse_id) - Controls for individual variation within each mouse.
 
-whether to use (1|mouse_id) or (1+time|mouse_id) could be decided by consulting a statistician or running a Log-likelihood test for both models.
+Whether to use (1|mouse_id) or (1+time|mouse_id) could be decided by consulting a statistician or running a log-likelihood test for both models.
 
 ## Code Examples (illustrative only)
 
-Lets just code this in R so the first scenario would look like: 
+Let's code this in R — the first scenario would look like:
 
-```python
+```r
 library(lme4)
 library(lmerTest)
 library(emmeans)
@@ -127,13 +127,13 @@ summary(model)
 
 
 This summary will give you:\
-The intercept - log_infg at time 0 for the reference group\
+The intercept — log_infg at time 0 for the reference group\
 treatmentActive — treatment vs control difference at time = 0 only\
 time — slope (change per week) in the controls\
-treatmentActive:time — how much steeper (or shallower) the Treatment groups's slope is compared to controls
+treatmentActive:time — how much steeper (or shallower) the treatment group's slope is compared to controls
 
-This may look something like this in R: 
-```python
+This may look something like this in R:
+```
 Linear mixed model fit by REML. t-tests use Satterthwaite's method.
 
 Random effects:
@@ -155,19 +155,19 @@ Cholesterol           0.004     0.007       34.2      0.57     0.572
 treatmentTreatment:time  0.041  0.008       198.3     5.12    <0.001 ***
 ```
 
-In this case the results say the interaction between treatment and time is significant (p`<`0.001). 
+In this case the results show that the interaction between treatment and time is significant (p`<`0.001).
 
-However, this only gives you information compared to the reference groups (time = 0 and Controls)
+However, this only gives you information compared to the reference groups (time = 0 and controls).
 
-***If we want other comparisons we need to use `emmeans`. For example, what is the treatment effect at week 7?***
+***If we want other comparisons we need to use `emmeans`. For example, what is the treatment effect at week 30?***
 
 ## How to use emmeans
 
-Emmeans is used when we want contrasts that are not available in the original model formula. This is often much better than what PRISM will do. 
+Emmeans is used when we want contrasts that are not available in the original model formula. This is often much better than what PRISM will do.
 
-For example, ***let's say we are specifically interested in the effect of treatment at week 30 (timepoint 7)*** lets say for the sake of example, we coded time it as 0,5,10,15,20,25,30 as a continuous variable.
+For example, ***let's say we are specifically interested in the effect of treatment at week 30 (timepoint 7).*** For the sake of example, let's say we coded time as 0,5,10,15,20,25,30 as a continuous variable.
 
-```python
+```r
 # 1. Fit the model
 model <- lmer(log_ifng ~ treatment * time + Age + Sex + BMI +
                 (1 + time | patient_id), data = df)
@@ -179,12 +179,12 @@ emm <- emmeans(model, ~ treatment | time,
 # 3. Treatment contrast at each week
 pairs(emm, reverse = TRUE, adjust = "tukey")
 
-# 4. Primary endpoint — treatment effect at Week 7
-emm_week7 <- emmeans(model, ~ treatment, at = list(time = c(0,5,10,15,20,25,30)))
-pairs(emm_week7, reverse = TRUE, adjust = "none")
+# 4. Primary endpoint — treatment effect at Week 30
+emm_week30 <- emmeans(model, ~ treatment, at = list(time = c(30)))
+pairs(emm_week30, reverse = TRUE, adjust = "none")
 
 # 5. Back-transform for reporting
-summary(pairs(emm_week7, reverse = TRUE), type = "response")
+summary(pairs(emm_week30, reverse = TRUE), type = "response")
 
 # 6. Plot trajectories
 emmip(model, treatment ~ time,
@@ -192,7 +192,7 @@ emmip(model, treatment ~ time,
 ```
 
 After running step (3) you might get something like:
-```python
+```
 time = 0:
  contrast              estimate   SE      df     t.ratio  p.value
  Treatment - Control   0.048     0.161   33.8    0.30     0.993
@@ -225,46 +225,49 @@ P value adjustment: Tukey method for comparing a family of 2 estimates
 Results are on the log scale. Multiply by exp() to get fold-changes.
 ```
 
-which means the treatment effect at timepoints 10, 15, 20, 25 and 30 are significant.
-We have chosen Tukey method (to control for the multiple comparisons - i.e. multiple p-values) here because it is designed for pairwise comparisons between all groups. While we only have treatment and control, in practice Tukey is widely accepted by most reviewers, although it is slightly overengineered for this example (but still perfectly acceptable). Dunett's or Bonferroni would give extremely similar results for this example. 
+This means the treatment effect at timepoints 10, 15, 20, 25 and 30 is significant.
+We have chosen the Tukey method (to control for multiple comparisons — i.e. multiple p-values) because it is designed for pairwise comparisons between all groups. While we only have treatment and control, in practice Tukey is widely accepted by most reviewers, although it is slightly overengineered for this example (but still perfectly acceptable). Dunnett's or Bonferroni would give extremely similar results here.
 
-If we wanted only results for timepoint week 30, then we would get something like:
-```python
+If we wanted only the result for timepoint week 30 (step 4), we would get something like:
+```
  contrast              estimate   SE       df      t.ratio  p.value
  Treatment - Control   1.278     0.158    204.7    8.09    <0.001 ***
 
 Results are on the log scale.
 ```
-The p-value may change since we are no longer controlling for multiple comparisons. However, in this case we cannot tell since it is `<`0.001
+The p-value may change since we are no longer controlling for multiple comparisons. However, in this case we cannot tell, since it is `<`0.001 even after controlling for multiple testing.
 
-The back-reporting step (step 5) is to convert log-infg values back into standard units for reporting.\
-By Week 30 the treatment group shows a difference of 1.278 on the log scale — meaning exp(1.278) = 3.59-fold higher IFN-γ than controls, which is the number you would report in your results section.
+The back-transformation step (step 5) is to convert log-IFN-γ values back into standard units for reporting.\
+By week 30 the treatment group shows a difference of 1.278 on the log scale — meaning exp(1.278) = 3.59-fold higher IFN-γ than controls, which is the number you would report in your results section.
 
 Plotting the trajectory (step 6) for each patient would also be a valuable tool to visualise the trend over time.
 
 
 ### Why post-hoc adjustments are used
 
-Post-hoc adjustments are used when we are calculating multiple p-values to control for the false positives. It is only needed if you care about multiple p-values. If you only interested in one p-value (e.g. only treatment effect at time =  30), adjustment is not needed. Doing this in R will give you more control than in PRISM as to which adjustment is picked.
+Post-hoc adjustments are used when we are calculating multiple p-values, in order to control for false positives. They are only needed if you care about multiple p-values. If you are only interested in one p-value (e.g. only the treatment effect at time = 30), adjustment is not needed. Doing this in R will give you more control than in PRISM over which adjustment is applied.
 
 Common adjustments include:\
 Tukey — comparing all groups against each other (every possible pair).\
 Dunnett ("trt.vs.ctrl" in emmeans) — comparing several treatment groups against one control. More powerful than Tukey when this is your design, because you are making fewer comparisons.\
-Bonferroni — a small number of pre-specified comparisons that don't fit neatly into the above. Conservative but universally accepted.\
-FDR / Benjamini-Hochberg (BH) — exploratory analyses with many comparisons (e.g. screening 30 cytokines). Accepts that roughly 5% of flagged results may be spurious. Label findings as hypothesis-generating, not confirmatory.\
+Bonferroni — for a small number of pre-specified comparisons that don't fit neatly into the above. Conservative but universally accepted.\
+FDR / Benjamini-Hochberg (BH) — for exploratory analyses with many comparisons (e.g. screening 30 cytokines). Accepts that roughly 5% of flagged results may be spurious. Label findings as hypothesis-generating, not confirmatory.\
 None — a single pre-specified primary comparison defined before data collection. Must be stated in your analysis plan in advance.\
 As a general rule: the more comparisons you make, the more you need to adjust — but the harder it becomes to detect real effects. Pre-specifying your primary comparison before collecting data is the best way to reduce this tension.
 
 ### Prism vs. R
-PRISM is a excellent tool for many standard analyses, but its mixed model implementation has some notable limitations.\
+PRISM is an excellent tool for many standard analyses, but its mixed model implementation has some notable limitations.\
 The post-hoc comparisons are applied automatically rather than letting you choose explicitly, and the model specification options are more constrained — meaning the results can be sensitive to how you set up your variables.\
-For complex designs, this lack of transparency can be a problem. ***The mixed models in PRISM should be thought of as equivalent to a repeated measures ANOVA, along with all its limitations. In the documentation of PRISM it explicitly states that "When fitting a mixed effects model in Prism, think of it as repeated measures ANOVA that allows missing values." 
-see [link to documentation](https://www.graphpad.com/guides/prism/latest/statistics/stat_anova-approach-vs_-mixed-model.htm).***
+For complex designs, this lack of transparency can be a problem. ***The mixed models in PRISM should be thought of as equivalent to a repeated measures ANOVA, along with all its limitations. In the documentation of PRISM it explicitly states that "When fitting a mixed effects model in Prism, think of it as repeated measures ANOVA that allows missing values."
+See [link to documentation](https://www.graphpad.com/guides/prism/latest/statistics/stat_anova-approach-vs_-mixed-model.htm).***
 
 R gives you full control over model specification, post-hoc adjustments, and diagnostics. The learning curve is steeper, but for longitudinal clinical data with repeated measures, it is the more appropriate tool.
 That said — a poorly specified model in R is worse than a correctly applied analysis in PRISM. The tool matters less than understanding what your model is actually doing.
+
 ### Limitations
 
-I am a bioinformatician, not necessarily a biostatistician. While I have some statistical training, aspects of mixed models and complicated study designs are out of my expertise. While I can confidently fit a simple mixed model to specification, I cannot always recommend the best model to use in the first place, nor have the judgement that an experienced statistican may have. This article was written in my spare time and may contain errors or omissions.
+I am a bioinformatician, not a biostatistician. I have statistical training and can confidently fit straightforward mixed models, but the judgement required to choose the best model for a given design — particularly in complex or ambiguous scenarios — is the domain of an experienced biostatistician, and I would not claim to substitute for one. If you are planning to publish or make clinical decisions based on your analysis, please consult a qualified statistician before finalising your approach.
 
-***This work was assisted using Claude Sonnet 4.6 (Anthropic).***
+This article was written in my own time, and may contain errors or omissions. It is intended as an introductory reference, not a definitive guide.
+
+***This work was assisted and edited (for grammatical and spelling errors) using Claude Sonnet 4.6 (Anthropic).***
