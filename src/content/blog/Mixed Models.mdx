@@ -133,7 +133,7 @@ time — slope (change per week) in the controls\
 treatmentActive:time — how much steeper (or shallower) the treatment group's slope is compared to controls
 
 This may look something like this in R:
-```
+```r
 Linear mixed model fit by REML. t-tests use Satterthwaite's method.
 
 Random effects:
@@ -192,7 +192,7 @@ emmip(model, treatment ~ time,
 ```
 
 After running step (3) you might get something like:
-```
+```r
 time = 0:
  contrast              estimate   SE      df     t.ratio  p.value
  Treatment - Control   0.048     0.161   33.8    0.30     0.993
@@ -229,7 +229,7 @@ This means the treatment effect at timepoints 10, 15, 20, 25 and 30 is significa
 We have chosen the Tukey method (to control for multiple comparisons — i.e. multiple p-values) because it is designed for pairwise comparisons between all groups. While we only have treatment and control, in practice Tukey is widely accepted by most reviewers, although it is slightly overengineered for this example (but still perfectly acceptable). Dunnett's or Bonferroni would give extremely similar results here.
 
 If we wanted only the result for timepoint week 30 (step 4), we would get something like:
-```
+```r
  contrast              estimate   SE       df      t.ratio  p.value
  Treatment - Control   1.278     0.158    204.7    8.09    <0.001 ***
 
@@ -270,4 +270,4 @@ I am a bioinformatician, not a biostatistician. I have statistical training and 
 
 This article was written in my own time, and may contain errors or omissions. It is intended as an introductory reference, not a definitive guide.
 
-***This work was assisted and edited (for grammatical and spelling errors) using Claude Sonnet 4.6 (Anthropic).***
+***This work was assisted (for generating explanations and examples) and edited (only for grammatical and spelling errors) using Claude Sonnet 4.6 (Anthropic).***
