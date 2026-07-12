@@ -4,11 +4,14 @@ import ProjectCard from '../components/ProjectCard.astro';
 import BlogPostCard from '../components/BlogPostCard.astro';
 import { getCollection } from 'astro:content';
 
-const projects = (await getCollection('projects')).sort(
+const allProjects = (await getCollection('projects')).sort(
   (a, b) => a.data.order - b.data.order
 );
+const aiProjects = allProjects.filter((p) => p.data.category === 'AI Generated');
+const otherProjects = allProjects.filter((p) => p.data.category !== 'AI Generated');
 
 const recentPosts = (await getCollection('blog'))
+  .filter((post) => !post.data.unlisted)
   .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
   .slice(0, 3);
 ---
@@ -72,12 +75,12 @@ const recentPosts = (await getCollection('blog'))
       <div class="scroll-hint">
         <span>Scroll →</span>
         <div class="scroll-buttons">
-          <button id="prev" aria-label="Scroll left">
+          <button class="scroll-prev" aria-label="Scroll left">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
               <path d="M15 18l-6-6 6-6"/>
             </svg>
           </button>
-          <button id="next" aria-label="Scroll right">
+          <button class="scroll-next" aria-label="Scroll right">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
               <path d="M9 18l6-6-6-6"/>
             </svg>
@@ -87,8 +90,8 @@ const recentPosts = (await getCollection('blog'))
     </div>
 
     <div class="scroller-outer">
-      <div class="scroller" id="scroller">
-        {projects.map((project) => (
+      <div class="scroller">
+        {otherProjects.map((project) => (
           <ProjectCard {...project.data} />
         ))}
       </div>
@@ -117,6 +120,41 @@ const recentPosts = (await getCollection('blog'))
         <div class="posts-grid">
           {recentPosts.map((post) => (
             <BlogPostCard post={post} />
+          ))}
+        </div>
+      </div>
+    </section>
+  )}
+
+  <!-- ── AI Generated Projects ────────────────────────── -->
+  {aiProjects.length > 0 && (
+    <section class="projects" id="ai-work">
+      <div class="section-head">
+        <div>
+          <span class="label">(04) — AI Generated Projects</span>
+          <h2>Built <em>with AI</em>, orchestrated and reviewed.</h2>
+        </div>
+        <div class="scroll-hint">
+          <span>Scroll →</span>
+          <div class="scroll-buttons">
+            <button class="scroll-prev" aria-label="Scroll left">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                <path d="M15 18l-6-6 6-6"/>
+              </svg>
+            </button>
+            <button class="scroll-next" aria-label="Scroll right">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                <path d="M9 18l6-6-6-6"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="scroller-outer">
+        <div class="scroller">
+          {aiProjects.map((project) => (
+            <ProjectCard {...project.data} />
           ))}
         </div>
       </div>
@@ -328,6 +366,8 @@ const recentPosts = (await getCollection('blog'))
   /* Horizontal scroller */
   .scroller-outer {
     position: relative;
+    max-width: 1320px;
+    margin: 0 auto;
   }
 
   .scroller {
@@ -433,28 +473,31 @@ const recentPosts = (await getCollection('blog'))
 </style>
 
 <script>
-  const scroller = document.getElementById('scroller')!;
-  const prev = document.getElementById('prev')!;
-  const next = document.getElementById('next')!;
+  document.querySelectorAll<HTMLElement>('.projects').forEach((section) => {
+    const scroller = section.querySelector<HTMLElement>('.scroller');
+    const prev = section.querySelector<HTMLElement>('.scroll-prev');
+    const next = section.querySelector<HTMLElement>('.scroll-next');
+    if (!scroller) return;
 
-  function cardWidth(): number {
-    const card = scroller.querySelector('article');
-    if (!card) return 404;
-    return card.getBoundingClientRect().width + 24; // card + gap
-  }
-
-  prev.addEventListener('click', () => {
-    scroller.scrollBy({ left: -cardWidth(), behavior: 'smooth' });
-  });
-
-  next.addEventListener('click', () => {
-    scroller.scrollBy({ left: cardWidth(), behavior: 'smooth' });
-  });
-
-  scroller.addEventListener('wheel', (e) => {
-    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-      e.preventDefault();
-      scroller.scrollLeft += e.deltaY;
+    function cardWidth(): number {
+      const card = scroller!.querySelector('article');
+      if (!card) return 404;
+      return card.getBoundingClientRect().width + 24; // card + gap
     }
-  }, { passive: false });
+
+    prev?.addEventListener('click', () => {
+      scroller.scrollBy({ left: -cardWidth(), behavior: 'smooth' });
+    });
+
+    next?.addEventListener('click', () => {
+      scroller.scrollBy({ left: cardWidth(), behavior: 'smooth' });
+    });
+
+    scroller.addEventListener('wheel', (e) => {
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+        e.preventDefault();
+        scroller.scrollLeft += e.deltaY;
+      }
+    }, { passive: false });
+  });
 </script>

@@ -22,6 +22,7 @@ const blog = defineCollection({
     date: z.coerce.date(),
     heroImage: z.string(),
     description: z.string().optional(),
+    unlisted: z.boolean().optional(), // hide from listings but keep the page linkable
   }),
 });
 
