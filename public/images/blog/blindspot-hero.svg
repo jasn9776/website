@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 480">
+  <defs>
+    <radialGradient id="bsGlowL" cx="20%" cy="25%" r="55%">
+      <stop offset="0%" stop-color="#1E47E6" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="transparent"/>
+    </radialGradient>
+    <radialGradient id="bsGlowR" cx="85%" cy="80%" r="50%">
+      <stop offset="0%" stop-color="#A8BDF5" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="transparent"/>
+    </radialGradient>
+    <pattern id="bsGrid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M 24 0 L 0 0 0 24" fill="none" stroke="rgba(233,238,246,0.07)" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="480" fill="#0B1730"/>
+  <rect width="1200" height="480" fill="url(#bsGrid)"/>
+  <rect width="1200" height="480" fill="url(#bsGlowL)"/>
+  <rect width="1200" height="480" fill="url(#bsGlowR)"/>
+
+  <!-- road -->
+  <rect x="0" y="130" width="1200" height="220" fill="#101E3C"/>
+  <rect x="0" y="130" width="1200" height="3" fill="#A8BDF5" opacity="0.35"/>
+  <rect x="0" y="347" width="1200" height="3" fill="#A8BDF5" opacity="0.35"/>
+  <g fill="#E9EEF6" opacity="0.3">
+    <rect x="30"   y="237" width="60" height="6"/>
+    <rect x="170"  y="237" width="60" height="6"/>
+    <rect x="310"  y="237" width="60" height="6"/>
+    <rect x="450"  y="237" width="60" height="6"/>
+    <rect x="590"  y="237" width="60" height="6"/>
+    <rect x="730"  y="237" width="60" height="6"/>
+    <rect x="870"  y="237" width="60" height="6"/>
+    <rect x="1010" y="237" width="60" height="6"/>
+    <rect x="1150" y="237" width="50" height="6"/>
+  </g>
+
+  <!-- forward field of view (car faces right) -->
+  <path d="M 500 240 L 1200 40 L 1200 440 Z" fill="#1E47E6" opacity="0.12"/>
+  <path d="M 500 240 L 1200 40" stroke="#A8BDF5" stroke-width="1.5" opacity="0.35" stroke-dasharray="6 6"/>
+  <path d="M 500 240 L 1200 440" stroke="#A8BDF5" stroke-width="1.5" opacity="0.35" stroke-dasharray="6 6"/>
+
+  <!-- mirror coverage cones (rearward) -->
+  <path d="M 462 192 L 60 150 L 200 80 Z"  fill="#46A758" opacity="0.16"/>
+  <path d="M 462 288 L 60 330 L 200 400 Z" fill="#46A758" opacity="0.16"/>
+  <!-- rear-view mirror cone -->
+  <path d="M 452 240 L 40 190 L 40 290 Z" fill="#46A758" opacity="0.12"/>
+
+  <!-- blind spot wedges: between mirror cone and peripheral vision -->
+  <path d="M 470 200 L 210 76 L 420 40 L 494 210 Z"  fill="#E5484D" opacity="0.22"/>
+  <path d="M 470 280 L 210 404 L 420 440 L 494 270 Z" fill="#E5484D" opacity="0.28"/>
+
+  <!-- car (top-down, facing right) -->
+  <g>
+    <rect x="440" y="206" width="128" height="68" rx="16" fill="#DDE5F0"/>
+    <rect x="480" y="212" width="34" height="56" rx="8" fill="#2C3E5E"/>
+    <rect x="524" y="216" width="26" height="48" rx="7" fill="#6B7A94"/>
+    <!-- side mirrors -->
+    <rect x="466" y="196" width="14" height="10" rx="3" fill="#DDE5F0"/>
+    <rect x="466" y="274" width="14" height="10" rx="3" fill="#DDE5F0"/>
+    <!-- headlights -->
+    <rect x="560" y="214" width="8" height="12" rx="3" fill="#A8BDF5"/>
+    <rect x="560" y="254" width="8" height="12" rx="3" fill="#A8BDF5"/>
+  </g>
+
+  <!-- motorcycle hidden in the lower blind wedge -->
+  <g>
+    <circle cx="330" cy="368" r="34" fill="none" stroke="#E5484D" stroke-width="2" stroke-dasharray="7 6"/>
+    <g fill="#E9EEF6">
+      <rect x="312" y="362" width="38" height="10" rx="4"/>
+      <circle cx="316" cy="376" r="7" fill="none" stroke="#E9EEF6" stroke-width="4"/>
+      <circle cx="346" cy="376" r="7" fill="none" stroke="#E9EEF6" stroke-width="4"/>
+      <rect x="326" y="352" width="10" height="10" rx="4"/>
+    </g>
+    <text x="330" y="428" font-family="'JetBrains Mono', monospace" font-size="17" letter-spacing="3" fill="#E5484D" text-anchor="middle">HIDDEN</text>
+  </g>
+
+  <!-- labels -->
+  <g font-family="'JetBrains Mono', monospace" font-size="17" letter-spacing="3">
+    <text x="48" y="52" fill="#A8BDF5">MODE: OVERHEAD</text>
+    <text x="1152" y="52" fill="#A8BDF5" text-anchor="end">MIRROR COVERAGE: ON</text>
+    <text x="130" y="112" fill="#46A758" opacity="0.9">MIRROR</text>
+    <text x="950" y="112" fill="#A8BDF5" opacity="0.9">FORWARD VIEW</text>
+  </g>
+</svg>

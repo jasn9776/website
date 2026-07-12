@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">
+  <defs>
+    <radialGradient id="g1" cx="25%" cy="25%" r="60%">
+      <stop offset="0%" stop-color="#1E47E6" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="transparent"/>
+    </radialGradient>
+    <radialGradient id="g2" cx="80%" cy="75%" r="55%">
+      <stop offset="0%" stop-color="#A8BDF5" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="transparent"/>
+    </radialGradient>
+    <pattern id="pgrid" width="20" height="20" patternUnits="userSpaceOnUse">
+      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(233,238,246,0.08)" stroke-width="1"/>
+    </pattern>
+    <path id="pinv" d="M2 0h1v1h-1z M8 0h1v1h-1z M3 1h1v1h-1z M7 1h1v1h-1z M2 2h7v1h-7z M1 3h2v1h-2z M4 3h3v1h-3z M8 3h2v1h-2z M0 4h11v1h-11z M0 5h1v1h-1z M2 5h7v1h-7z M10 5h1v1h-1z M0 6h1v1h-1z M2 6h1v1h-1z M8 6h1v1h-1z M10 6h1v1h-1z M3 7h2v1h-2z M6 7h2v1h-2z"/>
+    <path id="pship" d="M5 0h1v1h-1z M4 1h3v1h-3z M1 2h9v1h-9z M0 3h11v2h-11z"/>
+  </defs>
+
+  <rect width="400" height="300" fill="#0B1730"/>
+  <rect width="400" height="300" fill="url(#pgrid)"/>
+  <rect width="400" height="300" fill="url(#g1)"/>
+  <rect width="400" height="300" fill="url(#g2)"/>
+
+  <g fill="#E9EEF6">
+    <rect x="40"  y="30"  width="2" height="2" opacity="0.5"/>
+    <rect x="150" y="55"  width="2" height="2" opacity="0.3"/>
+    <rect x="330" y="35"  width="2" height="2" opacity="0.45"/>
+    <rect x="370" y="120" width="2" height="2" opacity="0.3"/>
+    <rect x="30"  y="180" width="2" height="2" opacity="0.3"/>
+    <rect x="250" y="150" width="2" height="2" opacity="0.25"/>
+  </g>
+
+  <!-- invader fleet -->
+  <g fill="#A8BDF5">
+    <use href="#pinv" transform="translate(44,44) scale(3.2)" opacity="0.55"/>
+    <use href="#pinv" transform="translate(260,44) scale(3.2)" opacity="0.55"/>
+    <use href="#pinv" transform="translate(96,100) scale(3.2)" opacity="0.35"/>
+    <use href="#pinv" transform="translate(212,100) scale(3.2)" opacity="0.35"/>
+  </g>
+  <use href="#pinv" transform="translate(152,44) scale(3.2)" fill="#1E47E6"/>
+
+  <!-- falling answer card -->
+  <g>
+    <rect x="152" y="152" width="96" height="30" rx="6" fill="#1E47E6"/>
+    <text x="200" y="172" font-family="'JetBrains Mono', monospace" font-size="13" letter-spacing="2" fill="#E9EEF6" text-anchor="middle">PARIS</text>
+  </g>
+
+  <!-- bullet -->
+  <rect x="198" y="200" width="4" height="12" fill="#E9EEF6"/>
+  <rect x="198" y="218" width="4" height="6" fill="#E9EEF6" opacity="0.4"/>
+
+  <!-- player ship -->
+  <use href="#pship" transform="translate(178,236) scale(4)" fill="#E9EEF6"/>
+
+  <!-- ground line -->
+  <rect x="24" y="270" width="352" height="2" fill="#A8BDF5" opacity="0.35"/>
+</svg>

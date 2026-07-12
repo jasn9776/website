@@ -1,0 +1,11 @@
+{
+  "order": 5,
+  "title": "Blind Spot Driving Sim",
+  "description": "An interactive browser simulator visualising driver blind spots and mirror coverage. Built as a self-contained HTML/canvas demo — no build step, runs entirely client-side.",
+  "image": "/images/projects/blindspot.svg",
+  "github_url": "https://github.com/example/car-driver-simulator",
+  "blog_post": "blind-spot-sim",
+  "demo_url": "/interactive/car_driver_simulator.html",
+  "category": "Interactive",
+  "year": 2026
+}

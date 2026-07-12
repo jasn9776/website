@@ -1,0 +1,45 @@
+---
+title: "Blind Spot Driving Simulator — real mirrors, real geometry"
+date: 2026-07-12
+heroImage: /images/blog/blindspot-hero.svg
+description: "A 3D driving simulator that shows exactly where a car's blind spots are — with working mirrors rendered live and blind zones derived from the actual mirror geometry. Drive it right in this post."
+---
+
+export const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+## Why blind spots?
+
+Everyone is told "check your blind spot," but the phrase stays abstract until you can *see* one. The gap between what your mirrors show and what your peripheral vision covers isn't a vague zone somewhere behind you — it's a precise wedge of road, and a whole motorcycle fits inside it. I wanted a simulator that makes that wedge visible, and lets you watch a rider disappear into it from the driver's seat.
+
+## Drive it
+
+Click into the frame first, then drive with **W A S D** or the arrow keys (**G** shifts gear). Drag to turn your head — that's your over-the-shoulder check — and double-click to recentre. Use the **Motorcycle** slider at the bottom (or "Ride past") to move the rider through your mirrors and into the blind spot; the banner at the top tells you whether the driver can currently see them and why. Switch to **Overhead** to see the red blind-spot wedges and green mirror-coverage cones drawn on the road.
+
+<iframe
+  src={`${base}/interactive/car_driver_simulator.html`}
+  title="Blind Spot Driving Simulator — playable demo"
+  loading="lazy"
+  style="width: 100%; height: 620px; border: 1px solid var(--line); border-radius: 12px; background: #17191c;"
+></iframe>
+
+There are also pedestrians on the zebra crossings and two amber parking bays (one 90°, one parallel) if you want to test how much you rely on mirrors while manoeuvring. You can open the sim <a href={`${base}/interactive/car_driver_simulator.html`}>full-screen here</a> — the iframe works, but head-checking is nicer with more room.
+
+## Real mirrors, not painted ones
+
+The core design decision: the mirrors had to be *real*. Each of the three mirrors is a separate camera in the scene, rendered to a texture every frame and mapped onto the mirror glass. Nothing about what you see in them is faked — if the motorcycle shows up in the left mirror, it's because a camera positioned at the left mirror, with a realistic field of view, can actually see it.
+
+That choice is what makes the second decision possible: **the blind-spot zones are computed, not drawn**. The red wedges are derived geometrically — each one is the region between the outer edge of a mirror camera's frustum and the boundary of the driver's peripheral vision, intersected on the ground plane. Change the mirror's angle or field of view in the config and the blind zones move with it, because they're consequences of the same numbers. The banner logic works the same way: the sim checks whether the rider falls inside any mirror frustum or the forward field of view, and explains the verdict ("Not in any mirror — drag to head check over your shoulder").
+
+This is the difference between an illustration and a simulation. An illustration of blind spots asserts where they are; this derives them, so the lesson survives scrutiny.
+
+## One file, one dependency
+
+Like the other projects in this series, the constraint was minimalism: the entire simulator — scene, physics, mirror rendering, UI, touch controls — is a **single self-contained HTML file**, with Three.js loaded from a CDN as the only dependency. No build step, no bundler. That's why it can sit in this post as a plain `<iframe>` pointed at a static file.
+
+The single-file constraint sounds austere but pays off in practice: the whole artifact is one readable document, it deploys by copying, and it will still work when today's toolchains are three major versions stale. For AI-assisted development it has the same benefit it had on the flashcard app — everything the model wrote is in one place, fully inspectable, with no hidden state in a dependency tree.
+
+## What the sim actually teaches
+
+Playing with the slider makes one thing viscerally clear: the transition from "visible in mirror" to "hidden" is *abrupt*. The rider doesn't fade out of view — they cross a geometric boundary and are simply gone, while your mirrors show empty, reassuring road. And the blind spot sits exactly where a passing motorcycle spends the longest time: just behind your shoulder, mid-overtake.
+
+The overhead view adds the second lesson: mirror coverage cones are surprisingly *narrow*. Most of the area around the car is covered by either the forward view or a mirror — but the wedges that remain are large enough to hide a vehicle, and no mirror adjustment eliminates them entirely. The only fix is the head check, which is exactly what the driver-view drag control is there to rehearse.

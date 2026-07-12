@@ -1,0 +1,219 @@
+/* Free Recall game styles */
+
+.recall-game {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: var(--gap);
+}
+
+.recall-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  width: 100%;
+}
+
+.recall-progress {
+  align-self: center;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+/* ---------- Test phase ---------- */
+
+.recall-question-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  text-align: center;
+  padding: calc(var(--pad) * 1.5);
+  border: 2px solid transparent;
+  transition: border-color 0.15s ease;
+}
+
+.recall-label {
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+
+.recall-question-text {
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.recall-test-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.recall-input {
+  flex: 1;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 1rem;
+}
+
+.recall-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.recall-input:disabled {
+  opacity: 0.7;
+}
+
+.recall-feedback {
+  align-self: center;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  background: var(--surface-2);
+}
+
+.recall-feedback-correct {
+  color: var(--correct);
+}
+
+.recall-feedback-wrong {
+  color: var(--wrong);
+}
+
+/* ---------- Review phase ---------- */
+
+.recall-review-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: center;
+}
+
+.recall-review-heading h3 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.recall-review-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.recall-review-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: calc(var(--pad) / 2);
+}
+
+.recall-review-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.recall-review-table th,
+.recall-review-table td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.88rem;
+  vertical-align: top;
+}
+
+.recall-review-table th {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.recall-review-row.recall-row-correct {
+  background: rgba(55, 214, 122, 0.06);
+}
+
+.recall-review-row.recall-row-wrong {
+  background: rgba(255, 84, 112, 0.06);
+}
+
+.recall-review-guess {
+  color: var(--muted);
+}
+
+.recall-review-answer {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.recall-mark-btn {
+  font: inherit;
+  font-weight: 700;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  background: var(--surface-2);
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+
+.recall-mark-btn:hover {
+  transform: translateY(-1px);
+}
+
+.recall-mark-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.recall-mark-correct {
+  color: var(--correct);
+  border-color: var(--correct);
+  background: rgba(55, 214, 122, 0.12);
+}
+
+.recall-mark-wrong {
+  color: var(--wrong);
+  border-color: var(--wrong);
+  background: rgba(255, 84, 112, 0.12);
+}
+
+.recall-review-actions {
+  display: flex;
+  justify-content: center;
+}
+
+.recall-finish-btn {
+  min-width: 160px;
+}
+
+@media (max-width: 480px) {
+  .recall-question-text {
+    font-size: 1.1rem;
+  }
+  .recall-test-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .recall-review-table th,
+  .recall-review-table td {
+    padding: 6px 8px;
+    font-size: 0.8rem;
+  }
+}

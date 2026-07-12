@@ -1,0 +1,12 @@
+#separator:tab
+#html:true
+hello	<b>hola</b>
+goodbye	adiós
+thank you	gracias
+please	por favor
+water	agua
+food	comida
+house	casa
+dog	perro
+cat	gato
+book	libro

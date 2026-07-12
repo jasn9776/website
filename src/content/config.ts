@@ -9,6 +9,7 @@ const projects = defineCollection({
     image: z.string(),
     github_url: z.string().url(),
     blog_post: z.string().optional(), // slug of related blog post
+    demo_url: z.string().optional(), // path/URL to an interactive demo (e.g. /interactive/foo.html)
     category: z.string(),
     year: z.number(),
   }),

@@ -1,0 +1,62 @@
+---
+title: "Flashcard App orchestrated using Fable 5"
+date: 2026-07-12
+heroImage: /images/blog/invaders-hero.svg
+description: "Building Flash Blast — a zero-dependency flashcard game app — by having Fable 5 write a frozen spec and orchestrate four parallel AI workers. Play the Space Invaders mode right in this post."
+---
+
+export const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+## The idea
+
+After the Akari solver and the driving simulator, I wanted to try something different: not just *using* AI to write code, but using it to **orchestrate other AI workers**. The project: **Flash Blast**, a flashcard study app where your deck becomes the ammunition for three mini-games — a match game, free recall, and the one embedded below: **Answer Invaders**, a Space Invaders clone where flashcard answers fall from the sky and you shoot the correct one before it reaches your ship.
+
+## Play it
+
+Use ← → (or A/D) to move and Space to shoot. The correct answer to the question at the top is somewhere in the falling wave — hit it before it lands on you.
+
+<iframe
+  src={`${base}/interactive/flashcard-blast/invaders-demo.html`}
+  title="Answer Invaders — playable demo"
+  loading="lazy"
+  style="width: 100%; height: 620px; border: 1px solid var(--line); border-radius: 12px; background: #0f1220;"
+></iframe>
+
+The demo runs on a fixed world-capitals deck. The <a href={`${base}/interactive/flashcard-blast/index.html`}>full app</a> lets you import your own decks (CSV, TSV, or Anki exports), tracks high scores per deck, and keeps a "study mistakes" pool of the cards you got wrong across all three games.
+
+Want to try importing? Download an example deck and drop it into the app: <a href={`${base}/interactive/flashcard-blast/sample-decks/capitals.csv`} download>capitals.csv</a> or <a href={`${base}/interactive/flashcard-blast/sample-decks/spanish-basics.txt`} download>spanish-basics.txt</a> (Anki-style tab-separated export).
+
+## Spec first, code second
+
+The lesson from the Akari project was that **the WHAT matters more than the HOW** — so this time the process started with the specification, not the code. I described the app I wanted and had Fable 5 produce a full implementation spec before a single line of code was written: file layout, data model, parsing rules, the scoring system, even the localStorage schema.
+
+The key move in that spec was **freezing the interfaces**. Every game module has the same contract:
+
+```js
+// Contract: export default function mount(container, deck, onFinish) -> cleanup
+```
+
+A game gets a DOM container, a deck of `{ q, a }` cards, and a callback to report its result. It returns a cleanup function. That's the entire surface area between the app shell and each game. Shared helpers (`shuffle`, `fuzzyMatch`, `particleBurst`, …) were likewise pinned down by signature in the spec before being implemented.
+
+## Orchestrating four parallel workers
+
+With frozen interfaces, the work could be split across **four AI workers running in parallel**, each owning a disjoint set of files:
+
+- **Worker A** — the shell: routing, deck list, import UI, storage
+- **Worker B** — the match game
+- **Worker C** — the invaders game you just played
+- **Worker D** — free recall, plus the shared parsing and utility modules
+
+Because the module signatures were frozen up front, workers A–C could code *against* the utility API without ever seeing its implementation. Nobody had to wait for anyone else, and nobody could break anyone else's files — each worker only wrote to the files it owned. Fable 5 acted as the orchestrator: it wrote the spec, dispatched the workers, and integrated the results.
+
+This is the same discipline that makes human teams work — clear ownership and stable contracts at the boundaries — and it turns out to be exactly what makes parallel AI development work too. The integration step, which I expected to be the painful part, was almost anticlimactic: the pieces fit because the seams had been designed before the pieces existed.
+
+## Constraints as a feature
+
+One deliberate choice: **zero dependencies**. Plain HTML, CSS, and JavaScript ES modules — no framework, no bundler, no build step. That's also why it can be embedded in this post with nothing more than an `<iframe>`: the whole app is just static files served alongside the rest of the site.
+
+Keeping the stack this small had a second benefit for AI-driven development: there's no dependency drift, no version mismatch between what the model was trained on and what's installed, and every file is fully inspectable. When the entire app is code the orchestrator wrote against a spec the orchestrator also wrote, review is the only quality gate — and a small, boring stack makes review tractable.
+
+## What I'd do differently
+
+The spec is the leverage point, and it's also where the remaining errors came from: the few integration hiccups traced back to places where the spec was *ambiguous*, not places where a worker wrote bad code. Next time I'd have the orchestrator adversarially review its own spec first — asking "where could two reasonable implementers interpret this differently?" — before dispatching any workers. When the workers are this fast, sharpening the contract is the highest-value hour you can spend.

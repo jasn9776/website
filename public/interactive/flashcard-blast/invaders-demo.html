@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Answer Invaders — demo</title>
+<link rel="stylesheet" href="css/tokens.css" />
+<link rel="stylesheet" href="css/app.css" />
+<link rel="stylesheet" href="css/invaders.css" />
+<style>
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    overflow: hidden;
+  }
+  #game-root {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  .demo-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    background: rgba(15, 18, 32, 0.88);
+    color: var(--text);
+    font-family: var(--font);
+    text-align: center;
+    padding: 24px;
+  }
+  .demo-overlay h2 { margin: 0; font-size: 26px; }
+  .demo-overlay p { margin: 0; color: var(--muted); max-width: 40ch; }
+  .demo-overlay .score { font-size: 20px; color: var(--accent); font-weight: 700; }
+  .demo-overlay button {
+    font: 600 16px var(--font);
+    color: var(--text);
+    background: var(--accent);
+    border: none;
+    border-radius: var(--radius);
+    padding: 12px 28px;
+    cursor: pointer;
+  }
+  .demo-overlay button:hover { filter: brightness(1.1); }
+  .demo-hint { font-size: 13px; }
+</style>
+</head>
+<body>
+<div id="game-root"></div>
+<script type="module">
+import mountInvaders from "./js/games/invaders.js";
+
+const deck = {
+  id: "demo-capitals",
+  name: "World Capitals",
+  cards: [
+    { q: "Capital of France?", a: "Paris" },
+    { q: "Capital of Japan?", a: "Tokyo" },
+    { q: "Capital of Australia?", a: "Canberra" },
+    { q: "Capital of Canada?", a: "Ottawa" },
+    { q: "Capital of Brazil?", a: "Brasília" },
+    { q: "Capital of Kenya?", a: "Nairobi" },
+    { q: "Capital of Norway?", a: "Oslo" },
+    { q: "Capital of South Korea?", a: "Seoul" },
+  ],
+};
+
+const root = document.getElementById("game-root");
+let cleanup = null;
+
+function overlay(children) {
+  const div = document.createElement("div");
+  div.className = "demo-overlay";
+  div.append(...children);
+  root.appendChild(div);
+  return div;
+}
+
+function elem(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text) e.textContent = text;
+  return e;
+}
+
+function showStart() {
+  const btn = elem("button", null, "▶ Play");
+  btn.addEventListener("click", () => { root.innerHTML = ""; play(); });
+  overlay([
+    elem("h2", null, "Answer Invaders"),
+    elem("p", null, "Flashcard answers fall from the sky. Shoot the correct one before it reaches your ship."),
+    elem("p", "demo-hint", "← → / A D to move · Space to shoot"),
+    btn,
+  ]);
+}
+
+function showEnd(result) {
+  const { hits, misses } = result.detail;
+  const won = misses === 0 && hits === deck.cards.length;
+  const btn = elem("button", null, "↻ Play again");
+  btn.addEventListener("click", () => { root.innerHTML = ""; play(); });
+  overlay([
+    elem("h2", null, won ? "Victory!" : "Game over"),
+    elem("div", "score", `Score: ${result.score}`),
+    elem("p", null, `${hits} hit${hits === 1 ? "" : "s"} · ${misses} miss${misses === 1 ? "" : "es"}`),
+    btn,
+  ]);
+}
+
+function play() {
+  if (cleanup) { cleanup(); cleanup = null; }
+  cleanup = mountInvaders(root, deck, (result) => {
+    if (cleanup) { cleanup(); cleanup = null; }
+    root.innerHTML = "";
+    showEnd(result);
+  });
+}
+
+showStart();
+</script>
+</body>
+</html>

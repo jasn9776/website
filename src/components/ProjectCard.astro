@@ -5,13 +5,17 @@ interface Props {
   image: string;
   github_url: string;
   blog_post?: string;
+  demo_url?: string;
   category: string;
   year: number;
 }
 
-const { title, description, image, github_url, blog_post, category, year } = Astro.props;
+const { title, description, image, github_url, blog_post, demo_url, category, year } = Astro.props;
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const postHref = blog_post ? `${base}/blog/${blog_post}` : null;
+const demoHref = demo_url
+  ? (/^https?:\/\//.test(demo_url) ? demo_url : `${base}/${demo_url.replace(/^\//, '')}`)
+  : null;
 const imageSrc = `${base}/${image.replace(/^\//, '')}`;
 ---
 
@@ -38,6 +42,14 @@ const imageSrc = `${base}/${image.replace(/^\//, '')}`;
       {postHref && (
         <a href={postHref} class="card-link">
           Read the post
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <path d="M5 12h14M13 5l7 7-7 7"/>
+          </svg>
+        </a>
+      )}
+      {demoHref && (
+        <a href={demoHref} class="card-link" target="_blank" rel="noopener noreferrer">
+          Launch demo
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
             <path d="M5 12h14M13 5l7 7-7 7"/>
           </svg>

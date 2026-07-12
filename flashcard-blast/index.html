@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Flash Blast</title>
+<link rel="stylesheet" href="css/tokens.css" />
+<link rel="stylesheet" href="css/app.css" />
+<link rel="stylesheet" href="css/match.css" />
+<link rel="stylesheet" href="css/invaders.css" />
+<link rel="stylesheet" href="css/recall.css" />
+</head>
+<body>
+
+<!-- Deck list -->
+<section id="screen-decks" class="screen">
+  <header class="app-header">
+    <h1 class="app-title">⚡ Flash Blast</h1>
+    <p class="app-subtitle">Turn your flashcards into games</p>
+  </header>
+  <div class="screen-body">
+    <div class="screen-nav" style="max-width:none;padding:0;">
+      <span></span>
+      <button type="button" class="btn btn-primary" id="btn-import-open">+ Import deck</button>
+    </div>
+    <div id="deck-list" class="deck-list"></div>
+  </div>
+</section>
+
+<!-- Import -->
+<section id="screen-import" class="screen hidden">
+  <header class="app-header">
+    <h1 class="app-title">Import a deck</h1>
+    <p class="app-subtitle">CSV, TSV, or Anki export (.csv, .txt, .tsv)</p>
+  </header>
+  <div class="screen-body">
+    <label class="dropzone" id="dropzone" for="file-input" tabindex="0">
+      <input type="file" id="file-input" accept=".csv,.txt,.tsv" />
+      <div>Drop a file here, or click to browse</div>
+    </label>
+
+    <div class="import-divider">or paste text</div>
+
+    <textarea id="paste-textarea" class="import-textarea" placeholder="question,answer&#10;question,answer&#10;..."></textarea>
+
+    <div class="import-name-row">
+      <input type="text" id="import-name" placeholder="Deck name (optional — defaults to filename)" />
+      <button type="button" class="btn btn-primary" id="btn-import-paste">Import text</button>
+    </div>
+
+    <div id="import-message"></div>
+
+    <div class="screen-nav" style="max-width:none;padding:0;">
+      <button type="button" class="btn btn-ghost" id="btn-import-cancel">← Back</button>
+      <span></span>
+    </div>
+  </div>
+</section>
+
+<!-- Mode select -->
+<section id="screen-modes" class="screen hidden">
+  <header class="app-header">
+    <h1 class="app-title" id="modes-deck-name">Deck</h1>
+    <p class="app-subtitle" id="modes-deck-meta"></p>
+  </header>
+  <div class="screen-body">
+    <div class="mode-grid">
+      <button type="button" class="btn mode-btn" id="mode-btn-match" data-mode="match">
+        <span class="mode-icon">🧩</span>
+        <span>Match</span>
+        <span class="mode-best" id="mode-best-match"></span>
+      </button>
+      <button type="button" class="btn mode-btn" id="mode-btn-invaders" data-mode="invaders">
+        <span class="mode-icon">👾</span>
+        <span>Invaders</span>
+        <span class="mode-best" id="mode-best-invaders"></span>
+      </button>
+      <button type="button" class="btn mode-btn" id="mode-btn-recall" data-mode="recall">
+        <span class="mode-icon">🧠</span>
+        <span>Free Recall</span>
+        <span class="mode-best" id="mode-best-recall"></span>
+      </button>
+    </div>
+    <div id="study-section" class="study-section hidden"></div>
+    <div class="screen-nav" style="max-width:none;padding:0;">
+      <button type="button" class="btn btn-ghost" id="btn-modes-back">← Back</button>
+      <button type="button" class="btn" id="btn-modes-stats">📊 Stats</button>
+    </div>
+  </div>
+</section>
+
+<!-- Game -->
+<section id="screen-game" class="screen hidden">
+  <div class="screen-nav" style="max-width:960px;">
+    <button type="button" class="btn btn-ghost" id="btn-game-back">← Back</button>
+    <span id="game-mode-label" class="badge"></span>
+  </div>
+  <div class="screen-body">
+    <div id="game-host"></div>
+  </div>
+</section>
+
+<!-- Result -->
+<section id="screen-result" class="screen hidden">
+  <header class="app-header">
+    <h1 class="app-title">Nice work!</h1>
+  </header>
+  <div class="screen-body" style="align-items:center;text-align:center;">
+    <div class="result-score" id="result-score">0</div>
+    <div class="result-detail" id="result-detail"></div>
+    <div class="result-actions">
+      <button type="button" class="btn btn-primary" id="btn-result-again">Play again</button>
+      <button type="button" class="btn" id="btn-result-menu">Mode menu</button>
+      <button type="button" class="btn btn-ghost" id="btn-result-decks">All decks</button>
+    </div>
+  </div>
+</section>
+
+<!-- Stats -->
+<section id="screen-stats" class="screen hidden">
+  <header class="app-header">
+    <h1 class="app-title" id="stats-deck-name">Stats</h1>
+  </header>
+  <div class="screen-body">
+    <div id="stats-body"></div>
+    <div class="screen-nav" style="max-width:none;padding:0;">
+      <button type="button" class="btn btn-ghost" id="btn-stats-back">← Back</button>
+      <span></span>
+    </div>
+  </div>
+</section>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

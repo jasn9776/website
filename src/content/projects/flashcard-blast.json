@@ -1,0 +1,11 @@
+{
+  "order": 6,
+  "title": "Flash Blast",
+  "description": "A zero-dependency flashcard game app built by four parallel AI workers orchestrated by Fable 5. Import a deck and study it through three mini-games, including a Space Invaders mode.",
+  "image": "/images/projects/invaders.svg",
+  "github_url": "https://github.com/jasn9776/flashcard-blast",
+  "blog_post": "flashcard-blast",
+  "demo_url": "/interactive/flashcard-blast/index.html",
+  "category": "Interactive",
+  "year": 2026
+}
