@@ -3,9 +3,11 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import BlogPostCard from '../../components/BlogPostCard.astro';
 import { getCollection } from 'astro:content';
 
-const posts = (await getCollection('blog'))
-  .filter((post) => !post.data.unlisted)
-  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+const allPosts = (await getCollection('blog')).sort(
+  (a, b) => b.data.date.valueOf() - a.data.date.valueOf()
+);
+const posts = allPosts.filter((post) => !post.data.unlisted);
+const aiPosts = allPosts.filter((post) => post.data.unlisted);
 ---
 
 <BaseLayout title="Journal" description="Writing on genomics, tools, and the work behind the work.">
@@ -21,6 +23,20 @@ const posts = (await getCollection('blog'))
           <BlogPostCard post={post} />
         ))}
       </div>
+
+      {aiPosts.length > 0 && (
+        <section class="ai-writing">
+          <header class="sub-header">
+            <span class="label">(03b) — AI Generated Projects</span>
+            <h2>Write-ups for the <em>AI-built</em> projects.</h2>
+          </header>
+          <div class="posts-grid">
+            {aiPosts.map((post) => (
+              <BlogPostCard post={post} />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   </section>
 </BaseLayout>
@@ -65,6 +81,30 @@ const posts = (await getCollection('blog'))
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
     gap: 24px;
+  }
+
+  .ai-writing {
+    margin-top: 80px;
+    padding-top: 56px;
+    border-top: 1px solid var(--line);
+  }
+
+  .sub-header {
+    margin-bottom: 40px;
+  }
+
+  .sub-header h2 {
+    font-family: 'Fraunces', serif;
+    font-weight: 460;
+    font-size: clamp(28px, 3.5vw, 44px);
+    letter-spacing: -0.035em;
+    line-height: 1.0;
+    color: var(--ink);
+  }
+
+  .sub-header h2 em {
+    font-style: italic;
+    color: var(--accent);
   }
 
   @media (max-width: 720px) {
