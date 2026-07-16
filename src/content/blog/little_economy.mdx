@@ -1,0 +1,135 @@
+---
+title: "Little Economy: what a toy market simulation taught me about real economics"
+date: 2026-07-14
+heroImage: /images/projects/blog_splash_little_economy.svg
+description: "Lessons from building a agent-based economy simulation game— rediscovering basic economic principles through trial and error"
+---
+
+import Caption from '../../components/Caption.astro';
+
+export const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+## Context
+
+When I was considering my career for university, I actually contemplated studying economics. I loved thinking about how the miracle of markets worked and the policy levers that could be tuned to ensure optimal functioning of the economy.
+But ultimately economics is not like a physical science where there are physical constraints and a single correct solution: instead, there are tradeoffs, political factors and the need to balance several competing factors for the overall benefit of society. 
+
+I read from the perspective of both free market proponents and progressive economists. In first year, I studied Microeconomics (ECON1101) at UNSW. That gave me an understanding of basic supply and demand principles — concepts like scarcity, comparative advantage and how supply and demand shape the prices of goods. These models have a certain number of simplifying assumptions:
+that everyone is a utility-maximising agent with "perfect knowledge" and there is perfect competition free from things like monopolies and other forms of market power. However, real life is definitely not like that: consumers often don't have full knowledge of the best price (we don't have all day to shop around), companies often form duopolies (think of our supermarkets in Australia), 
+and most importantly we are not entirely rational (we are prone to many cognitive biases). Nevertheless, I, in the brooding monotony of my free time, have created a simple yet insightful market simulator called "Little Economy" which teaches many of the concepts taught in an introductory economics course as well as exploring some other topics like inequality, the role of the government,
+and happiness and economic indicators. I hope you enjoy playing it as much as I enjoyed building it (or rather prompting an AI to build it). 
+
+**<a href={`${base}/interactive/Market_sim.html`}>Play Little Economy in your browser here.</a>**
+
+Little Economy is a zero-player economic simulation that runs in a single HTML file. A few dozen villagers farm, chop wood, build houses, teach, and treat the sick. Each agent maximises utility from food, fun and shelter; prices move with supply and demand; the player acts as the government, setting taxes, welfare rules and public investment — or hands it all to an auto-governing policy engine and just watches.
+
+What started as a simple market toy grew, feature by feature, into something that kept teaching real economics lessons — mostly by breaking in ways that emphasised key economics principles.
+
+## Main Economics Principles the game teaches
+
+### 1. Utility
+In the game the people gain utility when they eat while hungry, or go to the park (or the theatre (costs money but 3x the fun) or the opera (2x the price but 5x the fun)) for entertainment. They also gain utility from being treated while sick. 
+In classical economics, these agents are called "utility-maximising agents", which means they choose the action which maximises their utility. Utility is thus a quantification of everything a rational agent values. 
+
+### 2. Scarcity and Supply and Demand
+In the game there is a finite number of people (maybe only 10-20) at the start. There are also finite farm plots and finite land plots for houses. The agents also don't live forever; they have limited time (can only perform 6 actions a day) and need to eat to survive.
+These factors mean that players are forced to deal with this scarcity. They learn quickly that the agents respond to the scarcity by switching jobs to meet the demand for a particular good. For example, if there are not enough woodchoppers, the price of wood will increase and incentivise people to switch jobs. 
+The market is resilient in the sense that it adapts to supply the most necessary goods. For example, in a drought (one in every 20 years in the game) the production of farms drops to 50%, so more people become farmers to meet the pressing need. (This mechanism has questionable real-life veracity, but alas the lesson is clear.)
+
+### 3. Investment and productivity
+In the game there are schools, and each year of schooling increases a villager's productivity by a set percentage. Players also learn the importance of technological and medical research. While these facilities take well-educated adults out of other productive jobs, 
+they increase the productivity and cure rate of workers and doctors respectively. 
+
+### 4. The tragedy of the commons and the need for government to provide basic goods
+The game features a forest with a limited number of trees. The government limits the number of trees that can be chopped so at least a few remain. If this wasn't the case, all the trees would be felled, and no more would remain. 
+This highlights the "tragedy of the commons" in that public goods are often abused as the person utilising them doesn't face the consequences. The school system is also an example: while private tutors can be hired by the wealthy, families that can't afford this tuition must attend a public school, and if there aren't any they go without an education, 
+ultimately undermining the productivity of the whole economy.
+
+### 5. Critical thinking and experimentation
+Of course, the most vital skill this game teaches is the ability to analyse the situation and develop hypotheses about why the situation is occurring. For example, without any greenhouses (which effectively function as artificial farm plots), the farmland is limited and so the population that can be supported is also limited. Players can experiment with adding new greenhouses and see how increasing the maximum amount of food available also increases the maximum population that can be supported.
+Similar effects can be seen as players experiment with the birth rate, the number of doctors and the amount of medical research, which determines the cure rate. Players will learn to reason about why their society isn't growing and develop a plan to overcome the limiting factor. 
+The players also learn to question the game itself as a model of reality. For example, it seems that sometimes the bottom 10% gain more happiness from eating while starving (as opposed to while full), and so players learn to question the validity of this measure of happiness. 
+
+
+## Deviations from the ECON1101 model
+I am lucky that at UNSW we aren't taught rules as doctrine, but are challenged to think outside them. Some of the rules in introductory economics courses don't always apply. For example, people won't change jobs in real life over pennies. 
+This is also modelled in my game: the agents only change jobs if switching gives them a 35% pay rise. 
+
+
+### Happiness vs economic indicators
+Players also learn the difference between traditional economic indicators like GDP and happiness. We as humans don't feel the GDP (at least not directly), but we do experience happiness. They also learn to interpret life satisfaction indicators like years of education, happiness per lifetime and life expectancy.
+There are also indicators of health, e.g. the % of people treated for illness on the same day, and the % of people well fed (above the point where hunger affects health). This is important to remember because while economic growth can be correlated with happiness, it may not be the ultimate goal.
+
+### The need for government intervention
+Another really interesting thing my game highlights is the effect of inequality. In the game, the richest person is chosen to develop new buildings — for example, upgrading a house to a townhouse or to a tower or skyscraper. These investments mean that those individuals amass huge amounts of wealth.
+Obviously, in real life, the richest person doesn't automatically develop the next property. However, the player will quickly learn the mechanism of how the rich get richer, even if in real life it is not so stark. They are also welcome to experiment with governmental controls, such as setting a limit on the number of properties an individual can own, and setting progressive income taxes and wealth taxes to combat the inequality.
+They grapple with the decision to enable welfare (using state funds to feed the hungry) and public funding of hospital costs. 
+
+
+
+## The key things we learnt during development of the game (AI written summary)
+
+### 1. Population always finds the scarcest input
+
+The population repeatedly "capped out" — at 400, then 700, then 1,500 — and every cap was a different binding constraint. First farmland (fixed food capacity), then healthcare (doctors could only treat 10 patients a year), then wood (the forest couldn't supply a city's construction). Fixing one ceiling never produced open-ended growth; it produced the *next* ceiling. This is Liebig's law of the minimum wearing an economics costume, and the sim rediscovered it without being told.
+
+### 2. The marginal utility of money does enormous work
+
+A single formula — a coin matters less the richer you are — generated most of the interesting behaviour: the poor deferring meals until nearly starving, the rich buying theatre tickets while the poor use the free park, food price spikes rationing by wealth, and redistribution reliably raising aggregate happiness (a coin moved from someone with 78,000 to someone with 3 is a near-pure welfare gain). None of these behaviours were coded directly.
+
+### 3. Wage signals can lie, and workers pile into fantasy jobs
+
+The nastiest bug was economic, not technical. The job market advertised builder wages based on output prices, ignoring whether a worker could afford the wood inputs. When wood ran out, 786 of ~1,000 adults crowded into construction earning 0.1 coins a day while farms emptied. The fix — a working-capital check in the wage estimate — is really a statement about capital constraints: a trade you cannot afford to enter pays you nothing, whatever the posted wage says.
+
+### 4. Policy engines misdiagnose: capacity problems vs payment problems
+
+The auto-government saw "illnesses going untreated" and responded by subsidising doctors — but the actual problem was that patients were too broke to pay even a 10-coin fee. Result: 300 subsidised doctors, collapsing farms, starvation amid cheap food. The repaired logic first asks *why* care is failing: too little capacity → subsidise the profession; idle capacity but broke patients → have the state pay the fees. Diagnosing the mechanism before applying the lever turned out to be the whole game of policy design.
+
+### 5. Metrics can be gamed by their own definitions
+
+For a while the *bottom* 10% reported higher happiness than the top 10%. The cause was an accounting quirk: welfare meals were booked at maximum-hunger utility regardless of actual hunger, so people kept in chronic near-hunger by food aid posted near-perfect scores. One line of code fixed it, but the lesson generalises — a welfare metric that rewards deprivation-then-relief cycles will make managed poverty look like bliss.
+
+### 6. Growth needs a brake as much as an engine
+
+Once food, healthcare and wood were all solved, population went exponential: 10,800 people, 8,800 of them homeless and apparently unbothered. Homelessness cost so little utility that it never slowed births. Linking fertility to housing ("few start families with nowhere to live") restored a stable equilibrium bounded by the map's real estate. Every removed constraint has to be replaced by an honest one, or the model stops meaning anything.
+
+### 7. Institutions built for a boom can strangle a recovery
+
+After growing to ~4,000 people, a famine crash to ~40 survivors should have been recoverable — food capacity, housing and knowledge were all still there. Instead the village flatlined for a century. The reason: the boom had built ~30 schools, and the auto-government staffed schools by *building count*, converting 26 of the 40 survivors into salaried teachers who never re-enter the labour market. Nobody was left to farm. The "food spiral" was a symptom; the cause was fixed institutional overhead, sized for a large economy, cannibalising a small one. The fix — staff for the students who exist, not the buildings, and release surplus teachers back to work — is a rule real shrinking towns rediscover painfully.
+
+### 8. Long-run indicators need long-run metrics
+
+Daily happiness answers "how does life feel right now?" A separate *happiness-per-lifetime* measure — happiness-days accumulated over each life, recorded at death — integrates quantity and quality, punishes child mortality doubly, and lags policy by a generation. It behaves like QALYs and is much harder to game. The rich/poor split of life expectancy at death (74 vs 54 years at one point) was the single most honest inequality statistic the sim produced.
+
+
+## How the app was built
+
+The whole simulation lives in one `index.html` — canvas rendering, agent logic, market clearing, UI panels and charts. There is no framework and no build step. For a deep dive into how the simulation works under the hood, see <a href={`${base}/blog/how-to-build-this-game`}>How to Build a Simulation Game From Scratch</a>. Development was conversational and iterative: run the sim, watch what happens, ask "why is it doing that?", then add either a policy lever or a monitor to find out.
+
+The rough order of construction:
+
+1. **Core loop** — agents with hunger/fun meters, four goods (food, wood, crafts, housing), daily price adjustment from supply–demand pressure, progressive income tax, schools and teachers.
+2. **Institutions** — hospitals and doctors, universities, a space program, medical and technology research institutes, public housing, compulsory acquisition.
+3. **Policy levers** — wealth tax with an adjustable base and exemption floor, rent and property taxes, birth rate and immigration dials, a charitability scale, property caps per household, difficulty presets (Easy/Medium/Hard) that snap the sliders.
+4. **Monitors** — happiness, total GDP, life expectancy, % of illnesses treated same-day, % well-fed, happiness-per-lifetime, plus popup dashboards for economics (price history, treasury) and inequality (top 10% vs bottom 10% across nine metrics).
+5. **A headless test harness** — the most important tool of the lot. The simulation script gets extracted and run under Node with a stubbed DOM, so hundreds of simulated years run in seconds. Balance changes stopped being guesses: "does medium mode go extinct?" became a measurable number (it did — in 1 of 6 runs — until it was fixed).
+
+> Rule of thumb that emerged: never tune the simulation from a single run. Run six.
+
+
+## Things still to be worked out
+
+- **No save system.** Every code change means refreshing the page and losing the world — one 9,236-year civilisation died this way. Serialising the state to localStorage is the obvious next feature.
+- **Land is the final, un-purchasable cap.** Farm plots, greenhouse sprawl and ~20 building sites bound everything around a few thousand people. Going further honestly would need new mechanics: land reclamation, vertical farming tiers, or a second settlement.
+- **The market is virtual.** Goods are flows, not stocks — producers buy inputs that are only rationed by money, not by physical availability. Quantity rationing would make shortages bite more realistically than the current price-ceiling behaviour.
+- **Fertility is income-blind.** Rich and poor have identical birth odds; only the economy-wide mood matters. Both the historical pattern (wealth → surviving children) and the modern one (wealth → fewer children) would be interesting toggles.
+- **The happiness formula saturates.** Once everyone is housed, fed, treated and entertained, nothing improves the score — arguably realistic, but it leaves late-game policy without a gradient to climb.
+- **Performance.** Ten thousand agents at ×1000 speed strains a single-threaded loop; the daily pass is O(agents) several times over and could use batching.
+- **Equilibrium homelessness.** The housing-fertility brake stabilises population *above* housing capacity, so a permanent homeless class is now part of the steady state. Whether that is a bug or an uncomfortable truth is a design question as much as a technical one.
+
+## Limitations
+Of course, this game is a simple simulation. It is not meant to accurately model the economy or provide economic advice. It is just a useful aid in understanding basic economic principles. Real life is much more complicated than a video game after all. 
+
+## Closing thought
+
+This process touched upon so many basic principles important in a political economy. It underscores the role that simulations may play in enhancing our understanding of our world. Although as with any model, it is very important to be aware of the limitations.
