@@ -4,7 +4,9 @@
       "Read(//usr/local/**)",
       "Read(//Users/Jason/.nvm/**)",
       "Read(//opt/homebrew/bin/**)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(cp -R \"/Users/Jason/Documents/Coding Projects/website/flashcard-blast\" \"/Users/Jason/Documents/Coding Projects/website/public/interactive/flashcard-blast\")",
+      "Bash(rm \"/Users/Jason/Documents/Coding Projects/website/public/interactive/flashcard-blast/SPEC.md\")"
     ]
   }
 }

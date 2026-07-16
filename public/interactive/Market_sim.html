@@ -1,0 +1,2716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Little Economy — a zero-player market simulation</title>
+<style>
+  :root{
+    --bg:#10141c; --panel:#1a2130; --panel2:#141a26; --line:#2a3348;
+    --text:#dbe4f4; --dim:#8b98b3; --accent:#5cc8ff; --good:#6fe3a1; --bad:#ff7d7d; --gold:#ffd97a;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:var(--bg); color:var(--text); font:13px/1.45 "SF Mono", Menlo, Consolas, monospace; display:flex; height:100vh; overflow:hidden;}
+  #left{flex:1; display:flex; flex-direction:column; min-width:0;}
+  #topbar{display:flex; gap:14px; align-items:center; padding:8px 12px; background:var(--panel); border-bottom:1px solid var(--line); flex-wrap:wrap;}
+  #topbar b{color:var(--accent);}
+  #topbar .stat{white-space:nowrap;}
+  #topbar .stat span{color:var(--gold);}
+  canvas#world{flex:1; width:100%; min-height:0; min-width:0; display:block; background:#151d14;}
+  #right{width:370px; background:var(--panel2); border-left:1px solid var(--line); overflow-y:auto; padding:10px; display:flex; flex-direction:column; gap:10px;}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px;}
+  .card h3{font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--accent); margin-bottom:8px;}
+  .row{display:flex; justify-content:space-between; align-items:center; margin:3px 0; gap:6px;}
+  .row .lbl{color:var(--dim);}
+  button{background:#26314a; color:var(--text); border:1px solid #3a4a6e; border-radius:5px; padding:4px 9px; font:inherit; cursor:pointer;}
+  button:hover{background:#31405f;}
+  button:disabled{opacity:.4; cursor:default;}
+  input[type=range]{width:110px; accent-color:var(--accent);}
+  .price-up{color:var(--bad);} .price-down{color:var(--good);}
+  #log{max-height:140px; overflow-y:auto; font-size:11px; color:var(--dim);}
+  #log div{margin:2px 0;}
+  #log .yr{color:var(--gold);}
+  canvas.chart{width:100%; height:90px; background:#0d1118; border-radius:4px;}
+  .legend{display:flex; flex-wrap:wrap; gap:8px; font-size:10px; color:var(--dim); margin-top:4px;}
+  .legend i{display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:3px;}
+  .hint{font-size:11px; color:var(--dim); margin-top:6px;}
+  #inspect{font-size:12px; min-height:110px;}
+  #inspect b{color:var(--gold);}
+  #inspect .bar{height:7px; background:#0d1118; border-radius:4px; overflow:hidden; flex:1;}
+  #inspect .bar i{display:block; height:100%;}
+  #inspect .brow{display:flex; align-items:center; gap:8px; margin:3px 0;}
+  #inspect .brow .nm{width:64px; color:var(--dim); font-size:11px;}
+  .occbtns{display:grid; grid-template-columns:1fr 1fr; gap:5px;}
+  .subsrow{display:flex; align-items:center; gap:5px; margin:2px 0;}
+  .subsrow .nm{width:74px; color:var(--dim);}
+  .subsrow output{width:34px; text-align:right; color:var(--gold);}
+  table.stats{width:100%; border-collapse:collapse; font-size:11px;}
+  table.stats td, table.stats th{padding:2px 4px; text-align:right; border-bottom:1px solid #222b3d;}
+  table.stats td:first-child, table.stats th:first-child{text-align:left; color:var(--dim);}
+  table.stats th{color:var(--accent); font-weight:normal;}
+  .winbtns button{padding:2px 7px; font-size:11px; margin-left:3px;}
+  .winbtns button.active{background:var(--accent); color:#10141c; border-color:var(--accent);}
+  button.amber{border-color:#ffb84d; box-shadow:0 0 4px #ffb84d66;}
+  .amberTxt{color:#ffb84d !important;}
+  .tick{color:var(--good); font-weight:bold; padding:0 8px;}
+  .legend label{cursor:pointer; user-select:none; display:inline-flex; align-items:center; gap:3px;}
+  .legend input[type=checkbox]{accent-color:var(--accent); width:11px; height:11px; margin:0;}
+  #modal, #settings{position:fixed; inset:0; background:rgba(10,13,20,0.8); z-index:9; display:flex; align-items:center; justify-content:center;}
+  #modalBox, #settingsBox{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px; width:min(700px,92vw); max-height:88vh; overflow-y:auto;}
+  #modalBox h3, #settingsBox h3{color:var(--accent); text-transform:uppercase; font-size:13px; letter-spacing:.08em;}
+  #modalBox canvas.chart{height:120px;}
+  #startOverlay{position:fixed; inset:0; background:rgba(10,13,20,0.94); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; z-index:10;}
+  #startOverlay h1{color:var(--accent); letter-spacing:.12em; font-size:26px;}
+  #startOverlay .diffbtn{font-size:15px; padding:12px 24px; min-width:340px; text-align:left;}
+  #startOverlay .desc{color:var(--dim); font-size:12px; max-width:440px; text-align:center; line-height:1.5;}
+  #households tr[data-fam]{cursor:pointer;}
+  #households tr[data-fam]:hover td{background:#232d44;}
+  .mlink{cursor:pointer; color:var(--accent); text-decoration:underline dotted;}
+</style>
+</head>
+<body>
+<div id="left">
+  <div id="topbar">
+    <b>LITTLE&nbsp;ECONOMY</b>
+    <button id="pauseBtn">⏸ Pause</button>
+    <button id="speedBtn">Speed ×1</button>
+    <button id="econBtn">📈 Economics</button>
+    <button id="ineqBtn">⚖️ Inequality</button>
+    <button id="setBtn" title="Settings — advanced metrics & difficulty (pauses game)">⚙️</button>
+    <span class="stat">Year <span id="stYear">1</span>, Day <span id="stDay">1</span></span>
+    <span class="stat">Pop <span id="stPop">0</span></span>
+    <span class="stat">Avg utility <span id="stUtil">0</span></span>
+    <span class="stat">Treasury <span id="stTreasury">0</span>🪙</span>
+    <span class="stat" id="stMsg" style="color:var(--bad)"></span>
+  </div>
+  <canvas id="world"></canvas>
+</div>
+
+<div id="right">
+  <div class="card">
+    <h3>Life Quality Indicators</h3>
+    <div class="row"><span class="lbl">Period</span>
+      <span id="lqWin" class="winbtns">
+        <button data-win="40">1y</button><button data-win="240" class="active">6y</button><button data-win="1200">30y</button><button data-win="0">All time</button>
+      </span></div>
+    <canvas class="chart" id="lqChart" style="height:110px"></canvas>
+    <input type="range" id="lqScroll" min="0" max="1000" value="1000" style="width:100%; margin-top:4px" title="scroll through history">
+    <div class="legend" id="lqLegend"></div>
+    <div id="lqStats" class="hint"></div>
+  </div>
+
+  <div class="card">
+    <h3>Inspector</h3>
+    <div class="row" style="margin-bottom:6px">
+      <button id="prevAgent">◀ prev</button>
+      <span class="lbl" style="font-size:11px">click a villager, or browse</span>
+      <button id="nextAgent">next ▶</button>
+    </div>
+    <div id="inspect">Click a villager in the world to inspect them.</div>
+  </div>
+
+  <div class="card">
+    <h3>Government monitor</h3>
+    <div class="row"><span class="lbl" id="eduLbl">Education</span>
+      <button id="upgradeEdu" title="Hires a teacher for an unstaffed school, or builds & staffs a new school when children lack seats. Amber = not enough public school places.">Upgrade education</button></div>
+    <div class="row"><span class="lbl">Food aid to the hungry</span>
+      <button id="welfareBtn" title="Treasury buys food for anyone above the hunger threshold. Amber = people are going hungry without aid.">Welfare: OFF</button></div>
+    <div class="row"><span class="lbl">Public healthcare (state pays fees)</span>
+      <button id="pubHealthBtn" title="The treasury pays all treatment fees — requires enough doctors to actually deliver the care. Amber = patients can't afford treatment.">Public health: OFF</button></div>
+    <div class="row"><span class="lbl">University (300🪙)</span>
+      <span id="uniSlot"><button id="buildUni">Build</button><span class="tick" style="display:none">✓ built</span></span></div>
+    <div class="row"><span class="lbl">Hospital (250🪙)</span>
+      <span id="hospSlot"><button id="buildHosp" title="Amber = treatment capacity exhausted — build another hospital or train more doctors.">Build</button><span class="tick" style="display:none">✓ built</span></span></div>
+    <div class="row"><span class="lbl">Med. research institute (350🪙)</span>
+      <span id="labSlot"><button id="labBtn">Build</button><span class="tick" style="display:none">✓ built</span></span></div>
+    <div class="row"><span class="lbl">Tech institute (350🪙)</span>
+      <span id="techSlot"><button id="techBtn">Build</button><span class="tick" style="display:none">✓ built</span></span></div>
+    <div class="row"><span class="lbl">Space program (400🪙)</span>
+      <span id="spaceSlot"><button id="spaceBtn">Found</button><span class="tick" style="display:none">✓ founded</span></span></div>
+    <div class="row"><span class="lbl" id="sciLbl">Hire rocket scientist (0 hired)</span>
+      <button id="hireSci" title="Needs the space program and an adult with 8+ years of education. Amber = the program is unstaffed.">Convert 1 worker</button></div>
+    <div class="row"><span class="lbl" id="resLbl">Hire med researcher (0 hired)</span>
+      <button id="hireRes" title="Needs the medical research institute and an adult with 8+ years of education. Amber = the lab is unstaffed.">Convert 1 worker</button></div>
+    <div class="row"><span class="lbl" id="techHireLbl">Hire technologist (0 hired)</span>
+      <button id="hireTech" title="Needs the tech institute and an adult with 8+ years of education. Amber = the institute is unstaffed.">Convert 1 worker</button></div>
+    <div class="hint">Amber border = needs attention · ✓ = done. Difficulty &amp; advanced settings moved to the ⚙️ gear in the top bar.</div>
+  </div>
+
+  <div class="card">
+    <h3>You are the Government</h3>
+    <div class="row"><span class="lbl">Auto-govern (hands-free policy)</span><button id="autoBtn">Auto: ON</button></div>
+    <div class="row"><span class="lbl">↳ auto controls welfare</span><input type="checkbox" id="autoWelfare" checked></div>
+    <div class="row"><span class="lbl">↳ auto controls public healthcare</span><input type="checkbox" id="autoPubHealth" checked></div>
+    <div class="row"><span class="lbl">↳ wealth tax rate under auto</span>
+      <span><input type="range" id="autoWealth" min="0" max="30" value="5"> <output id="autoWealthOut">5%</output></span></div>
+    <div style="margin-top:4px; color:var(--dim); font-size:11px">Progressive income tax (marginal rates on daily income):</div>
+    <div class="row"><span class="lbl" id="tax0Lbl">≤ 4🪙/day (low)</span>
+      <span><input type="range" id="tax0" min="0" max="40" value="5"> <output id="tax0Out">5%</output></span></div>
+    <div class="row"><span class="lbl" id="tax1Lbl">4–10🪙/day (middle)</span>
+      <span><input type="range" id="tax1" min="0" max="50" value="15"> <output id="tax1Out">15%</output></span></div>
+    <div class="row"><span class="lbl" id="tax2Lbl">&gt; 10🪙/day (top)</span>
+      <span><input type="range" id="tax2" min="0" max="70" value="30"> <output id="tax2Out">30%</output></span></div>
+    <div class="row"><span class="lbl">Sales tax</span>
+      <span><input type="range" id="salesTax" min="0" max="30" value="0"> <output id="salesOut">0%</output></span></div>
+    <div style="margin-top:4px; color:var(--dim); font-size:11px">Wealth tax (levied yearly on the richest households):</div>
+    <div class="row"><span class="lbl">Rate</span>
+      <span><input type="range" id="wealthTax" min="0" max="30" value="5"> <output id="wealthOut">5%</output></span></div>
+    <div class="row"><span class="lbl">Applies to richest</span>
+      <span><input type="range" id="wealthTop" min="1" max="50" value="10"> <output id="wealthTopOut">10%</output></span></div>
+    <div class="row"><span class="lbl">Exempt below</span>
+      <span><input type="range" id="wealthFloor" min="0" max="2000" step="50" value="0"> <output id="wealthFloorOut">0🪙</output></span></div>
+    <div class="row"><span class="lbl">Max properties per household</span>
+      <span><input type="range" id="propCap" min="0" max="8" value="0"> <output id="propCapOut">∞</output></span></div>
+    <div style="margin-top:4px; color:var(--dim); font-size:11px">Property &amp; rent taxes:</div>
+    <div class="row"><span class="lbl">Rental income tax</span>
+      <span><input type="range" id="rentTax" min="0" max="90" value="30"> <output id="rentTaxOut">30%</output></span></div>
+    <div class="row"><span class="lbl">Property tax (yearly, % of value)</span>
+      <span><input type="range" id="propTax" min="0" max="5" step="0.25" value="0"> <output id="propTaxOut">0%</output></span></div>
+    <div style="margin-top:4px; color:var(--dim); font-size:11px">Population policy:</div>
+    <div class="row"><span class="lbl">Immigration (arrivals/yr)</span>
+      <span><input type="range" id="immigration" min="0" max="15" value="0"> <output id="immigrationOut">0</output></span></div>
+    <div class="row" style="margin-top:6px"><span class="lbl">Plant 5 trees (25🪙)</span><button id="plantTrees">Plant</button></div>
+    <div class="row"><span class="lbl">Clear farmland (+1 plot, 40🪙, −3 trees)</span><button id="clearLand">Clear</button></div>
+    <div class="row"><span class="lbl">Greenhouse (+15 food/day, 150🪙)</span><button id="ghBtn" title="Artificial farm — no land or trees needed. Cap set in ⚙️ settings.">Build</button></div>
+    <div class="row"><span class="lbl">Public housing (build/upgrade)</span><button id="pubHousing">Develop</button></div>
+    <div class="row"><span class="lbl">Compulsory acquisition (buyout price)</span><button id="acquireBtn" title="The state buys the cheapest private building at the buyout price and runs it as public housing.">Acquire</button></div>
+    <div style="margin-top:6px; color:var(--dim); font-size:11px">Wage subsidies (🪙/day, paid from treasury):</div>
+    <div id="subsidies"></div>
+    <div class="hint">Taxes fund schools, teachers, subsidies and welfare. Too high and people keep less of what they earn — output and utility fall (deadweight loss). Too low and education starves. Amber doctor row = too few doctors willing to work.</div>
+  </div>
+
+  <div class="card">
+    <h3>Societal characteristics</h3>
+    <div class="row"><span class="lbl">Charitability (rich give % of income)</span>
+      <span><input type="range" id="charity" min="0" max="20" value="0"> <output id="charityOut">0%</output></span></div>
+    <div class="row"><span class="lbl">Birth rate (per fertile adult/yr)</span>
+      <span><input type="range" id="birthRate" min="0" max="20" value="7"> <output id="birthRateOut">7%</output></span></div>
+  </div>
+
+  <div class="card">
+    <h3>Market prices</h3>
+    <div id="prices"></div>
+    <div class="hint">Prices move with supply &amp; demand. Watch wood: if the forest is over-chopped, scarcity pushes the price up until choppers slow down and trees regrow. Full price history lives in 📈 Economics.</div>
+  </div>
+
+  <div class="card">
+    <h3>Statistics</h3>
+    <div id="aggstats"></div>
+  </div>
+
+  <div class="card">
+    <h3>Families (ranked by wealth)</h3>
+    <div id="households" style="max-height:190px; overflow-y:auto"></div>
+    <div class="hint">One row per family (everyone sharing a surname, across all their households). Wealth includes children's inheritances held in trust.</div>
+  </div>
+
+  <div class="card">
+    <h3>Wealth distribution</h3>
+    <canvas class="chart" id="wealthChart"></canvas>
+    <div id="wealthStats" class="hint"></div>
+  </div>
+
+  <div class="card">
+    <h3>Labour force</h3>
+    <div id="labour"></div>
+    <div class="hint">Adults switch to the best-paying job (with friction). Kids attend school if there's a seat; each school year raises lifetime productivity (see difficulty sliders).</div>
+  </div>
+
+  <div class="card">
+    <h3>Achievements</h3>
+    <div id="achievements"></div>
+  </div>
+
+  <div class="card">
+    <h3>Event log</h3>
+    <div id="log"></div>
+  </div>
+</div>
+
+<div id="modal" style="display:none">
+  <div id="modalBox">
+    <div class="row" style="margin-bottom:8px"><h3 id="modalTitle" style="margin:0"></h3><button id="modalClose">✕ close</button></div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<div id="settings" style="display:none">
+  <div id="settingsBox">
+    <div class="row" style="margin-bottom:8px"><h3 style="margin:0">⚙️ Settings (game paused)</h3><button id="settingsClose">✕ close</button></div>
+    <div style="color:var(--dim); font-size:11px; margin-bottom:4px">Difficulty:</div>
+    <div class="row" style="margin-bottom:6px"><span id="diffBtns" class="winbtns">
+      <button data-diff="easy">Easy</button><button data-diff="medium">Medium</button><button data-diff="hard">Hard</button>
+    </span><span id="diffLabel" style="color:var(--gold)"></span></div>
+    <div class="row"><span class="lbl">Starvation death rate /day</span>
+      <span><input type="range" id="starveDeath" min="0" max="15" value="6"> <output id="starveDeathOut">6%</output></span></div>
+    <div class="row"><span class="lbl">Max cure rate (research cap)</span>
+      <span><input type="range" id="cureCap" min="60" max="99" value="95"> <output id="cureCapOut">95%</output></span></div>
+    <div class="row"><span class="lbl">Productivity per school year</span>
+      <span><input type="range" id="eduProd" min="2" max="15" value="9"> <output id="eduProdOut">9%</output></span></div>
+    <div class="row"><span class="lbl">Food aid kicks in at hunger ≥</span>
+      <span><input type="range" id="welfareHunger" min="40" max="100" step="5" value="80"> <output id="welfareHungerOut">80%</output></span></div>
+    <div class="row"><span class="lbl">Droughts (5%/yr chance, −50% farm output)</span><input type="checkbox" id="droughtsChk"></div>
+    <div class="hint">Presets also set farmland &amp; forest size at world creation. Move any slider off a preset and the mode becomes Custom. Hard enables droughts by default.</div>
+    <div style="color:var(--dim); font-size:11px; margin:10px 0 4px">Advanced:</div>
+    <div class="row"><span class="lbl">Food prioritisation</span>
+      <span><input type="range" id="foodPriority" min="50" max="200" step="10" value="100"> <output id="foodPriorityOut">100%</output></span></div>
+    <div class="row"><span class="lbl">Maximum greenhouses (0 = unlimited)</span>
+      <span><input type="range" id="maxGH" min="0" max="60" value="0"> <output id="maxGHOut">∞</output></span></div>
+    <div class="row"><span class="lbl">Tax bracket: low ends at (🪙/day)</span>
+      <span><input type="range" id="brk0" min="1" max="9" value="4"> <output id="brk0Out">4🪙</output></span></div>
+    <div class="row"><span class="lbl">Tax bracket: middle ends at (🪙/day)</span>
+      <span><input type="range" id="brk1" min="6" max="30" value="10"> <output id="brk1Out">10🪙</output></span></div>
+    <div class="row"><span class="lbl">Theatre happiness (× the park's)</span>
+      <span><input type="range" id="theatreMult" min="1" max="8" value="3"> <output id="theatreMultOut">×3</output></span></div>
+    <div class="row"><span class="lbl">Opera happiness (× the park's)</span>
+      <span><input type="range" id="operaMult" min="1" max="12" value="5"> <output id="operaMultOut">×5</output></span></div>
+    <div class="row"><span class="lbl">Drifters wander in when pop &lt; 30</span><input type="checkbox" id="driftersChk" checked></div>
+  </div>
+</div>
+
+<div id="startOverlay">
+  <h1>LITTLE ECONOMY</h1>
+  <div class="desc">Choose a difficulty. It shapes the world (farmland &amp; forest size) and sets the policy sliders — everything stays adjustable in-game, and changing a slider off a preset switches the mode to Custom.</div>
+  <button class="diffbtn" data-diff="easy">🌤 Easy — gentle hunger, lush farmland, double forest, 99% cure cap</button>
+  <button class="diffbtn" data-diff="medium">⛅ Medium — the classic balance</button>
+  <button class="diffbtn" data-diff="hard">🌩 Hard — deadly famine, scarce land &amp; wood, slow learning</button>
+</div>
+
+<script>
+"use strict";
+/* ============================================================
+   LITTLE ECONOMY — zero-player agent-based market simulation
+   Physical world: a forest that is felled & regrows, farm plots
+   that ripen, houses that visibly rise as builders work.
+   Agents maximise utility from food + recreation (paid > free)
+   + shelter. Player acts as government.
+   ============================================================ */
+
+// ---------- tunables ----------
+const DAYS_PER_YEAR = 40;
+const ADULT_AGE = 16, OLD_AGE = 65, MAX_AGE = 92;
+const MED_FEE = 25;            // 🪙 per hospital treatment
+const DOC_CAP = 10;            // treatments per doctor per year
+const DOC_EDU = 8;             // school years required to train as a doctor
+const UNI_COST = 300, HOSP_COST = 250;
+const SCHOOL_CAPACITY = 12;
+const SCHOOL_COST = 150;
+const TEACHER_SALARY = 6;
+const SCI_SALARY = 8;          // 🪙/day for scientists & medical researchers
+const SPACE_COST = 400;        // founding the space program
+const LAB_COST = 350;          // medical research institute
+const SPACE_WORK = 4000;       // worker-days of science per rocket launch
+const MED_RESEARCH_WORK = 6000;// worker-days for full medical progress
+const TECH_COST = 350;         // technology research institute
+const TECH_WORK = 8000;        // worker-days for full tech progress (+50% productivity)
+const FOOD_PER_PLOT = 8;       // food/day one farm plot can yield before land binds
+const GH_COST = 150;           // greenhouse: artificial farm, no land or trees needed
+const GH_FOOD = 15;            // food/day capacity per greenhouse
+const MAX_EDUCATION = 12;
+const JOB_SWITCH_FRICTION = 0.35;
+const START_POP = 26;
+const TREE_YIELD = 3;          // wood per felled tree
+const TREE_REGROW_DAYS = 45;   // days from stump to mature
+// building tiers: each "home" houses one household. Owners collect rent.
+const TIERS = [
+  {name:"house",      homes:1,   work:1.0,  cost:60},
+  {name:"townhouse",  homes:4,   work:3.0,  cost:150},
+  {name:"tower",      homes:15,  work:6.0,  cost:500},
+  {name:"skyscraper", homes:100, work:16.0, cost:2200},
+];
+const RENT_RATE = 0.05;        // rent/day per home = house price × this (gov housing: half)
+const BUYOUT_MULT = 2;         // buyout per home = house price × this
+
+const GOODS = {
+  food:  {color:"#6fe3a1", price:3.0,  label:"Food"},
+  wood:  {color:"#c98f5a", price:2.5,  label:"Wood"},
+  crafts:{color:"#d98cf0", price:5.0,  label:"Crafts"},
+  house: {color:"#5cc8ff", price:20.0, label:"Housing"},
+};
+
+const TUITION = 3;             // 🪙/day private school fee per child
+const JOBS = {
+  farmer:     {color:"#6fe3a1", makes:"food",   base:2.2,  emoji:"🌾"},
+  woodchopper:{color:"#c98f5a", makes:"wood",   base:1.8,  emoji:"🪓"},
+  craftsman:  {color:"#d98cf0", makes:"crafts", base:0.9,  needs:{wood:0.6}, emoji:"🔨"},
+  builder:    {color:"#5cc8ff", makes:"house",  base:0.20, needs:{wood:1.2}, emoji:"🧱"},
+  teacher:    {color:"#ffd97a", makes:null,     base:0,    emoji:"📚"},
+  tutor:      {color:"#ff9f5a", makes:null,     base:0,    emoji:"🎓"},   // private teacher, paid by tuition
+  doctor:     {color:"#ff6b81", makes:null,     base:0,    emoji:"⚕️"},   // treats the sick, paid by fees
+  scientist:  {color:"#9fb8ff", makes:null,     base:0,    emoji:"🚀", label:"rocket scientist"},   // space program, gov salary
+  researcher: {color:"#8ce6d9", makes:null,     base:0,    emoji:"🔬"},   // medical research, gov salary
+  technologist:{color:"#c7f06a", makes:null,    base:0,    emoji:"⚙️"},   // tech research, gov salary
+};
+const jobLabel=j=>(JOBS[j]&&JOBS[j].label)||j;
+const WORK_JOBS = ["farmer","woodchopper","craftsman","builder"];
+const SWITCHABLE = [...WORK_JOBS,"tutor","doctor"];   // jobs the labour market flows between
+const SERVICE_JOBS = ["teacher","tutor","doctor","scientist","researcher","technologist"];
+
+const NAMES = ["Ada","Bram","Cora","Dov","Elsa","Finn","Greta","Hugo","Iris","Jonas","Kira","Lars","Mara","Nils","Odette","Piet","Quinn","Rosa","Sven","Tilda","Ulric","Vera","Wim","Xenia","Yousef","Zelda","Anouk","Bo","Carys","Dario","Edda","Femke","Gil","Hana","Ivo","June","Koen","Lena","Milo","Nora","Otis","Petra","Remy","Sanne","Timo","Una","Viggo","Willa"];
+const SURNAMES = ["Holt","Vance","Mercer","Ashford","Byrne","Calloway","Dray","Ellery","Fox","Garrick","Hale","Iverson","Juno","Kessler","Larkspur","Moss","North","Orchard","Pike","Quill","Rook","Slate","Thorn","Underhill","Vale","Wren"];
+
+// ---------- canvas ----------
+const canvas = document.getElementById("world");
+const ctx = canvas.getContext("2d");
+let W=900, H=650;
+
+// ---------- world objects ----------
+const sites = {};          // named places {x,y,label}
+let trees = [];            // {x,y,stage 0..1, jitter}
+let farmPlots = [];        // {x,y}
+let houses = [];           // {x,y,progress 0..1, residents:[]}
+let houseSlots = [];       // available positions for future houses
+
+function layoutWorld(){
+  // positions are stored as world fractions (fx,fy) and recomputed from
+  // scratch — resizing can never accumulate distortion
+  sites.market ={x:W*0.50,y:H*0.44,label:"MARKET"};
+  sites.school ={x:W*0.36,y:H*0.13,label:"SCHOOL"};
+  sites.workshop={x:W*0.63,y:H*0.66,label:"WORKSHOP"};
+  sites.park   ={x:W*0.38,y:H*0.87,label:"PARK (free fun)"};
+  sites.theatre={x:W*0.60,y:H*0.88,label:"THEATRE (paid fun)"};
+  sites.opera  ={x:W*0.735,y:H*0.90,label:"OPERA"};
+  sites.farm   ={x:W*0.155,y:H*0.185,label:"FARM"};
+  sites.forest ={x:W*0.855,y:H*0.30,label:"FOREST"};
+  sites.university={x:W*0.245,y:H*0.42,label:"UNIVERSITY"};
+  sites.hospital  ={x:W*0.80,y:H*0.72,label:"HOSPITAL"};
+  sites.launchpad ={x:W*0.575,y:H*0.10,label:"LAUNCH SITE"};
+  sites.lab       ={x:W*0.88,y:H*0.80,label:"MED LAB"};
+  sites.techlab   ={x:W*0.46,y:H*0.57,label:"TECH INSTITUTE"};
+  sites.greenhouse={x:W*0.315,y:H*0.28,label:"GREENHOUSE"};
+  for(const t of trees){ t.x=t.fx*W; t.y=t.fy*H; }
+  for(const h of houses){ h.x=h.fx*W; h.y=h.fy*H; }
+  for(const s of houseSlots){ s.x=s.fx*W; s.y=s.fy*H; }
+  for(const p of farmPlots){ p.x=p.fx*W; p.y=p.fy*H; }
+}
+
+function newTree(stage){
+  const fx=0.72+Math.random()*0.25, fy=0.06+Math.random()*0.50;
+  return {fx, fy, x:fx*W, y:fy*H, stage, jit:Math.random()*10};
+}
+function seedTerrain(){
+  // forest: cluster of trees on the right
+  trees=[];
+  for(let i=0;i<Math.round(46*S.treeMult);i++) trees.push(newTree(0.6+Math.random()*0.4));
+  // farm plots: grid top-left, sized by difficulty
+  farmPlots=[];
+  for(let r=0;r<S.plotRows;r++) for(let c=0;c<S.plotCols;c++){
+    const fx=0.06+c*0.045, fy=0.10+r*0.075;
+    farmPlots.push({fx, fy, x:fx*W, y:fy*H});
+  }
+  // house slots: streets bottom-left
+  houseSlots=[];
+  for(let r=0;r<3;r++) for(let c=0;c<6;c++){
+    const fx=0.06+c*0.055, fy=0.55+r*0.135;
+    houseSlots.push({fx, fy, x:fx*W, y:fy*H});
+  }
+  houses=[];
+  for(let i=0;i<6;i++) houses.push({...houseSlots.shift(), tier:0, progress:1, workNeed:1, owner:null, upgrading:false, residents:[], tenantHeads:[], lastRent:0});
+}
+
+function resize(){
+  // ignore collapsed layouts (mid-reflow the canvas can briefly report ~0)
+  if(canvas.clientWidth<120 || canvas.clientHeight<120) return;
+  W=canvas.clientWidth; H=canvas.clientHeight;
+  canvas.width=W*devicePixelRatio; canvas.height=H*devicePixelRatio;
+  ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  layoutWorld();
+}
+window.addEventListener("resize", resize);
+// catch layout-driven size changes too (e.g. the topbar wrapping to two lines)
+new ResizeObserver(resize).observe(canvas);
+
+// ---------- state ----------
+const S = {
+  day:1, year:1, tick:0, paused:false, speed:1,
+  agents:[], nextId:1,
+  prices:Object.fromEntries(Object.entries(GOODS).map(([k,v])=>[k,v.price])),
+  supply:Object.fromEntries(Object.keys(GOODS).map(k=>[k,0])),
+  demand:Object.fromEntries(Object.keys(GOODS).map(k=>[k,0])),
+  treasury:120, schools:1, welfare:false, auto:true,
+  taxRates:[5,15,30],   // marginal % per bracket (tunable)
+  salesTax:0.0,
+  wealthTax:5,          // yearly % levy on the richest households
+  wealthTop:10,         // ...on the richest X% of households
+  wealthFloor:0,        // households below this wealth are exempt
+  rentTax:30,           // % tax on landlords' rental income
+  charity:0, charityToday:0,  // charitability: rich donate a share of income to the poorest
+  propCap:0,            // max properties one household may own (0 = unlimited)
+  propTax:0,            // yearly % of property value, paid by private owners
+  birthRate:7,          // yearly % chance of a child per fertile-age adult
+  immigration:0,        // newcomers arriving per year
+  welfareFund:0, welfareToday:0,
+  universities:0, hospitals:0,
+  medPool:0, medCapacityLeft:0, lastCrises:0, crisesThisYear:0,
+  spaceProgram:false, spaceWork:0, launches:0,   // gov space program
+  institutes:0, medWork:0,                        // medical research institute
+  techLabs:0, techWork:0,                         // technology research institute
+  greenhouses:0,                                  // artificial farms (+capacity, no land)
+  // difficulty-tunable parameters (see DIFF presets)
+  welfareHunger:80,     // hunger % at which food aid kicks in
+  starveDeath:6,        // %/day chance of death while starving
+  cureCap:95,           // max survival % reachable by medical research
+  eduProd:9,            // productivity % gained per school year
+  foodPriority:100,     // how strongly people prioritise eating (%)
+  diffMode:"medium",
+  treeMult:1, plotRows:3, plotCols:5,             // world-gen, set at start
+  achieved:{},          // achievement id → year unlocked
+  subsidy:Object.fromEntries(WORK_JOBS.concat(["teacher","doctor"]).map(j=>[j,0])),
+  pubHealth:false,      // state pays all treatment fees when ON
+  theatreMult:3, operaMult:5,   // paid-fun happiness vs the free park (settings)
+  maxGH:0,              // greenhouse cap (0 = unlimited)
+  drifters:true,        // wanderers arrive when the village nearly dies out
+  droughts:false, drought:false,   // drought mechanic enabled / this year is a drought
+  taxBrackets:[4,10],   // 🪙/day thresholds for the income-tax brackets
+  autoWelfare:true, autoPubHealth:true, autoWealthRate:5,   // what auto-gov may steer
+  gdpToday:0, foodEaten:0,
+  hist:{prices:{}, util:[], edu:[], gdp:[], happy:[], gdpTot:[], lifeExp:[], treated:[], fed:[], treasury:[], lifeHappy:[]},
+  lifeExpEma:0,         // smoothed average age at death
+  lifeExpRich:0, lifeExpPoor:0,   // same, split by household wealth vs median
+  lifeHappyRich:0, lifeHappyPoor:0, // lifetime happiness at death, same split
+  lifeHappyEma:0,       // smoothed happiness-days accumulated over a lifetime, at death
+  treatEma:0,           // smoothed share of illnesses treated the day they strike
+  selected:null,
+  hhDetail:null,        // head-agent id of the household opened in detail view
+};
+const HIST_MAX=40000;   // days of chart history kept (1000 sim-years)
+let chartWindow=240;    // default days shown on charts; 0 = all
+let lqWindow=240, lqScrollPos=1;   // Life Quality chart period + scroll position
+for(const g of Object.keys(GOODS)) S.hist.prices[g]=[];
+
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+// medical research: progress cheapens care and raises survival (60% → cure cap)
+const medProgress=()=>clamp(S.medWork/MED_RESEARCH_WORK,0,1);
+const medFee=()=>Math.max(5,Math.round(MED_FEE*(1-0.6*medProgress())));
+const medSurvival=()=>0.6+(S.cureCap/100-0.6)*medProgress();
+// research also raises throughput: better medicine treats more patients per doctor
+const docCap=()=>DOC_CAP+Math.round(20*medProgress());
+// technology research: progress lifts productivity across the whole economy
+const techProgress=()=>clamp(S.techWork/TECH_WORK,0,1);
+const techBoost=()=>1+0.5*techProgress();
+// daily food capacity: farm plots + greenhouses
+const foodCapacity=()=>farmPlots.length*FOOD_PER_PLOT + S.greenhouses*GH_FOOD;
+// how much of that capacity current farmers would use
+function desiredFoodShare(){
+  let d=0;
+  for(const f of S.agents) if(f.alive&&f.age>=ADULT_AGE&&f.job==="farmer") d+=JOBS.farmer.base*productivity(f);
+  return d/Math.max(1,foodCapacity());
+}
+
+// progressive income tax: marginal brackets on daily income
+// thresholds are adjustable in ⚙️ settings (S.taxBrackets)
+function progTax(income){
+  const [b0,b1]=S.taxBrackets;
+  const [r0,r1,r2]=S.taxRates.map(r=>r/100);
+  let tax = Math.min(income,b0)*r0;
+  if(income>b0) tax += (Math.min(income,b1)-b0)*r1;
+  if(income>b1) tax += (income-b1)*r2;
+  return tax;
+}
+// household helpers: children spend from a living parent's wallet
+function parentOf(a){
+  if(a.parent==null) return null;
+  const p=S.byId ? S.byId.get(a.parent) : S.agents.find(x=>x.id===a.parent);
+  return (p&&p.alive)?p:null;
+}
+function walletOf(a){
+  if(a.age<ADULT_AGE){ const p=parentOf(a); if(p) return p; }
+  return a;
+}
+// group the living into household units: a head adult, any adult children
+// still living at home (livesWith), their dependent children, recursively.
+function householdUnits(alive){
+  const kidsOf={}, nestOf={}, orphans=[];
+  const ids=new Set(alive.map(a=>a.id));
+  for(const a of alive){
+    if(a.age<ADULT_AGE){
+      if(parentOf(a)) (kidsOf[a.parent]=kidsOf[a.parent]||[]).push(a);
+      else orphans.push(a);
+    } else if(a.livesWith!=null && ids.has(a.livesWith)){
+      (nestOf[a.livesWith]=nestOf[a.livesWith]||[]).push(a);
+    }
+  }
+  const heads=alive.filter(a=>a.age>=ADULT_AGE && !(a.livesWith!=null && ids.has(a.livesWith)));
+  const units=heads.map(head=>{
+    const members=[head];
+    for(let i=0;i<members.length;i++){
+      const m=members[i];
+      members.push(...(nestOf[m.id]||[]), ...(kidsOf[m.id]||[]));
+    }
+    return members;
+  });
+  return units.concat(orphans.map(o=>[o]));
+}
+
+function log(msg){
+  const el=document.getElementById("log");
+  const d=document.createElement("div");
+  d.innerHTML=`<span class="yr">Y${S.year}D${S.day}</span> ${msg}`;
+  el.prepend(d);
+  while(el.children.length>60) el.removeChild(el.lastChild);
+}
+
+// ---------- agents ----------
+function makeAgent(age, job, parentId){
+  const par = parentId!=null ? S.agents.find(x=>x.id===parentId) : null;
+  const a={
+    id:S.nextId++,
+    name:NAMES[Math.floor(Math.random()*NAMES.length)],
+    family: par ? par.family : SURNAMES[Math.floor(Math.random()*SURNAMES.length)],
+    parent: parentId??null,
+    livesWith:null,   // id of the parent this adult still lives with
+    age, education: age>=ADULT_AGE ? Math.floor(rnd(0,5)) : 0,
+    job: age>=ADULT_AGE ? (job||WORK_JOBS[Math.floor(Math.random()*WORK_JOBS.length)]) : "child",
+    money: age>=ADULT_AGE ? rnd(8,25) : rnd(0,3),
+    inv:{food:rnd(1,3)},
+    hunger:rnd(0,0.3), fun:rnd(0.3,0.6), ill:0,
+    utilToday:0, utilAvg:0.5, lifeUtility:0, lifeHappy:0,
+    home:-1, alive:true,
+    x:rnd(0,W), y:rnd(0,H), tx:0, ty:0,
+    wageMemory:Object.fromEntries(WORK_JOBS.map(j=>[j,1])),
+    lastIncome:0, produced:0, taxPaid:0,
+    workTarget:null, // tree index / plot index for animation
+  };
+  return a;
+}
+
+function seedWorld(){
+  const mix=["farmer","farmer","farmer","farmer","farmer","woodchopper","woodchopper","woodchopper","craftsman","craftsman","builder","teacher"];
+  const adults=[];
+  for(let i=0;i<START_POP-7;i++){
+    const a=makeAgent(Math.floor(rnd(17,50)), mix[i%mix.length]);
+    adults.push(a); S.agents.push(a);
+  }
+  for(let i=0;i<7;i++){
+    const p=adults[Math.floor(Math.random()*adults.length)];
+    S.agents.push(makeAgent(Math.floor(rnd(4,15)), null, p.id));
+  }
+  assignHomes();
+  log("A small village wakes up. 🌅 Watch them chase utility.");
+}
+
+const livable=b=>b.progress>=1||b.upgrading;   // upgrades keep residents housed at old capacity
+function homesOf(b){ return livable(b)?TIERS[b.tier].homes:0; }
+function assignHomes(){
+  for(const b of houses){ b.residents=[]; b.tenantHeads=[]; b.usedHomes=0; }
+  const alive=S.agents.filter(a=>a.alive);
+  for(const a of alive) a.home=-1;
+  const units=householdUnits(alive);
+  const open=houses.filter(livable);
+  for(const unit of units){
+    const head=unit[0];
+    // landlords live in their own property when there's room; others take any free home
+    let b=open.find(x=>x.owner===head.id && x.usedHomes<homesOf(x))
+       || open.find(x=>x.usedHomes<homesOf(x));
+    if(!b) continue;
+    if(b.owner==null) b.owner=head.id;   // homestead: first family to move in owns the house
+    b.usedHomes++;
+    b.tenantHeads.push(head.id);
+    for(const m of unit){ b.residents.push(m.id); m.home=houses.indexOf(b); }
+  }
+}
+
+function productivity(a){
+  const edu = 1 + a.education*(S.eduProd/100);
+  let ageF = 1;
+  if(a.age < 22) ageF = 0.7 + 0.3*(a.age-ADULT_AGE)/6;
+  if(a.age > 55) ageF = Math.max(0.4, 1-(a.age-55)*0.03);
+  // illness saps output; technology lifts everyone
+  return edu*ageF*(a.ill?0.65:1)*techBoost();
+}
+
+function foodUtility(hunger){ return 3.0*hunger*(S.foodPriority/100); }
+// recreation utility: mult ×1 = the free park; theatre & opera multiples set in ⚙️
+function recUtility(fun, mult){ return mult*(1-fun); }
+// marginal utility of money: a coin matters less the richer you are.
+// Poor agents treat 1🪙 ≈ 1 util; the wealthy barely notice it.
+function moneyLambda(wealth){ return 1.2/(1+Math.max(0,wealth)/12); }
+
+// ---------- one economic day ----------
+function economicDay(){
+  for(const g in S.supply){ S.supply[g]=0; S.demand[g]=0; }
+  S.gdpToday=0; S.foodEaten=0;
+  S.byId=new Map(S.agents.map(x=>[x.id,x]));            // O(1) lookups all day
+  const adults = S.agents.filter(a=>a.alive && a.age>=ADULT_AGE);
+  const kids   = S.agents.filter(a=>a.alive && a.age< ADULT_AGE);
+  const unitsArr=householdUnits(S.agents.filter(a=>a.alive));
+  S.unitsToday=unitsArr.length;                          // cached for builders etc.
+
+  // --- schooling: free public seats first, then fee-paying private ---
+  const teachers = adults.filter(a=>a.job==="teacher");
+  const tutors   = adults.filter(a=>a.job==="tutor");
+  const doctorsN = adults.filter(a=>a.job==="doctor").length;
+  const seats = Math.min(S.schools*SCHOOL_CAPACITY, teachers.length*SCHOOL_CAPACITY);
+  let enrolled=0, privEnrolled=0, tuitionPool=0, privProspects=0;
+  for(const k of kids){
+    k.private=false;
+    k.inSchool = enrolled<seats && k.age>=5;
+    if(k.inSchool){ enrolled++; continue; }
+    if(k.age<5) continue;
+    // no public seat: family buys private education if it can afford it
+    const w=walletOf(k);
+    if(w.money>=TUITION*4){
+      privProspects++;
+      if(privEnrolled<tutors.length*SCHOOL_CAPACITY){
+        privEnrolled++; k.inSchool=true; k.private=true;
+        w.money-=TUITION; tuitionPool+=TUITION;
+      }
+    }
+  }
+  S.privateKids=privEnrolled;
+  // expected daily wage of one more tutor (drives market entry)
+  S.tutorWageEst=Math.min(privProspects,(tutors.length+1)*SCHOOL_CAPACITY)*TUITION/(tutors.length+1);
+
+  // --- forest constraint: wood output limited by mature trees ---
+  const choppers = adults.filter(a=>a.job==="woodchopper");
+  const matureTrees = trees.filter(t=>t.stage>=1);
+  let desiredWood=0;
+  for(const c of choppers) desiredWood += JOBS.woodchopper.base*productivity(c);
+  // sustainable harvest: the last 8 mature trees are breeding stock nobody can reach
+  const availWood = Math.max(0,matureTrees.length-8)*TREE_YIELD*0.35;
+  const woodRatio = desiredWood>0 ? Math.min(1, availWood/desiredWood) : 1;
+
+  // --- farmland constraint: each plot can only yield so much food per day ---
+  const farmersArr = adults.filter(a=>a.job==="farmer");
+  let desiredFood=0;
+  for(const f of farmersArr) desiredFood += JOBS.farmer.base*productivity(f);
+  const farmRatio = desiredFood>0 ? Math.min(1, foodCapacity()/desiredFood) : 1;
+
+  // --- production & income ---
+  let woodCut=0;
+  for(const a of adults){
+    a.utilToday=0; a.lastIncome=0; a.produced=0; a.taxPaid=0;
+    const job=JOBS[a.job];
+    if(a.job==="teacher"){
+      const pay = TEACHER_SALARY + S.subsidy.teacher;
+      const paid=Math.min(pay,Math.max(0,S.treasury));
+      S.treasury-=paid; earn(a,paid,false);
+      continue;
+    }
+    if(a.job==="scientist" || a.job==="researcher" || a.job==="technologist"){
+      const paid=Math.min(SCI_SALARY,Math.max(0,S.treasury));
+      S.treasury-=paid; earn(a,paid,false);
+      if(paid>0){   // an unpaid lab does no science
+        if(a.job==="scientist") S.spaceWork+=productivity(a);
+        else if(a.job==="researcher") S.medWork+=productivity(a);
+        else S.techWork+=productivity(a);
+      }
+      continue;
+    }
+    if(a.job==="tutor"){
+      earn(a, tutors.length? tuitionPool/tutors.length : 0, true);
+      continue;
+    }
+    if(a.job==="doctor"){
+      // fee pool from treatments, drawn down smoothly over the year,
+      // topped up by any public wage subsidy
+      const daily=Math.min(S.medPool, S.medPool/(DAYS_PER_YEAR*0.6));
+      const pay=doctorsN? daily/doctorsN : 0;
+      S.medPool-=pay;
+      const sub=Math.min(S.subsidy.doctor||0, Math.max(0,S.treasury));
+      S.treasury-=sub;
+      earn(a, pay+sub, true);
+      continue;
+    }
+    let qty = job.base * productivity(a) * rnd(0.85,1.15);
+    if(a.job==="woodchopper"){ qty*=woodRatio; woodCut+=qty; }
+    if(a.job==="farmer") qty*=farmRatio*(S.drought?0.50:1);
+    if(job.needs){
+      for(const [inp,per] of Object.entries(job.needs)){
+        const need = per*qty;
+        S.demand[inp]+=need;
+        const affordable = Math.min(need, a.money/Math.max(0.01,S.prices[inp]*(1+S.salesTax)));
+        qty *= affordable/Math.max(0.0001,need);
+        const spendAmt = affordable*S.prices[inp];
+        a.money -= spendAmt*(1+S.salesTax);
+        S.treasury += spendAmt*S.salesTax;
+      }
+    }
+    if(a.job==="builder"){
+      // paid only for construction work actually applied — no projects, no pay
+      const applied=buildHouses(qty);
+      a.produced=applied;
+      earn(a, applied*S.prices.house, true);
+      S.supply.house+=applied;
+    } else {
+      a.produced=qty;
+      S.supply[job.makes]+=qty;
+      earn(a, qty*S.prices[job.makes], true);
+    }
+    if(S.subsidy[a.job]>0 && S.treasury>=S.subsidy[a.job]){
+      S.treasury-=S.subsidy[a.job]; a.money+=S.subsidy[a.job]; a.lastIncome+=S.subsidy[a.job];
+    }
+  }
+
+  // fell trees to match wood actually cut
+  let toFell=Math.round(woodCut/TREE_YIELD);
+  for(const t of matureTrees){ if(toFell<=0) break; t.stage=0; toFell--; }
+  // regrowth + occasional sapling
+  for(const t of trees) if(t.stage<1) t.stage=Math.min(1,t.stage+1/TREE_REGROW_DAYS);
+  if(Math.random()<0.15 && trees.length<80) trees.push(newTree(0.05));
+
+  function earn(a, gross, isMarket){
+    const tax=progTax(gross);
+    S.treasury+=tax; a.taxPaid=tax;
+    a.money+=gross-tax; a.lastIncome+=gross-tax;
+    if(isMarket) S.gdpToday+=gross;
+    a.wageMemory[a.job]=(a.wageMemory[a.job]||0)*0.8+(gross-tax)*0.2;
+  }
+
+  // --- rent flows from tenants to landlords (or treasury) ---
+  collectRent();
+  charityFlows(adults);
+  S.welfareToday=0;
+
+  // --- welfare dole: small cash transfer to destitute households ---
+  if(S.welfareFund>1.5){
+    for(const u of unitsArr){
+      if(S.welfareFund<1.5) break;
+      const w=u.reduce((s,m)=>s+m.money,0);
+      if(w<15){ u[0].money+=1.5; S.welfareFund-=1.5; S.welfareToday+=1.5; }
+    }
+  }
+
+  // --- consumption ---
+  for(const a of S.agents){
+    if(!a.alive) continue;
+    a.hunger=clamp(a.hunger+(a.age<ADULT_AGE?0.28:0.33),0,1.2);
+    a.fun   =clamp(a.fun-0.25,0,1);
+    a.utilToday=0;
+
+    const wallet=walletOf(a);   // children draw on a living parent's money
+    let budgetSteps=6;
+    while(budgetSteps-->0){
+      const pFood=S.prices.food*(1+S.salesTax), pCraft=S.prices.crafts*(1+S.salesTax);
+      const options=[];
+      if(a.hunger>0.05){
+        if(a.inv.food>=1) options.push({u:foodUtility(a.hunger), cost:0, act:"eatInv"});
+        else if(wallet.money>=pFood) options.push({u:foodUtility(a.hunger), cost:pFood, act:"buyEat"});
+      }
+      if(a.fun<0.95 && wallet.money>=pCraft && a.age>=10) options.push({u:recUtility(a.fun,S.theatreMult), cost:pCraft, act:"paidRec"});
+      // the opera: an indulgence for the rich — a night out burns two craft pieces
+      if(a.fun<0.95 && a.age>=ADULT_AGE && wallet.money>=Math.max(2*pCraft,30)) options.push({u:recUtility(a.fun,S.operaMult), cost:2*pCraft, act:"opera"});
+      if(a.fun<0.95) options.push({u:recUtility(a.fun,1), cost:0, act:"freeRec"});
+      if(!options.length) break;
+      // net benefit = utility gained − coins spent × marginal utility of money
+      const lam=moneyLambda(wallet.money);
+      options.sort((o1,o2)=> (o2.u-o2.cost*lam) - (o1.u-o1.cost*lam));
+      const best=options[0];
+      if(best.u-best.cost*lam<0.05) break;
+      switch(best.act){
+        case "eatInv": a.inv.food-=1; a.utilToday+=foodUtility(a.hunger); a.hunger=clamp(a.hunger-0.5,0,1.2); S.foodEaten++; break;
+        case "buyEat": spend(wallet,pFood,S.prices.food); S.demand.food+=1; a.utilToday+=foodUtility(a.hunger); a.hunger=clamp(a.hunger-0.5,0,1.2); S.foodEaten++; break;
+        case "paidRec": spend(wallet,pCraft,S.prices.crafts); S.demand.crafts+=1; a.utilToday+=recUtility(a.fun,S.theatreMult); a.fun=clamp(a.fun+0.5,0,1); a.wantsTheatre=true; a.wantsOpera=false; break;
+        case "opera": spend(wallet,2*pCraft,2*S.prices.crafts); S.demand.crafts+=2; a.utilToday+=recUtility(a.fun,S.operaMult); a.fun=clamp(a.fun+0.6,0,1); a.wantsOpera=true; a.wantsTheatre=false; break;
+        case "freeRec": a.utilToday+=recUtility(a.fun,1); a.fun=clamp(a.fun+0.22,0,1); a.wantsTheatre=false; a.wantsOpera=false; break;
+      }
+    }
+    // shelter
+    if(a.home>=0) a.utilToday+=0.3; else { a.utilToday-=0.2; S.demand.house+=0.05; }
+
+    if(a.hunger>S.welfareHunger/100){
+      // food aid: welfare fund (wealth-tax financed) first, treasury backstop if toggled on
+      if(S.welfareFund>=S.prices.food){
+        S.welfareFund-=S.prices.food; S.welfareToday+=S.prices.food; S.demand.food+=1;
+        a.utilToday+=foodUtility(a.hunger); a.hunger=clamp(a.hunger-0.5,0,1.2); S.foodEaten++;
+      } else if(S.welfare && S.treasury>=S.prices.food){
+        S.treasury-=S.prices.food; S.demand.food+=1;
+        a.utilToday+=foodUtility(a.hunger); a.hunger=clamp(a.hunger-0.5,0,1.2); S.foodEaten++;
+      }
+    }
+    if(a.hunger>=1.15){
+      a.utilToday-=2;
+      if(Math.random()<S.starveDeath/100){ a.alive=false; log(`💀 ${who(a)} starved. Scarcity has teeth.`); handleDeath(a); }
+    }
+    a.utilAvg=a.utilAvg*0.92+a.utilToday*0.08;
+    a.lifeUtility+=a.utilToday;
+    a.lifeHappy+=(clamp(a.utilAvg/2.5,0,1)+a.fun)/2;   // accumulate lifetime happiness-days
+  }
+  function spend(a,gross,net){ a.money-=gross; S.treasury+=gross-net; }
+
+  // --- minor ailments: people fall mildly ill, lose output and fun, and
+  // naturally seek treatment — paying out of pocket if they must ---
+  for(const a of S.agents){
+    if(!a.alive || a.age<=5) continue;
+    const fresh=!a.ill && Math.random()<0.0018;    // ~1.8% of the village falls ill each year
+    if(fresh) a.ill=25;
+    if(!a.ill) continue;
+    let treatedNow=false;
+    if(S.hospitals>0 && S.medCapacityLeft>0){
+      const fee=medFee(), w=walletOf(a);
+      let payer=null;
+      if(S.pubHealth && S.treasury>=fee) payer="gov";
+      else if(w.money>=fee) payer="self";          // people pay for care before comforts
+      else if(S.welfareFund>=fee) payer="welfare";
+      if(payer){
+        if(payer==="gov") S.treasury-=fee;
+        else if(payer==="self") w.money-=fee;
+        else S.welfareFund-=fee;
+        S.medPool+=fee; S.medCapacityLeft--; a.ill=0; treatedNow=true;
+      }
+    }
+    // same-day-treatment tracker only scores the day an illness strikes
+    if(fresh) S.treatEma=S.treatEma*0.95+(treatedNow?0.05:0);
+    if(!a.ill) continue;
+    // no treatment available or affordable: it lingers and eventually passes
+    a.ill--; a.fun=Math.max(0,a.fun-0.015);
+  }
+
+  // --- space milestone: enough accumulated science → a rocket goes up ---
+  if(S.spaceProgram && S.spaceWork>=SPACE_WORK*(S.launches+1)){
+    S.launches++;
+    log(`🚀 LAUNCH! Rocket #${S.launches} roars off the pad — the whole village watches the sky.`);
+    for(const a of S.agents) if(a.alive) a.fun=Math.min(1,a.fun+0.35);
+  }
+
+  // --- price adjustment ---
+  for(const g of Object.keys(GOODS)){
+    const s=Math.max(0.1,S.supply[g]), d=Math.max(0.1,S.demand[g]);
+    const pressure=clamp((d-s)/(d+s),-0.5,0.5);
+    S.prices[g]=clamp(S.prices[g]*(1+pressure*0.12), GOODS[g].price*0.2, GOODS[g].price*6);
+  }
+
+  // --- job switching ---
+  for(const a of adults){
+    if(a.job==="teacher" || a.job==="scientist" || a.job==="researcher" || a.job==="technologist" || Math.random()>0.15) continue;
+    let bestJob=a.job, bestW=a.wageMemory[a.job]||1;
+    for(const j of SWITCHABLE){
+      const jb=JOBS[j];
+      let w;
+      if(j==="doctor"){
+        // needs a university degree-level education, a hospital to work in
+        if(S.universities<1 || S.hospitals<1 || a.education<DOC_EDU) continue;
+        const docsN=adults.filter(x=>x.job==="doctor").length;
+        w=Math.min(S.lastCrises||3,(docsN+1)*docCap())*medFee()/DAYS_PER_YEAR/(docsN+1);
+      }
+      else if(j==="tutor") w=S.tutorWageEst||0;
+      else {
+        w=jb.base*productivity(a)*(jb.makes?S.prices[jb.makes]:0);
+        if(jb.needs){
+          let inCost=0;
+          for(const [inp,per] of Object.entries(jb.needs)){
+            const c=jb.base*productivity(a)*per*S.prices[inp];
+            w-=c; inCost+=c;
+          }
+          // working capital: without cash to buy inputs the trade can't actually run
+          if(inCost>0 && a.money<inCost*3) w*=clamp(a.money/(inCost*3),0,1);
+        }
+        if(j==="woodchopper") w*=woodRatio;   // a bare forest pays badly
+        if(j==="farmer") w*=farmRatio;        // full farmland pays badly too
+        if(j==="builder"){                    // backlog of work → construction boom wages; no projects → no work
+          const backlog=houses.reduce((s,x)=>s+(x.progress<1?(1-x.progress)*x.workNeed:0),0);
+          if(backlog>0.05) w*=Math.min(1+0.3*backlog,3);
+          else {
+            // any future work even possible? free land or an upgradable building
+            const possible=houseSlots.length>0 || houses.some(x=>x.tier<TIERS.length-1);
+            w*= possible?0.15:0.01;           // a fully built-out city employs no builders
+          }
+        }
+      }
+      w=w-progTax(w)+(S.subsidy[j]||0);       // after-tax wage (progressive)
+      if(w>bestW*(1+JOB_SWITCH_FRICTION)){ bestW=w; bestJob=j; }
+    }
+    if(bestJob!==a.job){
+      log(`${JOBS[a.job].emoji}→${JOBS[bestJob].emoji} ${who(a)} switched from ${jobLabel(a.job)} to ${jobLabel(bestJob)} (better pay).`);
+      a.job=bestJob; a.workTarget=null;
+    }
+  }
+
+  // pick daily work targets for animation
+  const matureNow=trees.map((t,i)=>t.stage>0.5?i:-1).filter(i=>i>=0);
+  for(const a of adults){
+    if(a.job==="woodchopper") a.workTarget = matureNow.length? matureNow[a.id%matureNow.length] : null;
+    else if(a.job==="farmer") a.workTarget = a.id%farmPlots.length;
+    else a.workTarget=null;
+  }
+
+  // --- history ---
+  const alive=S.agents.filter(a=>a.alive);
+  for(const g of Object.keys(GOODS)) push(S.hist.prices[g],S.prices[g]);
+  push(S.hist.util, alive.reduce((s,a)=>s+a.utilAvg,0)/Math.max(1,alive.length));
+  push(S.hist.edu,  alive.reduce((s,a)=>s+a.education,0)/Math.max(1,alive.length));
+  push(S.hist.gdp,  S.gdpToday/Math.max(1,alive.length));
+  // happiness: each agent's utility (normalised to ~0..1) averaged with fun
+  push(S.hist.happy, alive.reduce((s,a)=>s+(clamp(a.utilAvg/2.5,0,1)+a.fun)/2,0)/Math.max(1,alive.length));
+  push(S.hist.gdpTot, S.gdpToday);
+  push(S.hist.lifeExp, S.lifeExpEma);
+  push(S.hist.treated, S.treatEma);
+  // well-fed: ended the day with hunger low (ate recently, not sliding to starvation)
+  push(S.hist.fed, alive.filter(a=>a.hunger<0.6).length/Math.max(1,alive.length));
+  push(S.hist.treasury, Math.max(0,S.treasury));
+  push(S.hist.lifeHappy, S.lifeHappyEma);
+  checkAchievements();
+  function push(arr,v){ arr.push(v); if(arr.length>HIST_MAX) arr.shift(); }
+
+  // --- private property development ---
+  developersAct();
+
+  // --- auto-government ---
+  if(S.auto) autoPolicy();
+
+  // --- calendar ---
+  S.day++;
+  if(S.day>DAYS_PER_YEAR){ S.day=1; S.year++; yearEnd(); }
+  const before=S.agents.length;
+  S.agents=S.agents.filter(a=>a.alive);
+  if(S.agents.length!==before) assignHomes();
+  // at very high speed, redraw panels every 5th day to keep the frame rate up
+  if(S.speed<20 || S.day%(S.speed>=1000?20:5)===0) updatePanels();
+}
+
+// builders push progress through the construction queue, project by project.
+// Returns the work actually applied (what the builder gets paid for).
+function buildHouses(qty){
+  let applied=0, brokeGround=false;
+  while(qty>0.0001){
+    let b=houses.find(x=>x.progress<1);
+    if(!b){
+      const units=S.unitsToday||0;
+      const homes=houses.reduce((s,x)=>s+homesOf(x),0);
+      if(!brokeGround && units>homes-1 && houseSlots.length){
+        b={...houseSlots.shift(), tier:0, progress:0, workNeed:TIERS[0].work, owner:null, upgrading:false, residents:[], tenantHeads:[], lastRent:0};
+        houses.push(b); brokeGround=true;
+        log("🏗️ Ground broken on a new house.");
+      } else break;
+    }
+    const used=Math.min(qty,(1-b.progress)*b.workNeed);
+    b.progress=Math.min(1,b.progress+used/b.workNeed);
+    qty-=used; applied+=used;
+    if(b.progress>=1){
+      if(b.upgrading){
+        b.tier=b.targetTier; b.upgrading=false;
+        log(`🏙️ ${cap(TIERS[b.tier].name)} completed — ${TIERS[b.tier].homes} homes${b.owner==="gov"?" (public housing)":""}.`);
+      } else log("🏠 A house is finished — a family moves in.");
+      assignHomes();
+    }
+  }
+  return applied;
+}
+const cap=s=>s[0].toUpperCase()+s.slice(1);
+
+// charitability: the well-off give a slice of today's income to the poorest 20%.
+// The share rises with the giver's wealth — the rich give a greater percentage
+// (their marginal utility of money is lower), the middling give a token amount.
+function charityFlows(adults){
+  S.charityToday=0;
+  if(S.charity<=0) return;
+  let pool=0;
+  for(const a of adults){
+    if(a.money<50 || a.lastIncome<=0) continue;   // only the comfortable give
+    const pct=(S.charity/100)*Math.min(1, a.money/300);
+    const gift=Math.min(a.lastIncome*pct, a.money);
+    a.money-=gift; pool+=gift;
+  }
+  if(pool<=0.01) return;
+  const poor=adults.slice().sort((x,y)=>x.money-y.money)
+                   .slice(0,Math.max(1,Math.floor(adults.length*0.2)));
+  const share=pool/poor.length;
+  for(const p of poor) p.money+=share;
+  S.charityToday=pool;
+}
+
+// tenants pay daily rent to the building's owner (treasury for public housing, half rate)
+function collectRent(){
+  S.rentToday=0;
+  const rentBase=clamp(S.prices.house*RENT_RATE,0.4,3);
+  for(const a of S.agents) a.rentPaid=0;
+  for(const b of houses){
+    b.lastRent=0;
+    if(b.owner==null || !livable(b)) continue;
+    const rent=b.owner==="gov"?rentBase*0.5:rentBase;
+    for(const hid of b.tenantHeads){
+      if(hid===b.owner) continue;               // owner-occupiers pay no rent
+      const head=S.agents.find(x=>x.id===hid&&x.alive);
+      if(!head) continue;
+      const pay=Math.min(rent,Math.max(0,head.money));
+      head.money-=pay; head.rentPaid=pay;
+      if(b.owner==="gov") S.treasury+=pay;
+      else {
+        const o=S.agents.find(x=>x.id===b.owner&&x.alive);
+        if(!o){ b.owner=null; head.money+=pay; continue; }
+        // rental income has its own tax rate, separate from wage brackets
+        const tax=pay*S.rentTax/100;
+        S.treasury+=tax; o.taxPaid+=tax;
+        o.money+=pay-tax; o.lastIncome+=pay-tax;
+      }
+      b.lastRent+=pay; S.rentToday+=pay;
+    }
+  }
+}
+
+// land price rises with scarcity: cheap while plots are plentiful,
+// prohibitive when the village is nearly full — this is what tilts
+// investment from sprawl (new houses) toward density (towers).
+function landPrice(){
+  const total=houses.length+houseSlots.length;
+  return clamp(12*total/Math.max(houseSlots.length,0.5), 10, 400);
+}
+
+// wealthy households develop property when housing is scarce. Each option is
+// scored by expected yield (rent on homes that would actually fill ÷ cost);
+// the developer picks the best return, not the biggest building.
+function developersAct(){
+  if(S.day%3!==0) return;
+  const alive=S.agents.filter(a=>a.alive);
+  const units=householdUnits(alive);
+  const totalHomes=houses.reduce((s,b)=>s+homesOf(b),0);
+  const occupancy=units.length/Math.max(1,totalHomes);
+  if(occupancy<0.85) return;                     // no housing pressure, no investment case
+  const dev=alive.filter(a=>a.age>=ADULT_AGE).sort((x,y)=>y.money-x.money)[0];
+  if(!dev) return;
+  // construction sector capacity: pending work vs builders' daily output.
+  // A long queue delays completion, which discounts every project's return.
+  const pendingWork=houses.reduce((s,x)=>s+(x.progress<1?(1-x.progress)*x.workNeed:0),0);
+  const buildRate=Math.max(0.1,alive.filter(a=>a.age>=ADULT_AGE&&a.job==="builder").length*JOBS.builder.base);
+  const queueDays=pendingWork/buildRate;
+  if(queueDays>60) return;   // contractors booked out for over a year — nobody sane invests
+  const rent=clamp(S.prices.house*RENT_RATE,0.4,3);
+  const unhoused=Math.max(1,units.length-totalHomes);
+  const options=[];
+  // option: buy a plot from the state and build a plain house
+  if(houseSlots.length){
+    const cost=TIERS[0].cost+landPrice();
+    options.push({kind:"new", cost, gain:Math.min(1,unhoused)*rent});
+  }
+  // options: buy out & redevelop an existing building one tier up
+  for(const b of houses){
+    if(b.progress<1||b.upgrading||b.tier>=TIERS.length-1) continue;
+    const t=b.tier;
+    const buyout=b.owner===dev.id?0:TIERS[t].homes*S.prices.house*BUYOUT_MULT;
+    const added=TIERS[t+1].homes-TIERS[t].homes;
+    options.push({kind:"up", b, cost:TIERS[t+1].cost+buyout, buyout,
+                  gain:Math.min(added,unhoused)*rent});
+  }
+  // property cap: a household at the limit can only redevelop what it already
+  // owns — no new plots, no buying out other landlords
+  if(S.propCap>0){
+    const unit=units.find(u=>u.includes(dev))||[dev];
+    const ids=new Set(unit.map(m=>m.id));
+    const ownedN=houses.filter(b=>ids.has(b.owner)).length;
+    if(ownedN>=S.propCap)
+      for(let i=options.length-1;i>=0;i--)
+        if(!(options[i].kind==="up" && ids.has(options[i].b.owner))) options.splice(i,1);
+  }
+  // yield discounted by how long the project would sit in the build queue
+  for(const o of options){
+    const myWork=o.kind==="new"?TIERS[0].work:TIERS[o.b.tier+1].work;
+    const delay=(pendingWork+myWork)/buildRate;
+    o.roi=o.gain/o.cost/(1+delay*0.05);
+  }
+  options.sort((a,b)=>b.roi-a.roi);
+  // best affordable option, but only if the yield beats ~0.4%/day
+  const pick=options.find(o=>dev.money>o.cost*1.25 && o.roi>0.004);
+  if(!pick) return;
+  dev.money-=pick.cost;
+  if(pick.kind==="new"){
+    S.treasury+=pick.cost;                       // land + materials bought from the state
+    houses.push({...houseSlots.shift(), tier:0, progress:0, workNeed:TIERS[0].work, owner:dev.id, upgrading:false, residents:[], tenantHeads:[], lastRent:0});
+    log(`🏗️ ${who(dev)} bought a plot (land ${landPrice().toFixed(0)}🪙) and is building a rental house — expected yield ${(pick.roi*100).toFixed(1)}%/day.`);
+  } else {
+    const b=pick.b, t=b.tier;
+    payBuyout(b,pick.buyout,dev);
+    S.treasury+=TIERS[t+1].cost;                 // materials & permits bought via the state
+    b.owner=dev.id; b.upgrading=true; b.targetTier=t+1; b.progress=0; b.workNeed=TIERS[t+1].work;
+    log(`🏗️ ${who(dev)} is developing a ${TIERS[t].name} into a ${TIERS[t+1].name} (${TIERS[t+1].homes} homes) for ${pick.cost.toFixed(0)}🪙${pick.buyout?` incl. ${pick.buyout.toFixed(0)}🪙 buyout`:""} — expected yield ${(pick.roi*100).toFixed(1)}%/day.`);
+  }
+}
+function payBuyout(b,amount,dev){
+  if(amount<=0) return;
+  if(b.owner==="gov"){ S.treasury+=amount; return; }
+  if(b.owner!=null && b.owner!==dev.id){
+    const o=S.agents.find(x=>x.id===b.owner&&x.alive);
+    if(o){ o.money+=amount; log(`💰 ${o.name} ${o.family} was bought out for ${amount.toFixed(0)}🪙.`); return; }
+  }
+  // unowned/orphaned: compensation split among the resident households
+  const heads=b.tenantHeads.map(id=>S.agents.find(x=>x.id===id&&x.alive)).filter(Boolean);
+  if(heads.length){
+    const share=amount/heads.length;
+    for(const h of heads) h.money+=share;
+    log(`💰 ${heads.length} resident household${heads.length>1?"s":""} bought out for ${amount.toFixed(0)}🪙 total.`);
+  } else S.treasury+=amount;
+}
+
+// yearly wealth tax on the richest X% of households → welfare fund.
+// Levied on every member's money in proportion (trusts included);
+// households under the exemption floor are skipped.
+function levyWealthTax(){
+  if(S.wealthTax<=0) return;
+  const alive=S.agents.filter(a=>a.alive);
+  const hw=householdUnits(alive)
+    .map(u=>({u,w:u.reduce((s,m)=>s+m.money,0)}))
+    .sort((a,b)=>b.w-a.w);
+  const n=Math.min(hw.length,Math.max(1,Math.round(hw.length*S.wealthTop/100)));
+  let total=0, payers=0;
+  for(let i=0;i<n;i++){
+    const {u,w}=hw[i];
+    if(w<=Math.max(1,S.wealthFloor)) continue;
+    const tax=w*S.wealthTax/100;
+    for(const m of u) m.money-=tax*(m.money/w);
+    total+=tax; payers++;
+  }
+  S.welfareFund+=total;
+  if(total>0.5) log(`💎 Wealth tax: ${payers} household${payers>1?"s":""} (richest ${S.wealthTop}%) paid ${total.toFixed(0)}🪙 into the welfare fund.`);
+  // the fund is insurance, not a vault: surplus flows back to the treasury,
+  // where the fiscal rule recycles it (or cuts income taxes)
+  // the fund is insurance sized to the population, not a fixed vault
+  const fundCap=Math.max(400, S.agents.filter(a=>a.alive).length*1.5);
+  if(S.welfareFund>fundCap){
+    const surplus=S.welfareFund-fundCap;
+    S.treasury+=surplus; S.welfareFund=fundCap;
+    log(`🏦 Welfare fund surplus of ${surplus.toFixed(0)}🪙 transferred to the treasury.`);
+  }
+}
+
+// a life-threatening event: with a hospital, spare doctor capacity and the
+// fee paid (self or welfare fund), treatment succeeds at the survival rate
+// set by medical research progress (60% up to 95%).
+function healthCrisis(a){
+  S.crisesThisYear++;
+  let gotCare=false;
+  if(S.hospitals>0 && S.medCapacityLeft>0){
+    const w=walletOf(a);
+    const fee=medFee();          // research makes treatment cheaper over time
+    let payer=null;
+    if(S.pubHealth && S.treasury>=fee) payer="gov";
+    else if(w.money>=fee) payer="self";
+    else if(S.welfareFund>=fee) payer="welfare";
+    if(payer){
+      if(payer==="gov") S.treasury-=fee;
+      else if(payer==="self") w.money-=fee;
+      else S.welfareFund-=fee;
+      S.medPool+=fee; S.medCapacityLeft--;
+      gotCare=true; S.treatEma=S.treatEma*0.95+0.05;
+      if(Math.random()<medSurvival()){
+        log(`⚕️ ${who(a)} was treated at the hospital${payer==="welfare"?" (welfare-funded)":payer==="gov"?" (publicly funded)":""} and recovered.`);
+        return true;
+      }
+      log(`⚕️ Treatment failed for ${who(a)}.`);
+    }
+  }
+  if(!gotCare) S.treatEma*=0.95;   // a crisis nobody could treat drags the score down
+  return false;
+}
+
+// yearly property tax: private owners pay a % of each finished building's
+// value (homes × house price) to the treasury — hits land wealth even when
+// the units sit empty, unlike the rental income tax
+function levyPropertyTax(){
+  if(S.propTax<=0) return;
+  let total=0;
+  for(const b of houses){
+    if(b.owner==null || b.owner==="gov" || b.progress<1) continue;
+    const o=S.agents.find(x=>x.id===b.owner&&x.alive);
+    if(!o) continue;
+    const tax=Math.min(Math.max(0,o.money), homesOf(b)*S.prices.house*S.propTax/100);
+    o.money-=tax; o.taxPaid+=tax;
+    S.treasury+=tax; total+=tax;
+  }
+  if(total>0.5) log(`🏛 Property tax: landlords paid ${total.toFixed(0)}🪙 to the treasury.`);
+}
+
+// property-cap enforcement: households over the limit must divest at year end.
+// Excess buildings (smallest first) are sold at the buyout price to the richest
+// household still under the cap; if nobody can buy, the state takes them as
+// public housing, paying what the treasury can afford.
+function enforcePropCap(){
+  if(S.propCap<=0) return;
+  const alive=S.agents.filter(a=>a.alive);
+  const units=householdUnits(alive);
+  const unitOf=new Map();
+  units.forEach((u,i)=>u.forEach(m=>unitOf.set(m.id,i)));
+  const owned=units.map(()=>[]);
+  for(const b of houses){
+    if(b.owner==null || b.owner==="gov") continue;
+    const ui=unitOf.get(b.owner);
+    if(ui!=null) owned[ui].push(b);
+  }
+  for(let i=0;i<units.length;i++){
+    let excess=owned[i].length-S.propCap;
+    if(excess<=0) continue;
+    owned[i].sort((a,b)=>homesOf(a)-homesOf(b));   // part with the smallest first
+    while(excess-->0){
+      const b=owned[i].shift();
+      const price=Math.max(homesOf(b),1)*S.prices.house*BUYOUT_MULT;
+      const seller=S.agents.find(x=>x.id===b.owner&&x.alive);
+      const buyer=alive.filter(x=>x.age>=ADULT_AGE && x.money>price
+                    && unitOf.get(x.id)!==i
+                    && owned[unitOf.get(x.id)].length<S.propCap)
+                  .sort((x,y)=>y.money-x.money)[0];
+      if(buyer){
+        buyer.money-=price;
+        if(seller) seller.money+=price; else S.treasury+=price;
+        b.owner=buyer.id; owned[unitOf.get(buyer.id)].push(b);
+        log(`⚖️ Property cap: ${seller?seller.name+" "+seller.family:"an estate"} had to sell a ${TIERS[b.tier].name} to ${buyer.name} ${buyer.family} for ${price.toFixed(0)}🪙.`);
+      } else {
+        const paid=Math.min(price,Math.max(0,S.treasury));
+        S.treasury-=paid;
+        if(seller) seller.money+=paid;
+        b.owner="gov";
+        log(`⚖️ Property cap: the state took over a ${TIERS[b.tier].name} for ${paid.toFixed(0)}🪙 — now public housing.`);
+      }
+    }
+  }
+}
+
+function yearEnd(){
+  // droughts (⚙️ settings): some years the rains fail and farm output suffers
+  const wasDrought=S.drought;
+  S.drought=S.droughts && Math.random()<0.05;
+  if(S.drought && !wasDrought) log("🌵 Drought — the rains failed. Farm output down 50% this year.");
+  else if(wasDrought && !S.drought) log("🌧 The drought broke — farms back to full output.");
+  levyWealthTax();
+  levyPropertyTax();
+  enforcePropCap();
+  const alive=S.agents.filter(a=>a.alive);
+  // hospital capacity for this year's crises
+  const docsN=alive.filter(a=>a.job==="doctor").length;
+  S.medCapacityLeft=S.hospitals>0?docsN*docCap():0;
+  for(const a of alive){
+    a.age++;
+    if(a.inSchool && a.education<MAX_EDUCATION) a.education++;
+    // disease can strike anyone past infancy
+    if(a.age>5 && a.age<=OLD_AGE && Math.random()<0.04){
+      if(!healthCrisis(a) && Math.random()<0.35){
+        a.alive=false; log(`🦠 ${who(a)} died of illness.`); handleDeath(a); continue;
+      }
+    }
+    if(a.age===ADULT_AGE){
+      a.job=WORK_JOBS[Math.floor(Math.random()*WORK_JOBS.length)];
+      const p=parentOf(a);
+      if(p && Math.random()<0.7){
+        a.livesWith=p.id;
+        log(`🎓 ${who(a)} grew up with ${a.education} yrs of school (+${Math.round(a.education*S.eduProd)}% productivity), became a ${jobLabel(a.job)}, and stays in ${p.name}'s home for now.`);
+      } else {
+        log(`🎓 ${who(a)} grew up with ${a.education} yrs of school (+${Math.round(a.education*S.eduProd)}% productivity) and became a ${jobLabel(a.job)}.`);
+      }
+    } else if(a.livesWith!=null && a.age>ADULT_AGE){
+      // adult children move out once they can afford it, or by ~30 regardless
+      const p=S.agents.find(x=>x.id===a.livesWith&&x.alive);
+      if(!p) a.livesWith=null;
+      else if((a.money>35 && Math.random()<0.5) || a.age>=30){
+        a.livesWith=null;
+        log(`🧳 ${a.name} (${a.age}y) saved ${a.money.toFixed(0)}🪙 and moved out of ${p.name}'s home.`);
+      }
+    }
+    if(a.age>OLD_AGE && Math.random()<(a.age-OLD_AGE)/(MAX_AGE-OLD_AGE)*0.5){
+      if(!healthCrisis(a)){
+        a.alive=false; log(`🕊️ ${who(a)} died of old age (${a.age}).`); handleDeath(a);
+      }
+    }
+  }
+  S.lastCrises=S.crisesThisYear; S.crisesThisYear=0;
+  const prosperity=clamp((S.hist.util.at(-1)||0)/1.5,0,1);
+  const parents=S.agents.filter(a=>a.alive&&a.age>=18&&a.age<=50);
+  // fertility scales with the child-bearing population, not a fixed cap;
+  // the base rate is a policy dial, damped by prosperity — and by housing:
+  // few start families with nowhere to live
+  const homelessShare=alive.filter(a=>a.alive&&a.home<0).length/Math.max(1,alive.length);
+  const roofFactor=clamp(1-homelessShare*0.9,0.1,1);
+  const births=Math.round(parents.length*S.birthRate/100*prosperity*roofFactor*(0.5+Math.random()));
+  for(let i=0;i<births && parents.length;i++){
+    const p=parents[Math.floor(Math.random()*parents.length)];
+    const b=makeAgent(0,null,p.id); S.agents.push(b);
+    log(`👶 ${b.name} is born to ${p.name}.`);
+  }
+  // immigration: working-age newcomers settle at the yearly quota
+  if(S.immigration>0){
+    const names=[];
+    for(let i=0;i<S.immigration;i++){
+      const m=makeAgent(Math.floor(rnd(17,45)));
+      S.agents.push(m); names.push(`${m.name} ${m.family}`);
+    }
+    log(`🛬 ${S.immigration} newcomer${S.immigration>1?"s":""} settled in the village: ${names.join(", ")}.`);
+  }
+  // tiny settlements attract the occasional drifter — the village never quite dies out
+  if(S.drifters && S.agents.filter(a=>a.alive).length<30 && Math.random()<0.6){
+    const m=makeAgent(Math.floor(rnd(17,40)));
+    S.agents.push(m);
+    log(`🚶 ${m.name} ${m.family} wandered in from beyond the map and settled.`);
+  }
+  assignHomes();
+  log(`— Year ${S.year} begins. Population ${S.agents.filter(a=>a.alive).length}. —`);
+}
+
+function who(a){ return `${a.name} ${a.family} (${a.age}y ${a.job==="child"?"child":jobLabel(a.job)})`; }
+
+// estate: money passes to surviving children (equal shares), else the treasury.
+// orphaned minors are adopted by a random adult.
+function handleDeath(dead){
+  // life-expectancy tracker: slow moving average over roughly the last 50 deaths
+  S.lifeExpEma = S.lifeExpEma ? S.lifeExpEma*0.98 + dead.age*0.02 : dead.age;
+  // happiness per lifetime: how many happiness-days a whole life contained
+  const lh=dead.lifeHappy||0;
+  S.lifeHappyEma = S.lifeHappyEma ? S.lifeHappyEma*0.98 + lh*0.02 : lh;
+  // rich/poor split: was the dead's household above or below median wealth?
+  {
+    const ws=householdUnits(S.agents.filter(x=>x.alive))
+      .map(u=>u.reduce((s,m)=>s+m.money,0)).sort((a,b)=>a-b);
+    const median=ws[Math.floor(ws.length/2)]||0;
+    const myW=dead.age<ADULT_AGE ? (walletOf(dead).money||0) : dead.money;
+    if(myW>median){
+      S.lifeExpRich   = S.lifeExpRich   ? S.lifeExpRich*0.96   + dead.age*0.04 : dead.age;
+      S.lifeHappyRich = S.lifeHappyRich ? S.lifeHappyRich*0.96 + lh*0.04       : lh;
+    } else {
+      S.lifeExpPoor   = S.lifeExpPoor   ? S.lifeExpPoor*0.96   + dead.age*0.04 : dead.age;
+      S.lifeHappyPoor = S.lifeHappyPoor ? S.lifeHappyPoor*0.96 + lh*0.04       : lh;
+    }
+  }
+  // heirs: children first (minors and adults alike); no children → eldest
+  // living member of the same family line; no kin → the treasury.
+  const kids=S.agents.filter(x=>x.alive&&x.parent===dead.id);
+  let heirs=kids, how="child";
+  if(!heirs.length){
+    const kin=S.agents.filter(x=>x.alive&&x.family===dead.family&&x.id!==dead.id)
+                      .sort((x,y)=>y.age-x.age);
+    if(kin.length){ heirs=[kin[0]]; how="kin"; }
+  }
+  // property passes to the eldest heir
+  for(const b of houses){
+    if(b.owner===dead.id){
+      const heir=heirs.slice().sort((x,y)=>y.age-x.age)[0];
+      b.owner=heir?heir.id:null;
+      if(heir&&b.tier>0) log(`🏢 ${heir.name} ${heir.family} inherited a ${TIERS[b.tier].name}.`);
+    }
+  }
+  if(dead.money>0.01){
+    if(heirs.length){
+      const share=dead.money/heirs.length;
+      for(const h of heirs) h.money+=share;
+      log(`📜 ${dead.name} ${dead.family}'s estate (${dead.money.toFixed(0)}🪙) → ${heirs.map(h=>h.name).join(", ")}${how==="kin"?" (nearest kin)":""}.`);
+    } else {
+      S.treasury+=dead.money;
+      log(`📜 ${dead.name} ${dead.family}'s estate (${dead.money.toFixed(0)}🪙) escheated to the treasury (no heirs).`);
+    }
+    dead.money=0;
+  }
+  const minors=heirs.filter(h=>h.age<ADULT_AGE);
+  const adults=S.agents.filter(x=>x.alive&&x.age>=ADULT_AGE&&x.id!==dead.id);
+  for(const m of minors){
+    const fost=adults[Math.floor(Math.random()*adults.length)];
+    if(fost){ m.parent=fost.id; log(`🤝 Orphaned ${m.name} was taken in by ${fost.name}.`); }
+    else m.parent=null;
+  }
+}
+
+// ---------- movement ----------
+function moveAgents(dt){
+  const t=S.tick;
+  for(const a of S.agents){
+    if(!a.alive) continue;
+    const phase=(t*0.5+a.id*7)%100;
+    let px,py;
+    const homeH = a.home>=0? houses[a.home] : null;
+    if(a.age<ADULT_AGE){
+      if(a.inSchool && phase<55){ px=sites.school.x; py=sites.school.y+14; }
+      else if(phase<80){ px=sites.park.x; py=sites.park.y; }
+      else if(homeH){ px=homeH.x; py=homeH.y+16; }
+      else { px=sites.park.x; py=sites.park.y+20; }
+    } else if(phase<50){ // work
+      if(a.job==="woodchopper" && a.workTarget!=null && trees[a.workTarget]){ px=trees[a.workTarget].x+6; py=trees[a.workTarget].y+8; }
+      else if(a.job==="farmer" && a.workTarget!=null && farmPlots[a.workTarget]){ const p=farmPlots[a.workTarget]; px=p.x+10; py=p.y+18; }
+      else if(a.job==="builder"){ const h=houses.find(x=>x.progress<1); if(h){px=h.x; py=h.y+10;} else {px=sites.market.x; py=sites.market.y;} }
+      else if(a.job==="teacher"||a.job==="tutor"){ px=sites.school.x; py=sites.school.y+18; }
+      else if(a.job==="doctor"){ px=sites.hospital.x; py=sites.hospital.y+12; }
+      else if(a.job==="scientist"){ px=sites.launchpad.x; py=sites.launchpad.y+12; }
+      else if(a.job==="researcher"){ px=sites.lab.x; py=sites.lab.y+12; }
+      else if(a.job==="technologist"){ px=sites.techlab.x; py=sites.techlab.y+12; }
+      else { px=sites.workshop.x; py=sites.workshop.y+12; }
+    } else if(phase<65){ px=sites.market.x; py=sites.market.y+10; }
+    else if(phase<88){ const s=a.wantsOpera?sites.opera:a.wantsTheatre?sites.theatre:sites.park; px=s.x; py=s.y+8; }
+    else if(homeH){ px=homeH.x; py=homeH.y+16; }
+    else { px=sites.park.x+20; py=sites.park.y+20; } // homeless sleep in the park
+    const jx=Math.sin(a.id*3.7+t*0.01)*14, jy=Math.cos(a.id*2.3+t*0.013)*9;
+    a.tx=px+jx; a.ty=py+jy;
+    a.x+=(a.tx-a.x)*0.045*dt; a.y+=(a.ty-a.y)*0.045*dt;
+  }
+}
+
+// ---------- drawing ----------
+function draw(){
+  // ground
+  ctx.fillStyle="#1b2418"; ctx.fillRect(0,0,W,H);
+  // forest floor
+  grad(W*0.68,0,W*0.32,H*0.62,"#16240f");
+  // farm soil (parched and pale in a drought year)
+  grad(W*0.035,H*0.06,W*0.27,H*0.30,S.drought?"#4a3418":"#2b2013");
+  // village ground
+  grad(W*0.03,H*0.50,W*0.42,H*0.46,"#23271e");
+  // park & plaza
+  grad(W*0.30,H*0.80,W*0.16,H*0.15,"#1d3320");
+  function grad(x,y,w,h,col){ ctx.fillStyle=col; ctx.beginPath(); ctx.roundRect(x,y,w,h,14); ctx.fill(); }
+
+  ctx.textAlign="center"; ctx.font="10px Menlo, monospace"; ctx.fillStyle="#7f8ca8";
+  ctx.fillText("FOREST", W*0.84, H*0.045);
+  if(S.drought){
+    ctx.fillStyle="#ffb84d"; ctx.font="bold 11px Menlo, monospace";
+    ctx.fillText("FARM — 🌵 DROUGHT", W*0.17, H*0.05);
+    ctx.font="10px Menlo, monospace"; ctx.fillStyle="#7f8ca8";
+  } else ctx.fillText("FARM", W*0.17, H*0.05);
+  ctx.fillText("VILLAGE", W*0.24, H*0.53);
+  ctx.fillText("PARK", sites.park.x, sites.park.y-26);
+
+  // farm plots (crops ripen through the year)
+  const ripeness=(S.day%10)/10;
+  for(const p of farmPlots){
+    ctx.fillStyle="#3a2b18";
+    ctx.fillRect(p.x,p.y,W*0.036,H*0.055);
+    ctx.strokeStyle="#4a3a22"; ctx.strokeRect(p.x,p.y,W*0.036,H*0.055);
+    ctx.fillStyle=S.drought
+      ? `rgb(${150+ripeness*20},${105-ripeness*15},45)`   // withered brown stalks
+      : `rgb(${90-ripeness*30},${120+ripeness*70},60)`;
+    for(let i=0;i<4;i++)
+      ctx.fillRect(p.x+3+i*(W*0.036-6)/4, p.y+H*0.055-3-ripeness*H*0.03, 2.5, ripeness*H*0.03);
+  }
+
+  // trees
+  for(const t of trees){
+    const s=t.stage;
+    if(s<0.12){ // stump
+      ctx.fillStyle="#4a3623"; ctx.fillRect(t.x-2.5,t.y-3,5,5);
+      continue;
+    }
+    const trunkH=4+s*10, crown=3+s*9;
+    ctx.fillStyle="#5a4128";
+    ctx.fillRect(t.x-1.5,t.y-trunkH,3,trunkH);
+    ctx.beginPath(); ctx.arc(t.x, t.y-trunkH-crown*0.5, crown, 0, 7);
+    ctx.fillStyle=s>=1?"#2e6b34":"#3f7a3a";
+    ctx.fill();
+    ctx.strokeStyle="#1d4423"; ctx.stroke();
+  }
+
+  // houses (visible construction stages)
+  for(const h of houses) drawHouse(h);
+
+  // public buildings
+  drawBuilding(sites.school.x, sites.school.y, "#8a7a2e", `SCHOOL ×${S.schools}`, "🏫");
+  drawBuilding(sites.market.x, sites.market.y, "#7a6a3a", "MARKET", "⚖️");
+  drawBuilding(sites.workshop.x, sites.workshop.y, "#6a4a7a", "WORKSHOP", "🔨");
+  drawBuilding(sites.theatre.x, sites.theatre.y, "#7a3a4a", "THEATRE", "🎭");
+  drawBuilding(sites.opera.x, sites.opera.y, "#5a3a7a", "OPERA", "🎼");
+  if(S.universities>0) drawBuilding(sites.university.x, sites.university.y, "#3a5a7a", `UNIVERSITY`, "🏛");
+  if(S.hospitals>0)    drawBuilding(sites.hospital.x, sites.hospital.y, "#7a4a4a", `HOSPITAL ×${S.hospitals}`, "🏥");
+  if(S.spaceProgram)   drawBuilding(sites.launchpad.x, sites.launchpad.y, "#4a5a8a", `LAUNCH SITE ${S.launches?"×"+S.launches+"🚀":""}`, "🚀");
+  if(S.institutes>0)   drawBuilding(sites.lab.x, sites.lab.y, "#3a6a5a", `MED LAB ${(medProgress()*100).toFixed(0)}%`, "🔬");
+  if(S.techLabs>0)     drawBuilding(sites.techlab.x, sites.techlab.y, "#6a6a3a", `TECH ${(techProgress()*100).toFixed(0)}%`, "⚙️");
+  if(S.greenhouses>0)  drawBuilding(sites.greenhouse.x, sites.greenhouse.y, "#2e6a3e", `GREENHOUSE ×${S.greenhouses}`, "🌱");
+  // park trees
+  for(let i=0;i<3;i++){
+    const px=sites.park.x-24+i*24, py=sites.park.y-4;
+    ctx.fillStyle="#5a4128"; ctx.fillRect(px-1.5,py-8,3,8);
+    ctx.beginPath(); ctx.arc(px,py-13,7,0,7); ctx.fillStyle="#2e6b34"; ctx.fill();
+  }
+
+  // agents (simplified sprites above 800 to keep the frame rate up)
+  const cheap=S.agents.length>800;
+  for(const a of S.agents){
+    if(!a.alive) continue;
+    const r=a.age<ADULT_AGE?3:4.5;
+    const col=a.age<ADULT_AGE ? "#e8e8e8" : (JOBS[a.job]?JOBS[a.job].color:"#999");
+    if(cheap && S.selected!==a){
+      ctx.fillStyle=col;
+      ctx.fillRect(a.x-2,a.y-2,4,4);
+      continue;
+    }
+    // body
+    ctx.beginPath(); ctx.arc(a.x,a.y,r,0,7);
+    ctx.fillStyle=col; ctx.fill();
+    // head
+    ctx.beginPath(); ctx.arc(a.x,a.y-r-1.5,r*0.55,0,7);
+    ctx.fillStyle="#e9c9a8"; ctx.fill();
+    if(a.hunger>0.85){ ctx.strokeStyle="#ff5555"; ctx.lineWidth=1.5; ctx.beginPath(); ctx.arc(a.x,a.y,r+1.5,0,7); ctx.stroke(); ctx.lineWidth=1; }
+    if(S.selected===a){
+      ctx.strokeStyle="#fff"; ctx.beginPath(); ctx.arc(a.x,a.y,r+4,0,7); ctx.stroke();
+      ctx.fillStyle="#fff"; ctx.font="10px Menlo, monospace";
+      ctx.fillText(a.name, a.x, a.y-r-9);
+    }
+  }
+}
+
+function drawHouse(b){
+  const t=b.upgrading?b.targetTier:b.tier;
+  const dims=[[0.042,0.052],[0.062,0.078],[0.05,0.15],[0.066,0.28]];   // [w,h] per tier
+  const cols=["#8a7258","#96865e","#8a94a3","#5d84a8"];
+  const w=W*dims[t][0], ht=H*dims[t][1], x=b.x-w/2, yb=b.y;
+  const p=b.progress;
+  // foundation
+  ctx.fillStyle="#3a3a3a"; ctx.fillRect(x-2,yb-3,w+4,4);
+  // walls rise with construction progress
+  const wallH=ht*(p<1?clamp(p/0.85,0.06,1):1);
+  ctx.fillStyle=cols[t];
+  ctx.fillRect(x,yb-wallH,w,wallH);
+  ctx.strokeStyle="#2c2c34"; ctx.strokeRect(x,yb-wallH,w,wallH);
+  if(p<1){
+    ctx.strokeStyle="#6a5a3a"; ctx.setLineDash([3,3]);
+    ctx.strokeRect(x-3,yb-ht-4,w+6,ht+4); ctx.setLineDash([]);
+    ctx.fillStyle="#0d1118"; ctx.fillRect(x,yb-ht-12,w,4);
+    ctx.fillStyle="#5cc8ff"; ctx.fillRect(x,yb-ht-12,w*p,4);
+  }
+  // windows on the built portion (lit when occupied)
+  const floors=[1,2,5,10][t], nc=[2,3,3,4][t];
+  const occ=b.residents.length>0;
+  for(let f=0;f<floors;f++){
+    const fy=yb-(f+0.62)*(ht/floors);
+    if(fy<yb-wallH) continue;
+    for(let c=0;c<nc;c++){
+      ctx.fillStyle=occ&&((f*nc+c+(b.x|0))%3!==0)?"#ffd97a":"#222a3a";
+      ctx.fillRect(x+(c+0.25)*(w/nc), fy, (w/nc)*0.5, Math.max(2,(ht/floors)*0.3));
+    }
+  }
+  if(p>=1){
+    if(t===0){         // pitched red roof + door
+      ctx.beginPath(); ctx.moveTo(x-3,yb-ht); ctx.lineTo(x+w/2,yb-ht*1.5); ctx.lineTo(x+w+3,yb-ht);
+      ctx.fillStyle="#a34a35"; ctx.fill();
+      ctx.fillStyle="#4a3220"; ctx.fillRect(x+w*0.44,yb-ht*0.4,w*0.14,ht*0.4);
+    } else if(t===1){  // flat roof lip + doors
+      ctx.fillStyle="#6a5a48"; ctx.fillRect(x-2,yb-ht-3,w+4,4);
+      ctx.fillStyle="#4a3220"; ctx.fillRect(x+w*0.2,yb-ht*0.3,w*0.1,ht*0.3); ctx.fillRect(x+w*0.7,yb-ht*0.3,w*0.1,ht*0.3);
+    } else if(t===2){  // parapet
+      ctx.fillStyle="#6d7684"; ctx.fillRect(x-2,yb-ht-3,w+4,4);
+    } else {           // skyscraper antenna + glass sheen
+      ctx.strokeStyle="#9fb8cf"; ctx.beginPath(); ctx.moveTo(x+w/2,yb-ht); ctx.lineTo(x+w/2,yb-ht-12); ctx.stroke();
+      ctx.fillStyle="#ffffff18"; ctx.fillRect(x+w*0.15,yb-ht,w*0.12,ht);
+    }
+  }
+  // ownership marker: green = public housing, gold = private landlord
+  if(b.owner==="gov"){ ctx.fillStyle="#6fe3a1"; ctx.fillRect(x,yb-4,5,5); }
+  else if(b.owner!=null&&t>0){ ctx.fillStyle="#ffd97a"; ctx.fillRect(x,yb-4,5,5); }
+}
+
+function drawBuilding(cx,cy,col,label,icon){
+  const w=W*0.06, h=H*0.06, x=cx-w/2, y=cy-h;
+  ctx.fillStyle=col+"cc"; ctx.fillRect(x,y,w,h);
+  ctx.strokeStyle="#111"; ctx.strokeRect(x,y,w,h);
+  ctx.beginPath(); ctx.moveTo(x-4,y); ctx.lineTo(cx,y-h*0.4); ctx.lineTo(x+w+4,y);
+  ctx.fillStyle="#333c50"; ctx.fill();
+  ctx.font="12px Menlo, monospace"; ctx.fillStyle="#fff";
+  ctx.fillText(icon,cx,y+h*0.62);
+  ctx.font="9px Menlo, monospace"; ctx.fillStyle="#9aa8c4";
+  ctx.fillText(label,cx,y+h+11);
+}
+
+// ---------- interaction ----------
+canvas.addEventListener("click",e=>{
+  const rect=canvas.getBoundingClientRect();
+  const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+  let best=null,bd=16;
+  for(const a of S.agents){ const d=Math.hypot(a.x-mx,a.y-my); if(d<bd){bd=d;best=a;} }
+  S.selected=best; renderInspector();
+});
+document.getElementById("prevAgent").addEventListener("click",()=>cycleAgent(-1));
+document.getElementById("nextAgent").addEventListener("click",()=>cycleAgent(1));
+function cycleAgent(dir){
+  const alive=S.agents.filter(a=>a.alive);
+  if(!alive.length) return;
+  let i=alive.indexOf(S.selected);
+  i=(i+dir+alive.length)%alive.length;
+  S.selected=alive[i]; renderInspector();
+}
+
+// ---------- UI panels ----------
+const prevPrices={};
+function updatePanels(){
+  document.getElementById("stYear").textContent=S.year;
+  document.getElementById("stDay").textContent=S.day;
+  const alive=S.agents.filter(a=>a.alive);
+  document.getElementById("stPop").textContent=alive.length;
+  document.getElementById("stUtil").textContent=(S.hist.util.at(-1)||0).toFixed(2);
+  document.getElementById("stTreasury").textContent=Math.floor(S.treasury);
+  const warn=[];
+  if(S.treasury<=0) warn.push("Treasury empty — teachers unpaid!");
+  if(S.drought) warn.push("🌵 DROUGHT — farm output halved");
+  document.getElementById("stMsg").textContent = warn.join(" · ");
+
+  // prices
+  let ph="";
+  for(const [g,def] of Object.entries(GOODS)){
+    const p=S.prices[g], prev=prevPrices[g]??p;
+    const cls=p>prev*1.002?"price-up":p<prev*0.998?"price-down":"";
+    const arrow=p>prev*1.002?"▲":p<prev*0.998?"▼":"·";
+    ph+=`<div class="row"><span class="lbl"><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${def.color};margin-right:5px"></i>${def.label}</span><span class="${cls}">${p.toFixed(2)}🪙 ${arrow} <span style="color:var(--dim)">s${S.supply[g].toFixed(0)}/d${S.demand[g].toFixed(0)}</span></span></div>`;
+    prevPrices[g]=p;
+  }
+  document.getElementById("prices").innerHTML=ph;
+
+  // labour
+  const counts={}; for(const j in JOBS) counts[j]=0;
+  const kids=alive.filter(a=>a.age<ADULT_AGE);
+  for(const a of alive) if(a.age>=ADULT_AGE) counts[a.job]=(counts[a.job]||0)+1;
+  const schoolAge=kids.filter(k=>k.age>=5);
+  const inSchool=schoolAge.filter(k=>k.inSchool).length;
+  const noSeat=schoolAge.length-inSchool;
+  const privKids=schoolAge.filter(k=>k.private).length;
+  let lh="";
+  for(const j of WORK_JOBS.concat(SERVICE_JOBS))
+    lh+=`<div class="row"><span class="lbl">${JOBS[j].emoji} ${jobLabel(j)}</span><span>${counts[j]||0}</span></div>`;
+  lh+=`<div class="row"><span class="lbl">🧒 children (under 5)</span><span>${kids.length} (${kids.length-schoolAge.length})</span></div>`;
+  lh+=`<div class="row"><span class="lbl">🎒 school-age (5–15)</span><span>${schoolAge.length}</span></div>`;
+  lh+=`<div class="row"><span class="lbl">— public / private / no school</span><span>${inSchool-privKids} / ${privKids} / ${noSeat?`<span style="color:var(--bad)">${noSeat}</span>`:0}</span></div>`;
+  lh+=`<div class="row"><span class="lbl">public seats · tuition</span><span>${Math.min(S.schools*SCHOOL_CAPACITY,(counts.teacher||0)*SCHOOL_CAPACITY)} · ${TUITION}🪙/day</span></div>`;
+  document.getElementById("labour").innerHTML=lh;
+  renderHouseholds(alive);
+
+  // aggregated stats
+  renderAggStats(alive,counts);
+
+  drawLifeQuality();
+  renderGovMonitor(alive,counts,{schoolAge:schoolAge.length,noSeat});
+  renderInspector();
+  renderAchievements();
+  if(modalMode==="econ") renderModal();   // economics popup updates live
+}
+
+function renderHouseholds(alive){
+  const hh=householdUnits(alive).map(members=>{
+    const head=members[0];
+    return {
+      head, unit:members,
+      members:members.length,
+      kids: members.filter(m=>m.age<ADULT_AGE).length,
+      adultKids: members.filter(m=>m.age>=ADULT_AGE && m!==head).length,
+      wealth: members.reduce((s,m)=>s+m.money,0),
+      income: members.reduce((s,m)=>s+(m.age>=ADULT_AGE?m.lastIncome:0),0),
+      hunger: members.reduce((s,m)=>s+m.hunger,0)/members.length,
+      util: members.reduce((s,m)=>s+m.utilAvg,0)/members.length,
+      home: head.home,
+      orphan: head.age<ADULT_AGE,
+    };
+  });
+  hh.sort((a,b)=>b.wealth-a.wealth);
+
+  // group households into families by the head's surname
+  const famMap={};
+  for(const h of hh){
+    const f=famMap[h.head.family]||(famMap[h.head.family]={family:h.head.family,hhs:[],members:0,kids:0,wealth:0,income:0,hungerSum:0,housed:0});
+    f.hhs.push(h); f.members+=h.members; f.kids+=h.kids;
+    f.wealth+=h.wealth; f.income+=h.income;
+    f.hungerSum+=h.hunger*h.members; f.housed+=h.home>=0?1:0;
+  }
+  const fams=Object.values(famMap);
+  for(const f of fams) f.hunger=f.hungerSum/Math.max(1,f.members);
+  fams.sort((a,b)=>b.wealth-a.wealth);
+
+  // detail view: one family, opened by clicking its row
+  if(S.hhDetail!=null){
+    const idx=fams.findIndex(f=>f.family===S.hhDetail);
+    if(idx<0) S.hhDetail=null;            // family died out — fall back to list
+    else { renderFamilyDetail(fams[idx], idx+1); renderWealthHist(hh, alive); return; }
+  }
+
+  let rows="", rank=1;
+  for(const f of fams.slice(0,40)){
+    const hungerFlag=f.hunger>0.7?' style="color:var(--bad)"':"";
+    rows+=`<tr data-fam="${f.family}">
+      <td>${rank++}</td>
+      <td>House ${f.family}</td>
+      <td>${f.hhs.length}</td><td>${f.members}</td><td>${f.kids}</td>
+      <td>${f.wealth.toFixed(0)}</td><td>${f.income.toFixed(1)}</td>
+      <td${hungerFlag}>${(f.hunger*100|0)}%</td>
+      <td>${f.housed}/${f.hhs.length}</td></tr>`;
+  }
+  document.getElementById("households").innerHTML=
+    `<table class="stats">
+      <tr><th>#</th><th>Family</th><th>hh</th><th>mem</th><th>kids</th><th>🪙</th><th>inc/d</th><th>hunger</th><th>housed</th></tr>
+      ${rows}
+    </table>${fams.length>40?`<div class="hint">…and ${fams.length-40} more families (histogram below covers all households)</div>`:""}
+    <div class="hint">Click a row for family details.</div>`;
+  renderWealthHist(hh, alive);
+}
+
+function renderFamilyDetail(f, rank){
+  const roleOf=m=>m.age<ADULT_AGE
+    ? (m.inSchool?(m.private?"🎓 private school":"📚 school"):"child")
+    : `${JOBS[m.job].emoji} ${jobLabel(m.job)}`;
+  let mrows="";
+  for(const h of f.hhs){
+    for(const m of h.unit){
+      mrows+=`<tr>
+        <td><span class="mlink" data-aid="${m.id}">${m.name}${m===h.head?" ★":""}</span></td>
+        <td>${m.age}</td><td style="text-align:left">${roleOf(m)}</td>
+        <td>${m.money.toFixed(0)}</td><td>${m.education}</td>
+        <td${m.hunger>0.7?' style="color:var(--bad)"':""}>${(m.hunger*100|0)}%</td>
+        <td>${h.home>=0?"#"+(h.home+1):"⛺"}</td></tr>`;
+    }
+  }
+  // family property portfolio & income split
+  const units=f.hhs.map(h=>h.unit);
+  const ids=new Set(units.flat().map(m=>m.id));
+  const owned=houses.filter(b=>ids.has(b.owner));
+  const rentGross=owned.reduce((s,b)=>s+b.lastRent,0);
+  const rentNet=rentGross*(1-S.rentTax/100);
+  const wages=Math.max(0,f.income-rentNet);
+  const taxToday=units.flat().reduce((s,m)=>s+m.taxPaid,0);
+  const props=owned.length
+    ? owned.map(b=>`${TIERS[b.tier].name}${b.progress<1?" 🏗":""} (rent ${b.lastRent.toFixed(1)}🪙/d)`).join(", ")
+    : "none";
+  document.getElementById("households").innerHTML=`
+    <div class="row" style="margin-bottom:6px">
+      <button id="hhBack">← all families</button>
+      <b style="color:var(--gold)">#${rank} · House ${f.family} — ${f.hhs.length} household${f.hhs.length>1?"s":""}</b>
+    </div>
+    <table class="stats">
+      <tr><th>Member</th><th>age</th><th style="text-align:left">role</th><th>🪙</th><th>edu</th><th>hunger</th><th>home</th></tr>
+      ${mrows}
+    </table>
+    <div class="row" style="margin-top:6px"><span class="lbl">Family wealth (incl. trusts)</span><span>${f.wealth.toFixed(0)}🪙</span></div>
+    <div class="row"><span class="lbl">Income/day — wages · rent (net)</span><span>${wages.toFixed(1)} · ${rentNet.toFixed(1)}🪙</span></div>
+    <div class="row"><span class="lbl">Taxes paid today</span><span>${taxToday.toFixed(1)}🪙</span></div>
+    <div class="row"><span class="lbl">Properties owned</span><span style="text-align:right">${props}</span></div>
+    <div class="hint">★ head of a household · click a member's name to open them in the Inspector.</div>`;
+}
+
+function renderWealthHist(hh, alive){
+  const wealths=hh.map(h=>h.wealth);
+  const cv=document.getElementById("wealthChart");
+  const c=cv.getContext("2d");
+  const w=cv.width=cv.clientWidth*devicePixelRatio, h=cv.height=cv.clientHeight*devicePixelRatio;
+  c.clearRect(0,0,w,h);
+  if(!wealths.length) return;
+  const max=Math.max(...wealths,1);
+  const BINS=12, counts=new Array(BINS).fill(0);
+  for(const v of wealths) counts[Math.min(BINS-1,Math.floor(v/max*BINS))]++;
+  const cmax=Math.max(...counts,1);
+  const bw=w/BINS;
+  for(let i=0;i<BINS;i++){
+    const bh=counts[i]/cmax*(h-16);
+    c.fillStyle="#ffd97a";
+    c.fillRect(i*bw+2, h-14-bh, bw-4, bh);
+  }
+  c.font=`${9*devicePixelRatio}px Menlo, monospace`; c.fillStyle="#8b98b3"; c.textAlign="left";
+  c.fillText("0🪙",2,h-3);
+  c.textAlign="right"; c.fillText(max.toFixed(0)+"🪙",w-2,h-3);
+  // summary: median, top-10% share, richest dynasty
+  const sorted=wealths.slice().sort((a,b)=>a-b);
+  const total=sorted.reduce((s,v)=>s+v,0)||1;
+  const median=sorted[Math.floor(sorted.length/2)]||0;
+  const topN=Math.max(1,Math.ceil(sorted.length*0.1));
+  const topShare=sorted.slice(-topN).reduce((s,v)=>s+v,0)/total*100;
+  const dyn={};
+  for(const a of alive) dyn[a.family]=(dyn[a.family]||0)+a.money;
+  const topDyn=Object.entries(dyn).sort((x,y)=>y[1]-x[1])[0];
+  document.getElementById("wealthStats").innerHTML=
+    `Median household ${median.toFixed(0)}🪙 · top 10% hold <b style="color:var(--gold)">${topShare.toFixed(0)}%</b> of wealth · richest dynasty: House ${topDyn?topDyn[0]:"—"} (${topDyn?topDyn[1].toFixed(0):0}🪙)`;
+}
+
+function renderAggStats(alive,counts){
+  const wealths=alive.map(a=>a.money).sort((a,b)=>a-b);
+  const total=wealths.reduce((s,v)=>s+v,0);
+  // Gini coefficient
+  let gini=0;
+  if(wealths.length>1 && total>0){
+    let cum=0, area=0;
+    for(const w of wealths){ cum+=w; area+=cum; }
+    gini=1-2*(area/wealths.length/total)+1/wealths.length;
+  }
+  // avg income by job
+  const incomeBy={}, nBy={};
+  for(const a of alive) if(a.age>=ADULT_AGE){ incomeBy[a.job]=(incomeBy[a.job]||0)+a.lastIncome; nBy[a.job]=(nBy[a.job]||0)+1; }
+  let jobRows="";
+  for(const j of WORK_JOBS.concat(SERVICE_JOBS)){
+    const avg=nBy[j]? incomeBy[j]/nBy[j] : 0;
+    jobRows+=`<tr><td>${JOBS[j].emoji} ${jobLabel(j)}</td><td>${nBy[j]||0}</td><td>${avg.toFixed(1)}🪙</td></tr>`;
+  }
+  const tierCounts=TIERS.map((t,i)=>houses.filter(b=>b.progress>=1&&b.tier===i).length);
+  const stock=`${tierCounts[0]}🏠 ${tierCounts[1]}🏘 ${tierCounts[2]}🏢 ${tierCounts[3]}🌆`;
+  const totalHomes=houses.reduce((s,b)=>s+homesOf(b),0);
+  const building=houses.filter(h=>h.progress<1).length;
+  const homeless=alive.filter(a=>a.home<0).length;
+  const govHomes=houses.filter(b=>b.owner==="gov").reduce((s,b)=>s+homesOf(b),0);
+  const mature=trees.filter(t=>t.stage>=1).length;
+  const richest=alive.slice().sort((a,b)=>b.money-a.money)[0];
+
+  document.getElementById("aggstats").innerHTML=`
+    <table class="stats">
+      <tr><th>Occupation</th><th>#</th><th>avg income/day</th></tr>
+      ${jobRows}
+    </table>
+    <div class="row" style="margin-top:6px"><span class="lbl">Total private wealth</span><span>${total.toFixed(0)}🪙</span></div>
+    <div class="row"><span class="lbl">Median / mean wealth</span><span>${(wealths[Math.floor(wealths.length/2)]||0).toFixed(0)} / ${(total/Math.max(1,wealths.length)).toFixed(0)}🪙</span></div>
+    <div class="row"><span class="lbl">Inequality (Gini)</span><span>${gini.toFixed(2)} ${gini>0.45?"⚠️":""}</span></div>
+    <div class="row"><span class="lbl">Richest</span><span>${richest?richest.name+" "+richest.money.toFixed(0)+"🪙":"—"}</span></div>
+    <div class="row"><span class="lbl">Buildings</span><span>${stock}${building?` +${building}🏗`:""}</span></div>
+    <div class="row"><span class="lbl">Homes (public) · homeless</span><span>${totalHomes} (${govHomes}) · ${homeless}</span></div>
+    <div class="row"><span class="lbl">Rent paid today</span><span>${(S.rentToday||0).toFixed(1)}🪙</span></div>
+    <div class="row"><span class="lbl">Welfare fund · spent today</span><span>${S.welfareFund.toFixed(0)}🪙 · ${S.welfareToday.toFixed(1)}🪙</span></div>
+    <div class="row"><span class="lbl">Charity given today</span><span>${(S.charityToday||0).toFixed(1)}🪙</span></div>
+    <div class="row"><span class="lbl">Healthcare capacity left / crises last yr</span><span>${S.medCapacityLeft} / ${S.lastCrises}</span></div>
+    <div class="row"><span class="lbl">Treatment fee · survival rate</span><span>${medFee()}🪙 · ${(medSurvival()*100).toFixed(0)}%</span></div>
+    ${S.institutes?`<div class="row"><span class="lbl">Medical research progress</span><span>${(medProgress()*100).toFixed(0)}%</span></div>`:""}
+    ${S.spaceProgram?`<div class="row"><span class="lbl">Space program (next launch)</span><span>${(S.spaceWork-SPACE_WORK*S.launches).toFixed(0)}/${SPACE_WORK} · ${S.launches}🚀</span></div>`:""}
+    ${S.techLabs?`<div class="row"><span class="lbl">Technology · productivity boost</span><span>${(techProgress()*100).toFixed(0)}% · +${((techBoost()-1)*100).toFixed(0)}%</span></div>`:""}
+    <div class="row"><span class="lbl">Farmland used</span><span>${(desiredFoodShare()*100).toFixed(0)}%</span></div>
+    <div class="row"><span class="lbl">Land plots free · price</span><span>${houseSlots.length} · ${landPrice().toFixed(0)}🪙</span></div>
+    <div class="row"><span class="lbl">Forest: mature trees</span><span>${mature}/${trees.length} ${mature<8?"🪓⚠️":""}</span></div>
+    <div class="row"><span class="lbl">Food eaten today</span><span>${S.foodEaten}</span></div>
+    <div class="row"><span class="lbl">GDP today</span><span>${S.gdpToday.toFixed(0)}🪙</span></div>
+    <div class="row"><span class="lbl">Happiness per lifetime (avg at death)</span><span>${S.lifeHappyEma.toFixed(0)} (${(S.lifeHappyEma/Math.max(1,S.lifeExpEma*DAYS_PER_YEAR)*100).toFixed(0)}% of days)</span></div>`;
+}
+
+function renderInspector(){
+  const a=S.selected;
+  const el=document.getElementById("inspect");
+  if(!a||!a.alive){ el.textContent="Click a villager in the world to inspect them."; return; }
+  const bar=(v,col)=>`<div class="bar"><i style="width:${clamp(v*100,0,100)}%;background:${col}"></i></div>`;
+  const homeStr=a.home>=0?`house #${a.home+1}`:`<span style="color:var(--bad)">homeless</span>`;
+  const role=a.age<ADULT_AGE?(a.inSchool?(a.private?"child · 🎓 private school":"child · 📚 public school"):"child · <span style='color:var(--bad)'>no schooling</span>"):`${JOBS[a.job].emoji} ${jobLabel(a.job)}`;
+  let famStr;
+  if(a.age<ADULT_AGE){
+    const p=parentOf(a);
+    famStr=p?`provided for by ${p.name} (${p.money.toFixed(0)}🪙)`:`<span style="color:var(--bad)">orphan — fends for self</span>`;
+  } else {
+    const deps=S.agents.filter(x=>x.alive&&x.parent===a.id&&x.age<ADULT_AGE);
+    famStr=deps.length?`provides for ${deps.length}: ${deps.map(d=>d.name).join(", ")}`:"no dependents";
+    if(a.livesWith!=null){
+      const p=S.agents.find(x=>x.id===a.livesWith&&x.alive);
+      if(p) famStr+=` · lives with ${p.name}`;
+    }
+  }
+  el.innerHTML=
+   `<b>${a.name} ${a.family}</b> — ${role}, age ${a.age} · ${homeStr}<br>
+    👪 ${famStr}<br>
+    Education: ${a.education} yrs → productivity ×${productivity(a).toFixed(2)}${a.ill?` · <span style="color:var(--bad)">🤒 ill (${a.ill}d)</span>`:""}<br>
+    <div class="brow"><span class="nm">money</span>${bar(a.money/60,"#ffd97a")}<span>${a.money.toFixed(1)}🪙</span></div>
+    <div class="brow"><span class="nm">hunger</span>${bar(a.hunger,"#ff7d7d")}<span>${(a.hunger*100|0)}%</span></div>
+    <div class="brow"><span class="nm">fun</span>${bar(a.fun,"#d98cf0")}<span>${(a.fun*100|0)}%</span></div>
+    <div class="brow"><span class="nm">utility</span>${bar(a.utilAvg/2.5,"#6fe3a1")}<span>${a.utilAvg.toFixed(2)}</span></div>
+    Income ${a.lastIncome.toFixed(1)}🪙/day (tax paid ${a.taxPaid.toFixed(1)}) · produced ${a.produced.toFixed(2)}<br>
+    ${(()=>{const own=houses.filter(b=>b.owner===a.id);if(!own.length)return"";
+      const r=own.reduce((s,b)=>s+b.lastRent,0);
+      return `🏦 owns ${own.map(b=>TIERS[b.tier].name).join(", ")} · rent +${r.toFixed(1)}🪙/day<br>`;})()}
+    Lifetime utility: ${a.lifeUtility.toFixed(0)} · food stored: ${a.inv.food.toFixed(1)}`;
+}
+
+function drawChart(cv,series,win=chartWindow,scroll=1,opts={}){
+  const c=cv.getContext("2d");
+  const w=cv.width=cv.clientWidth*devicePixelRatio, h=cv.height=cv.clientHeight*devicePixelRatio;
+  c.clearRect(0,0,w,h);
+  // apply the time window at the scroll position, then bucket-average anything
+  // denser than ~1 point per 2 css px so long windows stay readable and cheap
+  const maxPts=Math.max(24,Math.floor(w/(devicePixelRatio*2)));
+  const views=series.map(s=>{
+    let d=s.data;
+    if(win && d.length>win){
+      const start=Math.round((d.length-win)*clamp(scroll,0,1));
+      d=d.slice(start,start+win);
+    }
+    if(d.length>maxPts){
+      const out=[], step=d.length/maxPts;
+      for(let i=0;i<maxPts;i++){
+        const a=Math.floor(i*step), b=Math.max(a+1,Math.floor((i+1)*step));
+        let sum=0; for(let j=a;j<b;j++) sum+=d[j];
+        out.push(sum/(b-a));
+      }
+      d=out;
+    }
+    return {color:s.color, data:d};
+  });
+  let max=0.1; for(const s of views) for(const v of s.data) max=Math.max(max,v);
+  if(opts.fixedMax) max=Math.max(max,opts.fixedMax);
+  // scale: faint gridlines at 0 / ½ / max, labelled so every graph reads in real units
+  const fmt=opts.fmt||(v=>v>=100?v.toFixed(0):v>=10?v.toFixed(1):v.toFixed(2));
+  c.font=`${8*devicePixelRatio}px Menlo, monospace`; c.textAlign="left";
+  c.lineWidth=devicePixelRatio*0.75;
+  for(const fr of [0,0.5,1]){
+    const y=h-fr*(h-6)-3;
+    c.strokeStyle="#222b3d";
+    c.beginPath(); c.moveTo(0,y); c.lineTo(w,y); c.stroke();
+    c.fillStyle="#66748f";
+    if(fr>0) c.fillText(fmt(max*fr),2,y+9*devicePixelRatio);
+    else c.fillText(fmt(0),2,y-2*devicePixelRatio);
+  }
+  for(const s of views){
+    if(s.data.length<2) continue;
+    c.beginPath();
+    s.data.forEach((v,i)=>{ const x=i/(s.data.length-1)*w, y=h-(v/max)*(h-6)-3; i?c.lineTo(x,y):c.moveTo(x,y); });
+    c.strokeStyle=s.color; c.lineWidth=1.5*devicePixelRatio; c.stroke();
+  }
+}
+
+// ---------- life quality indicators ----------
+// every series is normalised to 0..1 so they share one 0–100% scale;
+// each can be toggled on/off from the legend checkboxes
+const LQ_SERIES=[
+  {key:"happy",    label:"happiness",           color:"#d98cf0", data:()=>S.hist.happy},
+  {key:"fed",      label:"well-fed",            color:"#ffd97a", data:()=>S.hist.fed},
+  {key:"treated",  label:"treated same day",    color:"#6fe3a1", data:()=>S.hist.treated},
+  {key:"lifeExp",  label:`life expectancy (/${MAX_AGE}y)`, color:"#5cc8ff", data:()=>S.hist.lifeExp.map(v=>v/MAX_AGE)},
+  {key:"util",     label:"avg utility (/2.5)",  color:"#8ce6d9", data:()=>S.hist.util.map(v=>v/2.5)},
+  {key:"edu",      label:`education (/${MAX_EDUCATION}y)`, color:"#9fb8ff", data:()=>S.hist.edu.map(v=>v/MAX_EDUCATION)},
+  {key:"lifeHappy",label:"lifetime happiness (scaled)", color:"#ff9f5a", data:()=>{const m=Math.max(...S.hist.lifeHappy,1);return S.hist.lifeHappy.map(v=>v/m);}},
+];
+const lqOn=Object.fromEntries(LQ_SERIES.map(s=>[s.key,true]));
+document.getElementById("lqLegend").innerHTML=LQ_SERIES.map(s=>
+  `<label><input type="checkbox" data-key="${s.key}" checked><i style="background:${s.color}"></i>${s.label}</label>`).join("");
+document.getElementById("lqLegend").addEventListener("change",e=>{
+  const k=e.target.dataset.key;
+  if(k){ lqOn[k]=e.target.checked; updatePanels(); }
+});
+document.getElementById("lqWin").addEventListener("click",e=>{
+  const btn=e.target.closest("button[data-win]");
+  if(!btn) return;
+  lqWindow=+btn.dataset.win;
+  for(const b of document.querySelectorAll("#lqWin button")) b.classList.toggle("active",b===btn);
+  document.getElementById("lqScroll").disabled=lqWindow===0;
+  updatePanels();
+});
+document.getElementById("lqScroll").addEventListener("input",e=>{
+  lqScrollPos=+e.target.value/1000; updatePanels();
+});
+function drawLifeQuality(){
+  drawChart(document.getElementById("lqChart"),
+    LQ_SERIES.filter(s=>lqOn[s.key]).map(s=>({data:s.data(),color:s.color})),
+    lqWindow, lqScrollPos, {fixedMax:1, fmt:v=>Math.round(v*100)+"%"});
+  const hLen=S.hist.happy.length;
+  const vis=lqWindow&&hLen>lqWindow?lqWindow:hLen;
+  const vEnd=lqWindow&&hLen>lqWindow?Math.round((hLen-lqWindow)*lqScrollPos)+lqWindow:hLen;
+  const yr=d=>`Y${Math.max(1,S.year-Math.round((hLen-d)/DAYS_PER_YEAR))}`;
+  document.getElementById("lqStats").innerHTML=
+    `Showing ${yr(vEnd-vis)}–${yr(vEnd)} · happiness <b style="color:#d98cf0">${((S.hist.happy.at(-1)||0)*100).toFixed(0)}%</b> · life expectancy <b style="color:#5cc8ff">${(S.lifeExpEma||0).toFixed(1)}y</b> · well-fed <b style="color:#ffd97a">${((S.hist.fed.at(-1)||0)*100).toFixed(0)}%</b> · treated <b style="color:#6fe3a1">${(S.treatEma*100).toFixed(0)}%</b> · lifetime happiness <b style="color:#ff9f5a">${S.lifeHappyEma.toFixed(0)}</b>`;
+}
+
+// ---------- government monitor ----------
+// amber border = needs attention; built facilities collapse to a ✓
+function renderGovMonitor(alive,counts,edu){
+  const seats=Math.min(S.schools,counts.teacher||0)*SCHOOL_CAPACITY;
+  document.getElementById("eduLbl").textContent=`Education — ${seats} seats / ${edu.schoolAge} kids`;
+  document.getElementById("upgradeEdu").classList.toggle("amber",
+    edu.noSeat>0 || (counts.teacher||0)<Math.min(S.schools,Math.ceil(edu.schoolAge/SCHOOL_CAPACITY)));
+  // welfare: amber when people go hungry and aid can't (or won't) reach them
+  const hungryN=alive.filter(a=>a.hunger>S.welfareHunger/100).length;
+  document.getElementById("welfareBtn").classList.toggle("amber",
+    hungryN>0 && (!S.welfare || S.treasury<S.prices.food*hungryN));
+  // public healthcare: amber when illnesses go untreated because patients can't pay
+  document.getElementById("pubHealthBtn").classList.toggle("amber",
+    S.hospitals>0 && !S.pubHealth && S.treatEma<0.6);
+  const slot=(id,built,amber=false)=>{
+    const s=document.getElementById(id), btn=s.querySelector("button"), tick=s.querySelector(".tick");
+    btn.style.display=built?"none":"";
+    tick.style.display=built?"":"none";
+    btn.classList.toggle("amber",!built&&amber);
+  };
+  slot("uniSlot",S.universities>0);
+  // hospital only earns its tick while treatment capacity isn't exhausted
+  slot("hospSlot",S.hospitals>0 && S.medCapacityLeft>0, S.hospitals>0);
+  slot("labSlot",S.institutes>0);
+  slot("techSlot",S.techLabs>0);
+  slot("spaceSlot",S.spaceProgram);
+  const hire=(lblId,btnId,facility,n,name)=>{
+    document.getElementById(lblId).textContent=`Hire ${name} (${n} hired)`;
+    const b=document.getElementById(btnId);
+    b.disabled=!facility;
+    b.classList.toggle("amber",facility&&n===0);
+  };
+  hire("sciLbl","hireSci",S.spaceProgram,counts.scientist||0,"rocket scientist");
+  hire("resLbl","hireRes",S.institutes>0,counts.researcher||0,"med researcher");
+  hire("techHireLbl","hireTech",S.techLabs>0,counts.technologist||0,"technologist");
+  // doctor wage subsidy: amber when too few doctors work relative to expected need
+  const expected=S.lastCrises+alive.length*0.0018*DAYS_PER_YEAR;
+  const short=S.hospitals>0 && (counts.doctor||0)*docCap()<expected;
+  const dn=document.getElementById("subName_doctor");
+  if(dn) dn.classList.toggle("amberTxt",short);
+}
+
+// ---------- government controls ----------
+for(let i=0;i<3;i++){
+  const sl=document.getElementById("tax"+i), out=document.getElementById("tax"+i+"Out");
+  sl.addEventListener("input",()=>{ S.taxRates[i]=+sl.value; out.textContent=sl.value+"%"; });
+}
+function setTaxRate(i,v){
+  const sl=document.getElementById("tax"+i);
+  v=clamp(v,+sl.min,+sl.max);
+  S.taxRates[i]=v; sl.value=v;
+  document.getElementById("tax"+i+"Out").textContent=v+"%";
+}
+document.getElementById("salesTax").addEventListener("input",e=>{
+  S.salesTax=e.target.value/100; document.getElementById("salesOut").textContent=e.target.value+"%";
+});
+document.getElementById("wealthTax").addEventListener("input",e=>{
+  S.wealthTax=+e.target.value; document.getElementById("wealthOut").textContent=e.target.value+"%";
+});
+document.getElementById("wealthTop").addEventListener("input",e=>{
+  S.wealthTop=+e.target.value; document.getElementById("wealthTopOut").textContent=e.target.value+"%";
+});
+document.getElementById("wealthFloor").addEventListener("input",e=>{
+  S.wealthFloor=+e.target.value; document.getElementById("wealthFloorOut").textContent=e.target.value+"🪙";
+});
+document.getElementById("charity").addEventListener("input",e=>{
+  S.charity=+e.target.value; document.getElementById("charityOut").textContent=e.target.value+"%";
+});
+document.getElementById("propCap").addEventListener("input",e=>{
+  S.propCap=+e.target.value; document.getElementById("propCapOut").textContent=S.propCap===0?"∞":e.target.value;
+});
+document.getElementById("rentTax").addEventListener("input",e=>{
+  S.rentTax=+e.target.value; document.getElementById("rentTaxOut").textContent=e.target.value+"%";
+});
+document.getElementById("birthRate").addEventListener("input",e=>{
+  S.birthRate=+e.target.value; document.getElementById("birthRateOut").textContent=e.target.value+"%";
+});
+document.getElementById("immigration").addEventListener("input",e=>{
+  S.immigration=+e.target.value; document.getElementById("immigrationOut").textContent=e.target.value;
+});
+document.getElementById("propTax").addEventListener("input",e=>{
+  S.propTax=+e.target.value; document.getElementById("propTaxOut").textContent=(+e.target.value).toFixed(2).replace(/\.?0+$/,"")+"%";
+});
+// households card: open a household's detail view, jump to a member, go back
+document.getElementById("households").addEventListener("click",e=>{
+  const member=e.target.closest(".mlink");
+  if(member){
+    const a=S.agents.find(x=>x.id===+member.dataset.aid&&x.alive);
+    if(a){ S.selected=a; renderInspector(); }
+    return;
+  }
+  if(e.target.closest("#hhBack")){ S.hhDetail=null; updatePanels(); return; }
+  const row=e.target.closest("tr[data-fam]");
+  if(row){ S.hhDetail=row.dataset.fam; updatePanels(); }
+});
+function govBuildSchool(){
+  if(S.treasury<SCHOOL_COST){ log("❌ Not enough treasury for a school."); return false; }
+  S.treasury-=SCHOOL_COST; S.schools++;
+  log(`🏫 Government built school #${S.schools}. Seats +${SCHOOL_CAPACITY} (needs a teacher).`);
+  return true;
+}
+function govHireTeacher(){
+  const teachers=S.agents.filter(a=>a.alive&&a.job==="teacher").length;
+  if(teachers>=S.schools){ log("❌ Every school already has a teacher — build another school."); return false; }
+  // most educated adult, but don't strip an occupation below 2 workers
+  const counts={}; for(const a of S.agents) if(a.alive&&a.age>=ADULT_AGE) counts[a.job]=(counts[a.job]||0)+1;
+  const cand=S.agents.filter(a=>a.alive&&a.age>=ADULT_AGE&&a.job!=="teacher"&&(counts[a.job]||0)>2)
+                     .sort((x,y)=>y.education-x.education)[0];
+  if(!cand){ log("❌ No adult can be spared (occupations need at least 2 workers left)."); return false; }
+  log(`📚 ${who(cand)} was hired as a teacher (left ${jobLabel(cand.job)}). One fewer producer — education has an opportunity cost.`);
+  cand.job="teacher";
+  return true;
+}
+// clear forest into farmland: +1 plot (+8 food/day capacity), fells 3 young trees
+function govClearLand(){
+  const maxPlots=(S.plotRows+3)*S.plotCols;
+  if(S.treasury<40){ log("❌ Clearing land costs 40🪙."); return false; }
+  if(farmPlots.length>=maxPlots){ log("❌ No room left for more farmland."); return false; }
+  if(trees.length<12){ log("❌ The forest is too thin — replant before clearing more."); return false; }
+  S.treasury-=40;
+  trees.sort((a,b)=>a.stage-b.stage); trees.splice(0,3);
+  const k=Math.max(0,farmPlots.length-S.plotRows*S.plotCols);
+  const fx=0.06+(k%S.plotCols)*0.045, fy=0.10+(S.plotRows+Math.floor(k/S.plotCols))*0.075;
+  farmPlots.push({fx,fy,x:fx*W,y:fy*H});
+  log(`🚜 Government cleared land for a new farm plot (${farmPlots.length} total, capacity ${farmPlots.length*FOOD_PER_PLOT} food/day).`);
+  return true;
+}
+function govBuildGreenhouse(){
+  if(S.maxGH>0 && S.greenhouses>=S.maxGH){ log(`❌ Greenhouse cap reached (${S.maxGH}, set in ⚙️ settings).`); return false; }
+  if(S.treasury<GH_COST){ log(`❌ A greenhouse costs ${GH_COST}🪙.`); return false; }
+  S.treasury-=GH_COST; S.greenhouses++;
+  log(`🌱 Greenhouse ×${S.greenhouses} built (${GH_COST}🪙) — +${GH_FOOD} food/day capacity, no land or forest needed.`);
+  return true;
+}
+function govPlantTrees(){
+  if(S.treasury<25){ log("❌ Not enough treasury to plant trees."); return false; }
+  S.treasury-=25;
+  for(let i=0;i<5;i++) trees.push(newTree(0.05));
+  log("🌱 Government planted 5 saplings — public investment against a tragedy of the commons.");
+  return true;
+}
+// public housing: new house on free land, else upgrade a gov-owned building.
+// Tenants pay half rent, straight to the treasury.
+function govPublicHousing(){
+  if(houseSlots.length && S.treasury>=TIERS[0].cost){
+    S.treasury-=TIERS[0].cost;
+    houses.push({...houseSlots.shift(), tier:0, progress:0, workNeed:TIERS[0].work, owner:"gov", upgrading:false, residents:[], tenantHeads:[], lastRent:0});
+    log(`🏘️ Government commissioned public housing (${TIERS[0].cost}🪙). Rent: half rate, paid to treasury.`);
+    return true;
+  }
+  const b=houses.find(x=>x.owner==="gov"&&x.progress>=1&&!x.upgrading&&x.tier<TIERS.length-1);
+  if(b && S.treasury>=TIERS[b.tier+1].cost){
+    S.treasury-=TIERS[b.tier+1].cost;
+    b.upgrading=true; b.targetTier=b.tier+1; b.progress=0; b.workNeed=TIERS[b.tier+1].work;
+    log(`🏗️ Government upgrading public ${TIERS[b.tier].name} to a ${TIERS[b.targetTier].name} (${TIERS[b.targetTier].homes} homes, ${TIERS[b.targetTier].cost}🪙).`);
+    return true;
+  }
+  log("❌ Public housing needs free land or an upgradable gov building, plus treasury.");
+  return false;
+}
+// compulsory acquisition: the state buys the cheapest private building at the
+// standard buyout price (owner is compensated) and runs it as public housing
+function govAcquireHousing(){
+  const cands=houses.filter(b=>b.owner!=null && b.owner!=="gov" && b.progress>=1 && !b.upgrading)
+    .map(b=>({b,cost:homesOf(b)*S.prices.house*BUYOUT_MULT}))
+    .sort((x,y)=>x.cost-y.cost);
+  if(!cands.length){ log("❌ No privately owned buildings to acquire."); return false; }
+  const {b,cost}=cands[0];
+  if(S.treasury<cost){ log(`❌ Acquiring the cheapest private ${TIERS[b.tier].name} costs ${cost.toFixed(0)}🪙 — treasury too low.`); return false; }
+  S.treasury-=cost;
+  payBuyout(b,cost,{id:"gov"});
+  b.owner="gov";
+  log(`⚖️ Government compulsorily acquired a ${TIERS[b.tier].name} for ${cost.toFixed(0)}🪙 — now public housing (half rent, paid to treasury).`);
+  return true;
+}
+function govSpaceProgram(){
+  if(S.spaceProgram){ log("❌ The space program already exists."); return false; }
+  if(S.universities<1){ log("❌ A space program needs a university to supply scientists."); return false; }
+  if(S.treasury<SPACE_COST){ log("❌ Not enough treasury for a space program."); return false; }
+  S.treasury-=SPACE_COST; S.spaceProgram=true;
+  log(`🚀 Space program founded (${SPACE_COST}🪙). Hire scientists (${DOC_EDU}+ yrs education) — each launch takes ${SPACE_WORK} worker-days of science.`);
+  return true;
+}
+function govBuildLab(){
+  if(S.institutes>0){ log("❌ The medical research institute already exists."); return false; }
+  if(S.universities<1){ log("❌ The institute needs a university to supply researchers."); return false; }
+  if(S.treasury<LAB_COST){ log("❌ Not enough treasury for the institute."); return false; }
+  S.treasury-=LAB_COST; S.institutes++;
+  log(`🔬 Medical research institute built (${LAB_COST}🪙). Research cuts treatment fees and lifts survival from 60% toward 95%.`);
+  return true;
+}
+function govBuildTech(){
+  if(S.techLabs>0){ log("❌ The technology institute already exists."); return false; }
+  if(S.universities<1){ log("❌ The tech institute needs a university to supply technologists."); return false; }
+  if(S.treasury<TECH_COST){ log("❌ Not enough treasury for the tech institute."); return false; }
+  S.treasury-=TECH_COST; S.techLabs++;
+  log(`⚙️ Technology institute built (${TECH_COST}🪙). Technologists lift everyone's productivity — up to +50% at full progress.`);
+  return true;
+}
+// hire a university-educated adult into a salaried research job
+function govHireResearch(job){
+  if(job==="scientist" && !S.spaceProgram){ log("❌ Found the space program first."); return false; }
+  if(job==="researcher" && S.institutes<1){ log("❌ Build the medical research institute first."); return false; }
+  if(job==="technologist" && S.techLabs<1){ log("❌ Build the technology institute first."); return false; }
+  const counts={}; for(const a of S.agents) if(a.alive&&a.age>=ADULT_AGE) counts[a.job]=(counts[a.job]||0)+1;
+  const cand=S.agents.filter(a=>a.alive&&a.age>=ADULT_AGE&&a.education>=DOC_EDU
+                              &&a.job!==job&&a.job!=="teacher"&&(counts[a.job]||0)>2)
+                     .sort((x,y)=>y.education-x.education)[0];
+  if(!cand){ log(`❌ Nobody available with ${DOC_EDU}+ years of education (won't strip an occupation below 2 workers).`); return false; }
+  log(`${JOBS[job].emoji} ${who(cand)} was hired as a ${jobLabel(job)} (left ${jobLabel(cand.job)}). Salary ${SCI_SALARY}🪙/day from the treasury.`);
+  cand.job=job; cand.workTarget=null;
+  return true;
+}
+function govBuildUniversity(){
+  if(S.treasury<UNI_COST){ log("❌ Not enough treasury for a university."); return false; }
+  S.treasury-=UNI_COST; S.universities++;
+  log(`🏛 University built. Adults with ${DOC_EDU}+ years of education can now train as doctors (needs a hospital to work in).`);
+  return true;
+}
+function govBuildHospital(){
+  if(S.treasury<HOSP_COST){ log("❌ Not enough treasury for a hospital."); return false; }
+  S.treasury-=HOSP_COST; S.hospitals++;
+  log(`🏥 Hospital built. Each doctor can treat ${docCap()} patients/year at ${medFee()}🪙 — ${(medSurvival()*100).toFixed(0)}% survival for the treated.`);
+  return true;
+}
+document.getElementById("buildUni").addEventListener("click",()=>{ govBuildUniversity(); updatePanels(); });
+document.getElementById("buildHosp").addEventListener("click",()=>{ govBuildHospital(); updatePanels(); });
+document.getElementById("pubHousing").addEventListener("click",()=>{ govPublicHousing(); updatePanels(); });
+document.getElementById("acquireBtn").addEventListener("click",()=>{ govAcquireHousing(); updatePanels(); });
+document.getElementById("pubHealthBtn").addEventListener("click",e=>{
+  S.pubHealth=!S.pubHealth;
+  e.target.textContent="Public health: "+(S.pubHealth?"ON":"OFF");
+  log(S.pubHealth?"🏥 Public healthcare ON — the treasury now pays all treatment fees."
+                 :"🏥 Public healthcare OFF — patients pay their own fees again.");
+});
+document.getElementById("spaceBtn").addEventListener("click",()=>{ govSpaceProgram(); updatePanels(); });
+document.getElementById("hireSci").addEventListener("click",()=>{ govHireResearch("scientist"); updatePanels(); });
+document.getElementById("labBtn").addEventListener("click",()=>{ govBuildLab(); updatePanels(); });
+document.getElementById("hireRes").addEventListener("click",()=>{ govHireResearch("researcher"); updatePanels(); });
+document.getElementById("techBtn").addEventListener("click",()=>{ govBuildTech(); updatePanels(); });
+document.getElementById("hireTech").addEventListener("click",()=>{ govHireResearch("technologist"); updatePanels(); });
+// one-click education: staff an empty school first, otherwise build & staff a new one
+function govUpgradeEducation(){
+  const alive=S.agents.filter(a=>a.alive);
+  const teachers=alive.filter(a=>a.job==="teacher").length;
+  if(teachers<S.schools) return govHireTeacher();
+  const unseated=alive.filter(a=>a.age>=5&&a.age<ADULT_AGE&&!a.inSchool).length;
+  if(unseated>0){ if(!govBuildSchool()) return false; govHireTeacher(); return true; }
+  log("🏫 Education is fully provided — every school has a teacher and every child a seat.");
+  return false;
+}
+document.getElementById("upgradeEdu").addEventListener("click",()=>{ govUpgradeEducation(); updatePanels(); });
+document.getElementById("plantTrees").addEventListener("click",()=>{ govPlantTrees(); updatePanels(); });
+document.getElementById("clearLand").addEventListener("click",()=>{ govClearLand(); updatePanels(); });
+document.getElementById("ghBtn").addEventListener("click",()=>{ govBuildGreenhouse(); updatePanels(); });
+
+// ---------- auto-government policy ----------
+// Runs once per day when Auto is ON. Goal: sustainable growth —
+// educate every child, keep the forest alive, keep a fiscal buffer,
+// protect the starving when affordable.
+function autoPolicy(){
+  // wealth tax rate under auto: hold the rate chosen in the auto-govern options
+  if(S.wealthTax!==S.autoWealthRate){
+    S.wealthTax=S.autoWealthRate;
+    document.getElementById("wealthTax").value=S.wealthTax;
+    document.getElementById("wealthOut").textContent=S.wealthTax+"%";
+  }
+  const alive=S.agents.filter(a=>a.alive);
+  const adults=alive.filter(a=>a.age>=ADULT_AGE);
+  const teachers=adults.filter(a=>a.job==="teacher").length;
+  const schoolKids=alive.filter(a=>a.age>=5&&a.age<ADULT_AGE);
+  const unseated=schoolKids.filter(k=>!k.inSchool).length;
+  const dailyBill=teachers*TEACHER_SALARY;            // recurring obligations
+  const reserve=Math.max(80, dailyBill*DAYS_PER_YEAR); // ~1 year of salaries
+
+  // 1. Education: staff for the students who exist, not the buildings —
+  //    a shrunken village must not pour its whole workforce into empty schools.
+  const neededTeachers=Math.min(S.schools, Math.ceil(schoolKids.length/SCHOOL_CAPACITY));
+  if(teachers<neededTeachers && adults.length>4 && teachers<adults.length*0.25){
+    if(govHireTeacher()) log("🤖 Auto-gov: staffed a school.");
+  } else if(teachers>neededTeachers+1 && S.day%9===0){
+    const t=adults.filter(a=>a.job==="teacher").sort((x,y)=>x.education-y.education)[0];
+    if(t){
+      t.job=WORK_JOBS[Math.floor(Math.random()*WORK_JOBS.length)]; t.workTarget=null;
+      log(`🤖 Auto-gov: surplus teacher — ${who(t)} returned to the workforce.`);
+    }
+  } else if(unseated>=5 && S.treasury>=SCHOOL_COST+reserve*0.5 && adults.length>6){
+    if(govBuildSchool()){ govHireTeacher(); log(`🤖 Auto-gov: ${unseated} kids had no seat — opened a new school.`); }
+  }
+
+  // 2. Forest stewardship: replant when mature trees run low (high priority —
+  //    a dead forest starves the wood, craft and construction sectors).
+  const mature=trees.filter(t=>t.stage>=1).length;
+  // the forest must scale with the wood the economy actually wants:
+  // sustainable supply ≈ (mature−8) trees, so target mature ≈ 8 + demand
+  const woodTarget=8+Math.min(250,S.demand.wood||0);
+  if((mature<12 || mature<woodTarget*0.8) && S.treasury>=25 && trees.length<500){
+    if(govPlantTrees()) log("🤖 Auto-gov: expanding the forest to meet wood demand.");
+  }
+
+  // 2a-bis. Food capacity: clear land while the forest can spare it,
+  // otherwise build greenhouses (artificial farms).
+  if(desiredFoodShare()>1.3 && S.day%6===0){
+    const maxPlots=(S.plotRows+3)*S.plotCols;
+    if(trees.length>=15 && farmPlots.length<maxPlots && S.treasury>=140){
+      if(govClearLand()) log("🤖 Auto-gov: food scarcity — cleared new farmland.");
+    } else if(S.treasury>=GH_COST+100){
+      if(govBuildGreenhouse()) log("🤖 Auto-gov: food scarcity — built a greenhouse.");
+    }
+  }
+
+  // 2b. Housing: build public housing when households outnumber homes.
+  const unitsN=householdUnits(alive).length;
+  const homesN=houses.reduce((s,b)=>s+homesOf(b),0);
+  if(unitsN>homesN+2 && S.treasury>=TIERS[0].cost+reserve*0.5 && S.day%4===0
+     && houses.filter(b=>b.progress<1).length<3){
+    if(govPublicHousing()) log("🤖 Auto-gov: housing shortage — public housing commissioned.");
+  }
+
+  // 2c. Healthcare: university once someone is educated enough, then a hospital.
+  if(S.universities<1 && S.treasury>=UNI_COST+reserve
+     && adults.some(a=>a.education>=DOC_EDU)){
+    if(govBuildUniversity()) log("🤖 Auto-gov: founded a university to train doctors.");
+  }
+  if(S.hospitals<1 && S.universities>=1 && S.treasury>=HOSP_COST+reserve*0.5){
+    if(govBuildHospital()) log("🤖 Auto-gov: built a hospital.");
+  }
+
+  // 2c-bis. Research: once healthcare exists, found the institutes and staff
+  //         them — research raises doctor throughput and everyone's output.
+  const hasEducated=adults.some(a=>a.education>=DOC_EDU && a.job!=="teacher");
+  if(S.hospitals>=1 && S.institutes<1 && S.treasury>=LAB_COST+reserve){
+    if(govBuildLab()) log("🤖 Auto-gov: founded the medical research institute.");
+  }
+  if(S.institutes>=1 && S.day%10===0 && hasEducated && medProgress()<1
+     && adults.filter(a=>a.job==="researcher").length<2 && S.treasury>reserve && adults.length>12){
+    if(govHireResearch("researcher")) log("🤖 Auto-gov: staffed medical research.");
+  }
+  if(S.universities>=1 && S.techLabs<1 && S.treasury>=TECH_COST+reserve*1.5){
+    if(govBuildTech()) log("🤖 Auto-gov: founded the technology institute.");
+  }
+  if(S.techLabs>=1 && S.day%10===5 && hasEducated && techProgress()<1
+     && adults.filter(a=>a.job==="technologist").length<2 && S.treasury>reserve*1.2 && adults.length>14){
+    if(govHireResearch("technologist")) log("🤖 Auto-gov: staffed the tech institute.");
+  }
+
+  // 2d. Healthcare: diagnose WHY illnesses go untreated. Too few doctors →
+  //     subsidize the profession. Doctors idle but patients broke → the state
+  //     pays the fees instead. Wind both back when care is ample.
+  if(S.day%8===4){
+    const setSub=v=>{
+      S.subsidy.doctor=v;
+      const el=document.getElementById("sub_doctor"), out=document.getElementById("sub_doctorOut");
+      if(el){ el.value=v; out.textContent=v; }
+    };
+    const docsN=adults.filter(a=>a.job==="doctor").length;
+    const expected=S.lastCrises + alive.length*0.0018*DAYS_PER_YEAR;  // crises + ailments/yr
+    const capacity=docsN*docCap();
+    const setPub=(on,why)=>{
+      if(!S.autoPubHealth) return;   // player kept public healthcare for themselves
+      S.pubHealth=on;
+      const b=document.getElementById("pubHealthBtn");
+      if(b) b.textContent="Public health: "+(on?"ON":"OFF");
+      log(`🤖 Auto-gov: ${why} — public healthcare ${on?"ON":"OFF"}.`);
+    };
+    if(S.treatEma<0.6){
+      if(capacity<expected*1.2 && (S.subsidy.doctor||0)<5 && S.treasury>reserve*0.5){
+        setSub(Math.min(5,(S.subsidy.doctor||0)+0.5));
+        log(`🤖 Auto-gov: doctor shortage — subsidy raised to ${S.subsidy.doctor}🪙/day.`);
+      } else if(!S.pubHealth && S.treasury>reserve){
+        setPub(true,"patients can't afford care");
+      }
+    } else if(S.treatEma>0.92){
+      if((S.subsidy.doctor||0)>0 && capacity>expected*1.5){
+        setSub(Math.max(0,S.subsidy.doctor-0.5));
+        log(`🤖 Auto-gov: care is ample — doctor subsidy eased to ${S.subsidy.doctor}🪙/day.`);
+      }
+    }
+    if(S.pubHealth && S.treasury<reserve*0.3) setPub(false,"treasury strained");
+  }
+
+  // 3. Welfare: on when we can afford it, off when broke (if delegated to auto).
+  const canAfford=S.treasury>reserve*0.6;
+  if(S.autoWelfare && S.welfare!==canAfford && (S.day%5===0)){
+    S.welfare=canAfford;
+    document.getElementById("welfareBtn").textContent="Welfare: "+(S.welfare?"ON":"OFF");
+    log(S.welfare?"🤖 Auto-gov: treasury healthy — welfare ON.":"🤖 Auto-gov: treasury strained — welfare OFF.");
+  }
+
+  // 4. Fiscal rule (every 8 days): steer brackets toward the reserve target.
+  //    Raises lean on the top rate first (ability to pay); cuts relieve the
+  //    bottom first. Bounded by slider ranges to limit deadweight loss.
+  if(S.day%8===0){
+    const [r0,r1,r2]=S.taxRates;
+    if(S.treasury<reserve*0.5 && (r2<50||r1<30)){
+      setTaxRate(2,r2+3); setTaxRate(1,r1+2); setTaxRate(0,Math.min(r0+1,15));
+      log(`🤖 Auto-gov: treasury low — taxes raised to ${S.taxRates.join("/")}% (low/mid/top).`);
+    } else if(S.treasury>reserve*2.5 && (r0>0||r1>5)){
+      setTaxRate(0,r0-2); setTaxRate(1,r1-1); if(r2>20) setTaxRate(2,r2-1);
+      log(`🤖 Auto-gov: healthy surplus — taxes cut to ${S.taxRates.join("/")}% (low/mid/top).`);
+    }
+  }
+
+  // 5. Citizen's dividend: a treasury far beyond any spending need is dead
+  //    money — once a year, pay the surplus out equally to every household.
+  if(S.day===20 && S.treasury>reserve*4+1000){
+    const units=householdUnits(alive);
+    if(units.length){
+      const surplus=(S.treasury-reserve*2)*0.6;
+      const share=surplus/units.length;
+      for(const u of units) u[0].money+=share;
+      S.treasury-=surplus;
+      log(`🤖💵 Citizen's dividend: ${surplus.toFixed(0)}🪙 of treasury surplus paid out — ${share.toFixed(1)}🪙 per household.`);
+    }
+  }
+}
+document.getElementById("autoBtn").addEventListener("click",e=>{
+  S.auto=!S.auto;
+  e.target.textContent="Auto: "+(S.auto?"ON":"OFF");
+  log(S.auto?"🤖 Auto-govern enabled — the state now runs itself. Toggle off to rule manually.":"🧑‍⚖️ Manual rule restored — policy is in your hands.");
+});
+document.getElementById("welfareBtn").addEventListener("click",e=>{
+  S.welfare=!S.welfare;
+  e.target.textContent="Welfare: "+(S.welfare?"ON":"OFF");
+  log(S.welfare?"🍞 Welfare enabled: treasury buys food for the starving (raises food demand & price).":"Welfare disabled.");
+});
+// what auto-govern is allowed to steer
+document.getElementById("autoWelfare").addEventListener("change",e=>S.autoWelfare=e.target.checked);
+document.getElementById("autoPubHealth").addEventListener("change",e=>S.autoPubHealth=e.target.checked);
+document.getElementById("autoWealth").addEventListener("input",e=>{
+  S.autoWealthRate=+e.target.value;
+  document.getElementById("autoWealthOut").textContent=e.target.value+"%";
+});
+
+// ---------- settings (⚙️) ----------
+let resumeAfterSettings=false;
+function openSettings(){
+  document.getElementById("settings").style.display="flex";
+  resumeAfterSettings=!S.paused;
+  S.paused=true;
+  document.getElementById("pauseBtn").textContent="▶ Play";
+}
+function closeSettings(){
+  document.getElementById("settings").style.display="none";
+  if(resumeAfterSettings){
+    S.paused=false;
+    document.getElementById("pauseBtn").textContent="⏸ Pause";
+  }
+}
+document.getElementById("setBtn").addEventListener("click",openSettings);
+document.getElementById("settingsClose").addEventListener("click",closeSettings);
+document.getElementById("settings").addEventListener("click",e=>{ if(e.target.id==="settings") closeSettings(); });
+document.getElementById("foodPriority").addEventListener("input",e=>{
+  S.foodPriority=+e.target.value;
+  document.getElementById("foodPriorityOut").textContent=e.target.value+"%";
+});
+document.getElementById("maxGH").addEventListener("input",e=>{
+  S.maxGH=+e.target.value;
+  document.getElementById("maxGHOut").textContent=S.maxGH===0?"∞":e.target.value;
+});
+function refreshBracketLabels(){
+  const [b0,b1]=S.taxBrackets;
+  document.getElementById("tax0Lbl").textContent=`≤ ${b0}🪙/day (low)`;
+  document.getElementById("tax1Lbl").textContent=`${b0}–${b1}🪙/day (middle)`;
+  document.getElementById("tax2Lbl").textContent=`> ${b1}🪙/day (top)`;
+}
+document.getElementById("brk0").addEventListener("input",e=>{
+  S.taxBrackets[0]=+e.target.value;
+  if(S.taxBrackets[1]<=S.taxBrackets[0]){   // brackets must stay ordered
+    S.taxBrackets[1]=S.taxBrackets[0]+1;
+    document.getElementById("brk1").value=S.taxBrackets[1];
+    document.getElementById("brk1Out").textContent=S.taxBrackets[1]+"🪙";
+  }
+  document.getElementById("brk0Out").textContent=e.target.value+"🪙";
+  refreshBracketLabels();
+});
+document.getElementById("brk1").addEventListener("input",e=>{
+  S.taxBrackets[1]=Math.max(+e.target.value,S.taxBrackets[0]+1);
+  e.target.value=S.taxBrackets[1];
+  document.getElementById("brk1Out").textContent=S.taxBrackets[1]+"🪙";
+  refreshBracketLabels();
+});
+document.getElementById("theatreMult").addEventListener("input",e=>{
+  S.theatreMult=+e.target.value;
+  document.getElementById("theatreMultOut").textContent="×"+e.target.value;
+});
+document.getElementById("operaMult").addEventListener("input",e=>{
+  S.operaMult=+e.target.value;
+  document.getElementById("operaMultOut").textContent="×"+e.target.value;
+});
+document.getElementById("driftersChk").addEventListener("change",e=>{
+  S.drifters=e.target.checked;
+  log(S.drifters?"🚶 Drifters may wander in again when the village is tiny.":"🚷 Drifters disabled — a dying village stays dead.");
+});
+document.getElementById("droughtsChk").addEventListener("change",e=>{
+  S.droughts=e.target.checked;
+  if(!S.droughts) S.drought=false;
+  syncDiffMode();
+  log(S.droughts?"🌵 Droughts enabled — 5% of years the rains fail (−50% farm output).":"🌧 Droughts disabled.");
+});
+
+const subDiv=document.getElementById("subsidies");
+for(const j of WORK_JOBS.concat(["teacher","doctor"])){
+  const row=document.createElement("div");
+  row.className="subsrow";
+  row.innerHTML=`<span class="nm">${JOBS[j].emoji} ${j}</span><input type="range" id="sub_${j}" min="0" max="5" step="0.5" value="0"><output id="sub_${j}Out">0</output>`;
+  const inp=row.querySelector("input"), out=row.querySelector("output");
+  inp.addEventListener("input",()=>{ S.subsidy[j]=+inp.value; out.textContent=inp.value; });
+  subDiv.appendChild(row);
+}
+
+document.getElementById("pauseBtn").addEventListener("click",e=>{
+  S.paused=!S.paused; e.target.textContent=S.paused?"▶ Play":"⏸ Pause";
+});
+const speeds=[1,2,4,6,8,10,25,100,1000];
+let speedIdx=0;
+document.getElementById("speedBtn").addEventListener("click",e=>{
+  speedIdx=(speedIdx+1)%speeds.length; S.speed=speeds[speedIdx];
+  e.target.textContent="Speed ×"+S.speed;
+});
+
+// ---------- main loop ----------
+const TICKS_PER_DAY=90;
+let last=performance.now();
+function loop(now){
+  const dt=Math.min(3,(now-last)/16.7); last=now;
+  if(!S.paused){
+    for(let i=0;i<S.speed;i++){
+      S.tick++;
+      if(S.tick%TICKS_PER_DAY===0) economicDay();
+    }
+    // movement is cosmetic: one update per frame, faster lerp at high speed
+    moveAgents(dt*Math.min(1+S.speed*0.5,5));
+  }
+  draw();
+  requestAnimationFrame(loop);
+}
+
+// ---------- achievements ----------
+const ACHIEVEMENTS=[
+  {id:"pop100",  name:"🏘 Growing village — population 100",      test:p=>p.pop>=100},
+  {id:"pop500",  name:"🏙 Boomtown — population 500",             test:p=>p.pop>=500},
+  {id:"pop1000", name:"🌆 Metropolis — population 1000",          test:p=>p.pop>=1000},
+  {id:"life80",  name:"🧓 Long life — life expectancy 80y",       test:()=>S.lifeExpEma>=80},
+  {id:"treat99", name:"⚕️ Universal care — 99% treated same day", test:()=>S.treatEma>=0.99},
+  {id:"med100",  name:"🔬 Medicine mastered — research 100%",     test:()=>medProgress()>=1},
+  {id:"tech100", name:"⚙️ High tech — technology 100%",           test:()=>techProgress()>=1},
+  {id:"launch1", name:"🚀 First launch",                          test:()=>S.launches>=1},
+  {id:"launch5", name:"🛰 Space age — 5 launches",                test:()=>S.launches>=5},
+  {id:"happy90", name:"😊 Utopia — happiness 90%",                test:()=>(S.hist.happy.at(-1)||0)>=0.9},
+  {id:"fed99",   name:"🍞 No empty bellies — 99% well-fed",       test:()=>(S.hist.fed.at(-1)||0)>=0.99},
+  {id:"housed",  name:"🏠 Everyone housed (pop 100+)",            test:p=>p.pop>=100&&p.homeless===0},
+  {id:"gdp1000", name:"💰 Powerhouse — GDP 1000🪙/day",           test:()=>S.gdpToday>=1000},
+];
+function checkAchievements(){
+  const alive=S.agents.filter(a=>a.alive);
+  const p={pop:alive.length, homeless:alive.filter(a=>a.home<0).length};
+  for(const ach of ACHIEVEMENTS){
+    if(S.achieved[ach.id]) continue;
+    if(ach.test(p)){
+      S.achieved[ach.id]=S.year;
+      log(`🏆 <b style="color:var(--gold)">Achievement unlocked:</b> ${ach.name}`);
+    }
+  }
+}
+function renderAchievements(){
+  document.getElementById("achievements").innerHTML=ACHIEVEMENTS.map(a=>{
+    const y=S.achieved[a.id];
+    return `<div class="row"><span class="lbl" style="${y?"color:var(--gold)":""}">${y?"🏆":"🔒"} ${a.name}</span><span>${y?"Y"+y:""}</span></div>`;
+  }).join("");
+}
+
+// ---------- monitor popups ----------
+let modalMode=null, resumeAfterModal=false;
+function openModal(mode){
+  modalMode=mode;
+  document.getElementById("modal").style.display="flex";
+  if(mode==="ineq"){    // pause so the snapshot stays consistent
+    resumeAfterModal=!S.paused;
+    S.paused=true;
+    document.getElementById("pauseBtn").textContent="▶ Play";
+  }
+  renderModal();
+}
+function closeModal(){
+  document.getElementById("modal").style.display="none";
+  if(modalMode==="ineq" && resumeAfterModal){
+    S.paused=false;
+    document.getElementById("pauseBtn").textContent="⏸ Pause";
+  }
+  modalMode=null;
+}
+document.getElementById("modalClose").addEventListener("click",closeModal);
+// price-legend toggles inside the economics popup: delegated to the modal body
+// so the checkboxes keep working across live re-renders; state lives here
+const econPriceOn=Object.fromEntries(Object.keys(GOODS).map(g=>[g,true]));
+document.getElementById("modalBody").addEventListener("change",e=>{
+  const g=e.target.dataset.good;
+  if(g){ econPriceOn[g]=e.target.checked; renderModal(); }
+});
+document.getElementById("modal").addEventListener("click",e=>{ if(e.target.id==="modal") closeModal(); });
+document.getElementById("econBtn").addEventListener("click",()=>openModal("econ"));
+document.getElementById("ineqBtn").addEventListener("click",()=>openModal("ineq"));
+
+function inequalityStats(){
+  const alive=S.agents.filter(a=>a.alive);
+  const units=householdUnits(alive)
+    .map(u=>({u,w:u.reduce((s,m)=>s+m.money,0)}))
+    .sort((a,b)=>b.w-a.w);
+  const n=Math.max(1,Math.floor(units.length*0.1));
+  const agg=g=>{
+    const ms=g.flatMap(x=>x.u), adults=ms.filter(m=>m.age>=ADULT_AGE);
+    const avg=(arr,f)=>arr.length?arr.reduce((s,m)=>s+f(m),0)/arr.length:0;
+    return {
+      people:ms.length,
+      wealth:avg(g,x=>x.w),
+      income:avg(g,x=>x.u.reduce((s,m)=>s+(m.age>=ADULT_AGE?m.lastIncome:0),0)),
+      happy:avg(ms,m=>(clamp(m.utilAvg/2.5,0,1)+m.fun)/2)*100,
+      fed:ms.filter(m=>m.hunger<0.6).length/Math.max(1,ms.length)*100,
+      hunger:avg(ms,m=>m.hunger)*100,
+      edu:avg(adults,m=>m.education),
+      ill:ms.filter(m=>m.ill).length/Math.max(1,ms.length)*100,
+      homeless:g.filter(x=>x.u[0].home<0).length/Math.max(1,g.length)*100,
+    };
+  };
+  return {top:agg(units.slice(0,n)), bot:agg(units.slice(-n)), all:agg(units), n};
+}
+
+function renderModal(){
+  if(!modalMode) return;
+  const body=document.getElementById("modalBody");
+  if(modalMode==="econ"){
+    document.getElementById("modalTitle").textContent="Economics monitor";
+    body.innerHTML=`
+      <div class="hint">Relative prices, full history (1.0 = base price) — untick a good to hide it; the scale fits what's shown</div>
+      <canvas class="chart" id="mPrice"></canvas>
+      <div class="legend">${Object.entries(GOODS).map(([g,d])=>`<label><input type="checkbox" data-good="${g}" ${econPriceOn[g]?"checked":""}><i style="background:${d.color}"></i>${d.label}</label>`).join("")}</div>
+      <div class="hint" style="margin-top:8px">Total GDP/day</div>
+      <canvas class="chart" id="mGdp"></canvas>
+      <div class="hint" style="margin-top:8px">GDP per capita/day</div>
+      <canvas class="chart" id="mGdpCap"></canvas>
+      <div class="hint" style="margin-top:8px">Treasury</div>
+      <canvas class="chart" id="mTre"></canvas>
+      <div class="hint" style="margin-top:8px">Happiness per lifetime (avg happiness-days at death)</div>
+      <canvas class="chart" id="mLife"></canvas>
+      <table class="stats" style="margin-top:8px">
+        <tr><th>Good</th><th>price</th><th>base</th><th>supply today</th><th>demand today</th></tr>
+        ${Object.entries(GOODS).map(([g,d])=>`<tr><td>${d.label}</td><td>${S.prices[g].toFixed(2)}🪙</td><td>${d.price}🪙</td><td>${S.supply[g].toFixed(0)}</td><td>${S.demand[g].toFixed(0)}</td></tr>`).join("")}
+      </table>
+      <div class="row" style="margin-top:6px"><span class="lbl">Land price · market rent/day</span><span>${landPrice().toFixed(0)}🪙 · ${clamp(S.prices.house*RENT_RATE,0.4,3).toFixed(2)}🪙</span></div>
+      <div class="hint">Updates live while the sim runs.</div>`;
+    // only the ticked goods are plotted — drawChart scales to the series it
+    // receives, so the y-axis re-fits whatever subset is on display
+    drawChart(document.getElementById("mPrice"),
+      Object.keys(GOODS).filter(g=>econPriceOn[g]).map(g=>({data:S.hist.prices[g].map(v=>v/GOODS[g].price),color:GOODS[g].color})), 0, 1,
+      {fmt:v=>v.toFixed(1)+"×"});
+    drawChart(document.getElementById("mGdp"), [{data:S.hist.gdpTot,color:"#ffd97a"}], 0);
+    drawChart(document.getElementById("mGdpCap"), [{data:S.hist.gdp,color:"#c7f06a"}], 0);
+    drawChart(document.getElementById("mTre"), [{data:S.hist.treasury,color:"#5cc8ff"}], 0);
+    drawChart(document.getElementById("mLife"), [{data:S.hist.lifeHappy,color:"#8ce6d9"}], 0);
+  } else {
+    const q=inequalityStats();
+    document.getElementById("modalTitle").textContent="Inequality monitor (game paused)";
+    const row=(name,f,unit="")=>`<tr><td>${name}</td><td>${f(q.top)}${unit}</td><td>${f(q.bot)}${unit}</td><td>${f(q.all)}${unit}</td></tr>`;
+    body.innerHTML=`
+      <div class="hint">Top vs bottom 10% of households by wealth (${q.n} household${q.n>1?"s":""} each side)</div>
+      <table class="stats">
+        <tr><th>Metric</th><th>Top 10%</th><th>Bottom 10%</th><th>Everyone</th></tr>
+        ${row("People",g=>g.people.toFixed(0))}
+        ${row("Avg household wealth",g=>g.wealth.toFixed(0),"🪙")}
+        ${row("Avg household income/day",g=>g.income.toFixed(1),"🪙")}
+        ${row("Happiness",g=>g.happy.toFixed(0),"%")}
+        ${row("Well-fed",g=>g.fed.toFixed(0),"%")}
+        ${row("Avg hunger",g=>g.hunger.toFixed(0),"%")}
+        ${row("Avg education (adults)",g=>g.edu.toFixed(1)," yrs")}
+        ${row("Currently ill",g=>g.ill.toFixed(0),"%")}
+        ${row("Homeless households",g=>g.homeless.toFixed(0),"%")}
+        <tr><td>Life expectancy at death*</td><td>${S.lifeExpRich?S.lifeExpRich.toFixed(1)+"y":"—"}</td><td>${S.lifeExpPoor?S.lifeExpPoor.toFixed(1)+"y":"—"}</td><td>${S.lifeExpEma?S.lifeExpEma.toFixed(1)+"y":"—"}</td></tr>
+        <tr><td>Happiness per lifetime*</td><td>${S.lifeHappyRich?S.lifeHappyRich.toFixed(0):"—"}</td><td>${S.lifeHappyPoor?S.lifeHappyPoor.toFixed(0):"—"}</td><td>${S.lifeHappyEma?S.lifeHappyEma.toFixed(0):"—"}</td></tr>
+      </table>
+      <div class="hint">*life expectancy compares households above vs below <b>median</b> wealth at time of death (10% samples would be too sparse).</div>
+      <div class="hint" style="margin-top:6px">The game pauses while this is open so the snapshot stays consistent — close to resume.</div>`;
+  }
+}
+
+// ---------- difficulty presets ----------
+const DIFF={
+  easy:  {starveDeath:2,  cureCap:99, eduProd:12, welfareHunger:60, droughts:false, treeMult:2,   plotRows:4, plotCols:6},
+  medium:{starveDeath:6,  cureCap:95, eduProd:9,  welfareHunger:80, droughts:false, treeMult:1,   plotRows:3, plotCols:5},
+  hard:  {starveDeath:10, cureCap:90, eduProd:5,  welfareHunger:90, droughts:true,  treeMult:0.6, plotRows:3, plotCols:3},
+};
+const DIFF_KEYS=["starveDeath","cureCap","eduProd","welfareHunger"];
+function applyDifficulty(name,withWorld){
+  const d=DIFF[name];
+  for(const k of DIFF_KEYS){
+    S[k]=d[k];
+    document.getElementById(k).value=d[k];
+    document.getElementById(k+"Out").textContent=d[k]+"%";
+  }
+  S.droughts=d.droughts;
+  if(!S.droughts) S.drought=false;
+  document.getElementById("droughtsChk").checked=d.droughts;
+  if(withWorld){ S.treeMult=d.treeMult; S.plotRows=d.plotRows; S.plotCols=d.plotCols; }
+  S.diffMode=name; refreshDiffLabel();
+}
+function refreshDiffLabel(){
+  document.getElementById("diffLabel").textContent="· "+S.diffMode;
+  for(const b of document.querySelectorAll("#diffBtns button"))
+    b.classList.toggle("active",b.dataset.diff===S.diffMode);
+}
+function syncDiffMode(){
+  S.diffMode=Object.keys(DIFF).find(n=>DIFF_KEYS.every(k=>DIFF[n][k]===S[k])&&DIFF[n].droughts===S.droughts)||"custom";
+  refreshDiffLabel();
+}
+for(const k of DIFF_KEYS){
+  document.getElementById(k).addEventListener("input",e=>{
+    S[k]=+e.target.value;
+    document.getElementById(k+"Out").textContent=e.target.value+"%";
+    syncDiffMode();
+  });
+}
+document.getElementById("diffBtns").addEventListener("click",e=>{
+  const b=e.target.closest("button[data-diff]");
+  if(!b) return;
+  applyDifficulty(b.dataset.diff,false);   // world already exists — sliders only
+  log(`🎚 Difficulty set to ${b.dataset.diff} (policy sliders updated; world layout unchanged).`);
+});
+
+// ---------- boot: pick a difficulty, then the world is born ----------
+resize();
+S.paused=true;
+refreshDiffLabel();
+document.getElementById("startOverlay").addEventListener("click",e=>{
+  const b=e.target.closest("button[data-diff]");
+  if(!b) return;
+  applyDifficulty(b.dataset.diff,true);
+  seedTerrain();
+  seedWorld();
+  economicDay();
+  S.paused=false;
+  document.getElementById("startOverlay").remove();
+});
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

@@ -1,0 +1,415 @@
+---
+title: "How to Build a Simulation Game From Scratch"
+date: 2026-07-14
+heroImage: /images/projects/blog_splash_little_economy.svg
+description: "How Market Simulator works under the hood — and the general concepts you'd need to build any simulation game by hand."
+unlisted: true
+---
+
+This document explains how *Market Simulator* (`index.html`) actually works under the
+hood, and — more importantly — the general concepts you'd need to build a game like
+it by hand. Everything here applies to any simulation/management game (city builders,
+tycoon games, idle games, ecosystem sims).
+
+---
+
+## Part 1: The Big Idea — Three Things, In a Loop
+
+Strip away the 2,700 lines and every simulation game is just this:
+
+```
+STATE  →  UPDATE  →  RENDER  →  (repeat forever)
+```
+
+1. **State** — one big data structure describing the entire world right now.
+2. **Update** — a function that advances the world by one step of time (mutates state).
+3. **Render** — a function that draws the current state to the screen (reads state, never changes it).
+
+That's it. Everything else — economy, agents, taxes, achievements — is just detail
+inside those three boxes. If you internalize this separation, your game will be
+well-structured almost automatically. If you mix them (e.g. changing prices inside
+your draw function), your game becomes unmaintainable fast.
+
+---
+
+## Part 2: The State — One Object to Rule Them All
+
+In this game, the *entire* world lives in a single global object called `S`
+(index.html:423):
+
+```js
+const S = {
+  day: 1, year: 1, tick: 0, paused: false, speed: 1,   // time
+  agents: [],                                          // every person, alive or dead
+  prices: {...}, supply: {...}, demand: {...},         // the market
+  treasury: 120, schools: 1, taxRates: [5,15,30],      // the government
+  hist: { prices: {}, gdp: [], happy: [], ... },       // history for charts
+  selected: null,                                      // UI state (who is inspected)
+};
+```
+
+### Why one object?
+
+- **Save/load is free.** `JSON.stringify(S)` is your save file.
+- **Debugging is free.** Type `S` in the browser console and inspect the whole world.
+- **No hidden state.** Any bug is somewhere in `S` or in a function that touches it.
+
+### Entities are plain objects in arrays
+
+A "villager" is not a class instance — it's a plain object created by a factory
+function (`makeAgent`, index.html:555):
+
+```js
+function makeAgent(age, job, parentId){
+  return {
+    id: S.nextId++,       // unique id — NEVER reference other agents by array index
+    name: ..., age, job,
+    money: 10, hunger: 0.3, fun: 0.5,
+    alive: true,
+    parent: parentId,     // relationships stored as ids, not object references
+    x: ..., y: ...,       // position on screen (cosmetic!)
+  };
+}
+```
+
+**Key concept — ids, not references:** agents point to each other by `id`
+(`a.parent = 12`), and you look up `S.byId.get(12)` when needed. This matters
+because agents die, arrays get filtered, and stored ids survive
+serialization while object references don't.
+
+**Key concept — dead agents stay in the array** with `alive: false`. Every loop
+filters: `S.agents.filter(a => a.alive)`. This avoids nasty bugs from deleting
+items out of an array while iterating over it.
+
+### Constants live at the top, separate from state
+
+Everything tunable is a named constant (index.html:289–348):
+
+```js
+const DAYS_PER_YEAR = 40;
+const SCHOOL_CAPACITY = 12;
+const JOBS = { farmer: {base: 5, makes: "food"}, craftsman: {base: 2, makes: "goods", needs: {wood: 1}}, ... };
+```
+
+Constants are the *rules* of the world; `S` is the *situation*. Rules don't change
+while playing; the situation changes every tick. Keeping them apart means balancing
+the game is editing one block at the top of the file, not hunting magic numbers.
+
+---
+
+## Part 3: The Game Loop — Two Clocks, Not One
+
+This is the concept beginners most often get wrong. The game has **two separate
+notions of time**:
+
+1. **Real time / frames** — the browser redraws ~60 times per second.
+2. **Simulation time** — the economy advances in discrete "days".
+
+They're decoupled in `loop()` (index.html:2495):
+
+```js
+function loop(now){
+  const dt = Math.min(3, (now - last) / 16.7);  // real time since last frame
+  last = now;
+  if (!S.paused){
+    for (let i = 0; i < S.speed; i++){          // speed slider = more ticks per frame
+      S.tick++;
+      if (S.tick % TICKS_PER_DAY === 0) economicDay();  // SIMULATION step
+    }
+    moveAgents(dt);                             // cosmetic animation, real-time
+  }
+  draw();                                       // RENDER, every frame
+  requestAnimationFrame(loop);                  // browser calls us again next frame
+}
+```
+
+Concepts packed in here:
+
+- **`requestAnimationFrame`** — the browser's "call this function before the next
+  repaint" API. Calling it again at the end of `loop` creates the infinite loop.
+- **Delta time (`dt`)** — how much real time passed since last frame, so animation
+  speed doesn't depend on the player's monitor refresh rate. The `Math.min(3, ...)`
+  clamp prevents a huge jump after the tab was in a background (frozen) state.
+- **Fixed simulation steps** — the economy always advances one whole day at a time.
+  Never "half a day scaled by framerate" — that makes the simulation
+  non-deterministic and impossible to balance. Speed controls just run *more whole
+  steps per frame*.
+- **Pause is trivial** — skip the update, keep rendering. That's why `S.paused` works
+  with two lines of code.
+- **Cosmetic vs. real movement** — villagers walking around (`moveAgents`) is pure
+  decoration; the economy doesn't care where anyone stands. Separating "what looks
+  alive" from "what matters" keeps the sim simple.
+
+---
+
+## Part 4: The Update — One Day of Simulation
+
+`economicDay()` (index.html:631) is the heart. It runs the same **pipeline of
+phases, in a fixed order,** every simulated day:
+
+```
+reset daily counters
+→ schooling (assign kids to seats)
+→ resource constraints (how much wood/food is even available?)
+→ production & income (everyone works, earns, pays income tax)
+→ rent, charity, welfare transfers
+→ consumption (everyone buys food/goods/fun by utility)
+→ illness & treatment
+→ price adjustment (supply vs demand)
+→ job switching (agents chase better wages)
+→ record history for charts
+→ (every 40th day) yearEnd(): aging, births, deaths, droughts
+```
+
+A fixed phase order matters: if consumption ran before production, nobody would
+have money to spend. When you build your own game, literally write this list as
+comments first, then fill in each phase.
+
+### Concept: agents + emergence
+
+There is no code that says "the food price should be 3 coins". Instead:
+
+- Each **agent** follows simple local rules: work your job, buy what you need most,
+  occasionally switch to a better-paying job.
+- The interesting behavior (price spikes during droughts, doctor shortages,
+  housing booms) **emerges** from many agents interacting.
+
+This is *agent-based simulation* — the alternative to writing top-down formulas
+("GDP = population × 5"). Agent-based is more code per rule but produces
+surprising, game-like dynamics for free.
+
+### Concept: supply/demand pricing (a feedback loop)
+
+The whole market is 4 lines (index.html:868):
+
+```js
+for (const g of Object.keys(GOODS)){
+  const s = Math.max(0.1, S.supply[g]), d = Math.max(0.1, S.demand[g]);
+  const pressure = clamp((d - s) / (d + s), -0.5, 0.5);   // -0.5 … +0.5
+  S.prices[g] = clamp(S.prices[g] * (1 + pressure * 0.12),
+                      GOODS[g].price * 0.2, GOODS[g].price * 6);
+}
+```
+
+During the day, every purchase increments `S.demand[g]` and every unit produced
+increments `S.supply[g]`. At day's end, price nudges toward whichever is bigger.
+Three tricks to steal:
+
+- **Normalize the pressure** — `(d-s)/(d+s)` is always between -1 and 1 regardless
+  of scale, so it works identically at population 26 or 4000.
+- **Small step size (0.12)** — prices adjust over many days, not instantly. Gradual
+  feedback = stable; instant feedback = wild oscillation.
+- **Clamp everything** — hard floor and ceiling (0.2×–6× the base price) so no
+  feedback loop can ever run away to zero or infinity. `clamp()` is the single most
+  important function in simulation programming.
+
+### Concept: utility-based decisions
+
+How does an agent decide what to buy? Each option gets a **utility score** — "how
+much happiness per coin" — and the agent picks the best:
+
+```js
+function foodUtility(hunger){ return 3.0 * hunger; }     // hungrier → food worth more
+function recUtility(fun){ return 1 - fun; }              // bored → entertainment worth more
+function moneyLambda(wealth){ return 1.2 / (1 + wealth/12); }  // poor → saving worth more
+```
+
+An agent buys food when `foodUtility / price > moneyLambda`, i.e. when the meal
+is worth more than keeping the coin. This one pattern (score every option,
+pick the max, with scores driven by current needs) is how you make agents
+that *look* smart with almost no code. The same pattern drives job switching:
+estimate the daily wage of every job you could do, switch if another job pays
+better (with friction so people don't flip-flop daily — index.html:875).
+
+### Concept: exponential moving averages for smooth stats
+
+Raw daily numbers are noisy. Everywhere the game needs a "smoothed" statistic
+it uses one line, no arrays:
+
+```js
+S.treatEma = S.treatEma * 0.95 + treatedNow * 0.05;   // 95% old value, 5% new
+a.wageMemory[job] = a.wageMemory[job] * 0.8 + wage * 0.2;
+```
+
+This is an **EMA** (exponential moving average). Agents' "memory" of wages, life
+expectancy, treatment rates — all EMAs. Cheap, smooth, and it makes agents react
+to trends instead of single-day noise.
+
+### Concept: randomness, bounded
+
+Randomness appears as small multipliers on deterministic values —
+`qty = base * productivity * rnd(0.85, 1.15)` — never as the value itself.
+The two helpers used everywhere (index.html:480):
+
+```js
+const rnd = (a, b) => a + Math.random() * (b - a);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+```
+
+Rule of thumb: randomness adds texture; clamps guarantee it stays texture.
+
+---
+
+## Part 5: The Render — Draw Everything, Every Frame, From Scratch
+
+`draw()` (index.html:1430) uses the **HTML5 Canvas API**:
+
+```js
+const ctx = canvas.getContext("2d");
+ctx.fillStyle = "#7a5"; ctx.fillRect(x, y, w, h);   // rectangles
+ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); // circles (villager heads)
+```
+
+The crucial concept: **immediate-mode rendering**. Every frame, the whole scene is
+wiped and redrawn from `S` — terrain, trees, houses, every villager. Nothing on
+screen is "remembered"; the screen is a pure function of state. This feels
+wasteful, but drawing a few hundred shapes 60×/second is nothing to a computer,
+and it means the renderer can never get out of sync with reality: it has no
+reality of its own.
+
+The sidebar panels (prices, households, log) are the same idea with the DOM
+instead of Canvas — build an HTML string from `S` and set `element.innerHTML`.
+Cheap, and again: the UI can't be stale because it's regenerated from state.
+
+**Input** goes only one direction: click handlers translate a mouse position into
+a state change (`S.selected = agentUnderCursor`, `S.paused = true`) and nothing
+else. Next frame, the renderer picks it up. Input writes state; render reads state;
+they never talk to each other directly.
+
+---
+
+## Part 6: Structuring It — What "Well-Structured" Means Here
+
+This game has no classes, no framework, no build step — and it's still
+well-structured, because structure is about *discipline*, not tooling:
+
+1. **One-way data flow.** Input → State → Update → Render. No phase reaches
+   backward.
+2. **File laid out in reading order.** Constants → state → simulation → rendering
+   → UI wiring. You can binary-search for any behavior by line number.
+3. **Data-driven rules.** New jobs, goods, and achievements are added by adding an
+   *entry to a table*, not by writing new logic. See `ACHIEVEMENTS`
+   (index.html:2510) — each achievement is `{id, name, test: () => condition}`,
+   and one generic loop checks them all. Whenever you're about to copy-paste an
+   `if`, turn it into a table + loop instead.
+4. **Small pure helpers.** `progTax(income)`, `medProgress()`, `foodCapacity()` —
+   functions that compute a value from state without changing anything. These are
+   testable in the console and reusable in both the sim and the UI.
+5. **A log for the story.** `log(msg)` appends human-readable events ("Ada Holt
+   died at 84", "🚀 LAUNCH!"). It doubles as your debugging tool and the player's
+   narrative.
+
+---
+
+## Part 7: Build Your Own — A Minimal Recipe
+
+Here's the skeleton of a "very basic" version — a village where farmers grow food,
+people eat it, and the price adjusts. About 100 lines, same architecture:
+
+```html
+<!DOCTYPE html>
+<canvas id="c" width="600" height="400"></canvas>
+<div id="hud"></div>
+<script>
+// ===== 1. CONSTANTS (the rules) =====
+const TICKS_PER_DAY = 30;
+const HUNGER_PER_DAY = 0.4;
+
+// ===== 2. STATE (the situation) =====
+const S = {
+  tick: 0, day: 1,
+  foodPrice: 3, supply: 0, demand: 0,
+  agents: [],
+};
+function makeAgent(job){
+  return { id: S.agents.length, job, money: 10, hunger: 0.3,
+           alive: true,
+           x: Math.random()*600, y: Math.random()*400 };
+}
+for (let i = 0; i < 10; i++) S.agents.push(makeAgent(i < 4 ? "farmer" : "crafter"));
+
+// ===== 3. UPDATE (one day) =====
+function simDay(){
+  S.supply = 0; S.demand = 0;
+  const alive = S.agents.filter(a => a.alive);
+  // phase 1: produce & earn
+  for (const a of alive){
+    if (a.job === "farmer"){ S.supply += 2; a.money += 2 * S.foodPrice; }
+    else a.money += 5;                       // crafters sell elsewhere
+  }
+  // phase 2: eat (utility: buy food if hungry and affordable)
+  for (const a of alive){
+    a.hunger = Math.min(1, a.hunger + HUNGER_PER_DAY);
+    if (a.hunger > 0.4 && a.money >= S.foodPrice){
+      a.money -= S.foodPrice; a.hunger = 0; S.demand++;
+    }
+    if (a.hunger >= 1 && Math.random() < 0.05) a.alive = false;  // starvation
+  }
+  // phase 3: price feedback
+  const s = Math.max(0.1, S.supply), d = Math.max(0.1, S.demand);
+  S.foodPrice = Math.min(20, Math.max(0.5, S.foodPrice * (1 + 0.1*(d-s)/(d+s))));
+  S.day++;
+}
+
+// ===== 4. RENDER (pure function of state) =====
+const ctx = document.getElementById("c").getContext("2d");
+function draw(){
+  ctx.fillStyle = "#242"; ctx.fillRect(0, 0, 600, 400);
+  for (const a of S.agents){
+    if (!a.alive) continue;
+    ctx.fillStyle = a.job === "farmer" ? "#fa4" : "#4af";
+    ctx.beginPath(); ctx.arc(a.x, a.y, 5, 0, 7); ctx.fill();
+  }
+  hud.innerHTML = `Day ${S.day} · Food ${S.foodPrice.toFixed(2)}🪙 · ` +
+                  `Pop ${S.agents.filter(a => a.alive).length}`;
+}
+
+// ===== 5. LOOP =====
+function loop(){
+  S.tick++;
+  if (S.tick % TICKS_PER_DAY === 0) simDay();
+  draw();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+```
+
+From this skeleton, every feature of the big game is an incremental addition:
+
+| Want... | Add... |
+|---|---|
+| More professions | entries in a `JOBS` table + generic production loop |
+| A second good | `prices`/`supply`/`demand` become per-good objects |
+| Government | a `treasury` number, a tax line inside `earn` |
+| Buildings | a `buildings` array, a `builder` job that adds `progress` to them |
+| Aging & birth | a `yearEnd()` called every Nth day |
+| Charts | push one number per day into a history array, draw it as a polyline |
+| Speed control | run `simDay()` N times per frame |
+| Achievements | a table of `{name, test}` checked daily |
+
+### The order to build it in
+
+1. **State + render first.** Dots on a screen, a HUD number. If you can't see the
+   world, you can't debug it.
+2. **The loop + time.** Ticks, days, pause. Get the two clocks right early.
+3. **One mechanic end-to-end** (produce → earn → eat → price). A tiny closed
+   economy that runs forever without exploding is the real milestone.
+4. **Then iterate**: add one phase to `simDay()` at a time, watching the charts
+   after each addition. Simulation bugs show up as curves going to zero or
+   infinity — which is why you add history charts *early*, not last.
+
+### Concepts checklist
+
+If you can explain each of these, you can build this game:
+
+- [ ] Game loop & `requestAnimationFrame`
+- [ ] Fixed timestep for simulation vs. delta time for animation
+- [ ] Single state object; entities as plain objects with ids
+- [ ] Update pipeline with a fixed phase order
+- [ ] Agent-based simulation & emergence
+- [ ] Feedback loops with normalization + damping + clamping
+- [ ] Utility scoring for agent decisions
+- [ ] Exponential moving averages
+- [ ] Immediate-mode rendering (screen = pure function of state)
+- [ ] Data-driven design (tables + generic loops instead of copy-pasted ifs)

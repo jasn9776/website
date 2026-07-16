@@ -1,0 +1,11 @@
+{
+  "order": 7,
+  "title": "Market Sim (Little Economy)",
+  "description": "A zero-player agent-based economy in a single HTML file. Villagers farm, trade and pay taxes while prices move with supply and demand — you play the government.",
+  "image": "/images/projects/blog_splash_little_economy.svg",
+  "github_url": "https://github.com/jasn9776/Market-Simulator",
+  "blog_post": "little-economy",
+  "demo_url": "/interactive/Market_sim.html",
+  "category": "AI Generated",
+  "year": 2026
+}
