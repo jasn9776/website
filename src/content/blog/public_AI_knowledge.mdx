@@ -1,0 +1,70 @@
+---
+title: "What does the public need to know about AI?"
+date: 2026-07-15
+heroImage: /images/blog/splash_robot_magnifying_glass.svg
+description: "What does the public actually need to know about AI? Does more AI knowledge shape our views on AI?"
+unlisted: false
+---
+
+export const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+## Introduction
+
+AI, AI, AI. It's all the buzz nowadays. But what is it exactly? And is it necessary to be a computer scientist to know what policies I should support as a member of the public? 
+Why can't the experts agree on whether AI is an existential threat or not? 
+
+In this article I will be covering a basic explanation of what AI is and how it works under the hood, as well as exploring whether understanding this at a deep level even matters for those not working in policy or AI directly.
+
+I have a computer science degree from UNSW. This isn't to brag or to argue my viewpoint is more important than someone else's. It's simply an acknowledgement that I possess some amount of specialised knowledge and skills working with software systems, including AI systems. 
+However, I'll admit that even I am confused, conflicted and honestly overwhelmed. Sure, I know that current LLMs have repeating attention and MLP layers, and that context flows between words at the attention layers, but why does that even matter if I don't decide to become a technical AI safety researcher?
+Should I trust an AI to do my job?? Is it a danger for society???
+(And in case that sentence just sounds like techno-mumbo jumbo, don't stop reading, because in many ways the public doesn't really need to know that).  
+
+Here goes my attempt to explain AI... In my view AI is a form of technology. Technology has been around for millennia. Humans used sticks as technology. Technology is just any tool that can be used to help us achieve our goals.
+As civilisation developed, technologies became more advanced. For example, we developed fire-making, houses, weapons, and so on. Eventually humans learnt to create electricity and this eventually led to computers. The difference between computers as we 
+have used them in the past and AI is that computers have been explicitly programmed. We wrote a method for the computer to execute. Of course, these programs could get very long and very complicated, but ultimately we could be sure of what it would do in any given scenario. 
+Of course, sometimes there were bugs in the code or possibilities that we hadn't considered, and that led to often disastrous outcomes, especially if the computer program was used in a critical application. However, with enough time and money it is at least possible in principle to reason about exactly what these predetermined programs will do in any given scenario. 
+Where AI is different is that instead of humans telling the program what to do in every scenario, we instead train the AI using data. Early AI systems include systems that could identify handwritten numbers and output the correct answer. The essential idea is that we would create a machine with "weights" and those weights controlled how each pixel in the input got combined and analysed to produce the output. During training, if the AI got the answer wrong, its weights would be changed slightly so that it would be more likely to produce the correct output for the given input. This training was repeated on lots and lots of examples and eventually the "weights"
+would be optimised for the task of recognising digits. An analogy for these weights is the connections between neurons in your brain. As you learn you form new connections between neurons which is analogous to the machine changing its weights. While these early machines seemed impressive, few could have predicted that, given enough data, machines could learn to predict not just digits from images, but also text from the internet. This is the basic idea of the modern chatbots we know today: they have been trained to predict the next word given an astonishing amount of text (possibly the entire accessible internet — possibly without permission, but that's a separate issue). 
+As the AI (or Large Language Model — the technical term for these chatbots) learned to predict the next word on all the text on the internet, its weights changed so that instead of outputting random gibberish as it does at early stages of training, it now miraculously outputs coherent sentences based on what it had seen on the internet. After this process of learning the initial weights, the LLMs go through several more stages
+including reinforcement learning where the AI models learn from human feedback and further adapt its weights to follow what humans want. For example, if it produces offensive, discriminatory or lewd output, during RLHF, it will be corrected and penalised so that it is less likely to do it again. Conversely, when it produces helpful output that humans like, it is rewarded, much like you reward a child or a dog after good behaviour. So its weights change to make this behaviour more likely in the future.
+
+If you want to see what's going on under the hood for yourself, I built an <a href={`${base}/interactive/transformer-explainer.html`}>interactive transformer explainer</a> that walks through how attention and MLP layers process text step by step.
+
+The point I want to emphasise is that it is trained using examples and the intelligence of the AI is contained in its weights (which can be thought of as analogous to neural connections). That means it is hard to know exactly what it would do in a new situation, especially one that it hasn't seen. There are many examples of AIs malfunctioning. An infamous example (used in my ethics class) was the Microsoft chatbot Tay. It was produced by Microsoft to post on social media and respond to comments. However, some people with nefarious motives decided to undermine it by nudging it towards producing hate speech and conspiracy theories. Eventually it was shut down and Microsoft has since apologised. A similar thing happened with Elon Musk's Grok model, where it began referring to itself as "MechaHitler". These types of hate speech have no place in our society, however, it is clear that AI is difficult to nudge correctly in the way that we want. 
+
+However, AI engineers are of course very resourceful and they have no doubt learnt from these examples. They have improved their methods and for the most part LLMs today have reasonable safeguards to protect against this unwanted behaviour. 
+
+AI Engineers discovered that if we just make the models bigger, and train them on more data, they would become better even without further engineering tricks. This led to the creation of ChatGPT, and its competitors: Gemini, Grok, and Claude. 
+However, this scaling hit a wall: simply scaling up the amount of training data wasn't working anymore, so companies began to train their models to think. This led to reasoning models like OpenAI's o1. 
+Today most major AIs have an effort level (low, medium, high) that dictates how hard the AI tries to think (or more specifically, how LONG it thinks for).
+
+Recently, however, AIs have begun to cross what some argue are critical thresholds in their capabilities. Anthropic's new Claude Mythos 5 model, for example, was restricted to approved organisations because of its extremely powerful cybersecurity capabilities.
+AIs being good at cybersecurity makes sense: it is a field that closely correlates with coding ability and AIs excel at working with structured languages such as programming languages. They can also integrate vast amounts of expertise from disparate fields of knowledge. For example, they can combine different cybersecurity 
+subspecialties into a broader base of knowledge than any single human could acquire.
+
+My personal tests have also shown that AIs are increasing in reasoning capabilities. They are not just predicting the next word, they are capable of real reasoning, at least most of the time. 
+
+So AIs keep getting better, as evaluations from organisations such as METR tell us. And it doesn't seem like there are any obvious bottlenecks that we can predict for why they might stop getting better. I'm not sure if AI companies are still trying to make their models BIGGER? or just try to get them to think better? Email me if you can help.
+
+So what does this mean? Well to be honest, I've invested quite a lot of time thinking about this topic but I'm not sure I'm much closer to an answer... I mean sure, I know roughly the components of a modern AI system and how it is trained. But does that really change my outlook on whether I believe AI will be helpful or harmful?
+Does it inform my perspective on how much regulation or safety research we need? Ultimately I think even after doing my research, I'm not much closer to a concrete answer. I know MLP blocks are the "neural circuits" of the LLM that help it reason, but what is it actually doing? Well I guess we'll need a lot more AI safety research if we are to get a complete understanding. But are we sure enough that AIs are safe for them to be released to the public?? 
+
+I think that the risk scales with how much power we give the AI. For example, if we only allow trusted individuals to speak to the AI and make sure it can't escape (a much bigger problem given how good AIs could be at hacking) then possibly the risk is low.
+But if we allow AI agents to create other agents in a chain, then things could get messy really quickly. 
+
+I also think that we need to consider the societal and psychological factors of our decision making. These days AI leaders often talk about AI as if it is already a foregone conclusion.
+Sam Altman recently stated that we are "in the singularity" with AI in which AI has overtaken humanity's ability to control it.
+There is a paradox called abeilene's paradox which I think is pertinent here: if everyone else thinks that everyone is ok with AI, then they will be more likely to silently agree as well. 
+This may mean we proceed with AI even though the majority don't want it.
+
+Some random thoughts
+I think the danger of AI will get more pronounced if the computational requirements are less. If more capabilities can be packed in a smaller or more efficient model, it meansrogue AI agents can hide more easily,
+Crimminals can take advantaghe of AI with less compute required and we will be less able to detect AI usage in the form of power spikes. 
+
+The hugging face incident is a wake-up call that AI can hack and take control. Whether it chooses to depends on how we are able to align it. But even one instance of a model that wants to just replicate could spell disaster. THat's why its such a difficult task! 
+
+## Conclusion
+
+I think we need to admit that as a society, we really don't know how this will turn out and that it is better to be safe than sorry. I know there are pressures on AI companies to beat not just each other, but other countries. But ultimately, such a transformative technology requires very careful attention.
+

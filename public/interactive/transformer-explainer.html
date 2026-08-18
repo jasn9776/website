@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inside a Transformer — five levels of depth</title>
+<!--
+  ============================================================================
+  INSIDE A TRANSFORMER — a five-level explorable schematic
+  ----------------------------------------------------------------------------
+  Self-contained: no external fonts, libraries, or network requests.
+  Drop this file anywhere, or paste the <body> contents into an existing page.
+
+  FILE MAP
+    1. CSS        — design tokens, layout, level-gating rules, motion
+    2. HTML       — header / level dial / schematic figure / prose / footnotes
+    3. SVG        — the base graphic (token lanes, layers, attention, output)
+                    Elements carry data-min-level / data-max-level attributes;
+                    JS shows or hides them when the level changes.
+    4. JS         — LEVELS content config, setLevel(), zoom panels, pulses
+  ============================================================================
+-->
+<style>
+  /* ------------------------------------------------------------------ */
+  /* 1a. Design tokens                                                   */
+  /* ------------------------------------------------------------------ */
+  :root {
+    --bg:       #070B14;   /* void navy                                */
+    --panel:    #0D1424;   /* raised surface                           */
+    --panel-2:  #111B30;   /* zoom overlay surface                     */
+    --ink:      #E8EEF9;   /* primary text                             */
+    --muted:    #7A8AA3;   /* secondary text                           */
+    --stream:   #5EE7FF;   /* cyan — residual stream / signal          */
+    --attn:     #8B7CFF;   /* violet — attention                       */
+    --predict:  #FFB454;   /* amber — probabilities / output           */
+    --hairline: rgba(94, 231, 255, 0.14);
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.65;
+    padding: 2.5rem 1.25rem 4rem;
+  }
+
+  .wrap { max-width: 1080px; margin: 0 auto; }
+
+  /* ------------------------------------------------------------------ */
+  /* 1b. Header + level dial                                             */
+  /* ------------------------------------------------------------------ */
+  header { margin-bottom: 2rem; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--stream);
+    margin-bottom: 0.6rem;
+  }
+
+  h1 {
+    font-size: clamp(1.6rem, 4vw, 2.4rem);
+    font-weight: 650;
+    letter-spacing: -0.015em;
+    margin-bottom: 0.4rem;
+  }
+
+  .subtitle { color: var(--muted); max-width: 56ch; }
+
+  .dial {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 1.6rem 0 0;
+    border: 1px solid var(--hairline);
+    border-radius: 12px;
+    padding: 6px;
+    width: fit-content;
+    background: var(--panel);
+  }
+
+  .dial button {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 8px 14px;
+    cursor: pointer;
+    transition: color .15s, background .15s;
+  }
+  .dial button:hover { color: var(--ink); }
+  .dial button:focus-visible { outline: 2px solid var(--stream); outline-offset: 2px; }
+  .dial button[aria-pressed="true"] {
+    color: var(--bg);
+    background: var(--stream);
+    font-weight: 600;
+  }
+
+  .level-tagline {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--stream);
+    margin-top: 0.9rem;
+    min-height: 1.4em;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* 1c. Schematic figure                                                */
+  /* ------------------------------------------------------------------ */
+  figure.schematic {
+    position: relative;              /* anchors the zoom overlay         */
+    background: var(--panel);
+    border: 1px solid var(--hairline);
+    border-radius: 16px;
+    padding: 1.2rem 1rem 0.8rem;
+    margin: 1.8rem 0;
+    overflow: hidden;
+  }
+
+  figure.schematic svg { width: 100%; height: auto; display: block; }
+
+  figcaption {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--muted);
+    text-align: center;
+    padding: 0.7rem 0 0.4rem;
+  }
+
+  /* SVG text defaults */
+  svg text { font-family: var(--mono); fill: var(--ink); }
+  .lbl       { font-size: 12px; }
+  .lbl-sm    { font-size: 10.5px; fill: var(--muted); }
+  .lbl-shape { font-size: 10.5px; fill: var(--stream); }
+  .lbl-attn  { fill: var(--attn); }
+  .lbl-pred  { fill: var(--predict); }
+
+  /* Clickable zoom targets (levels 4+) */
+  .zoomable { cursor: zoom-in; }
+  .zoomable:hover .zoom-hit { stroke: var(--stream); stroke-opacity: .8; }
+  .zoomable:focus-visible .zoom-hit { stroke: var(--stream); stroke-opacity: 1; }
+
+  /* Hidden-by-level elements (JS toggles this class) */
+  .lvl-hidden { display: none; }
+
+  /* ------------------------------------------------------------------ */
+  /* 1d. Zoom overlay                                                    */
+  /* ------------------------------------------------------------------ */
+  .zoom-overlay {
+    position: absolute;
+    inset: 8px;
+    background: var(--panel-2);
+    border: 1px solid var(--stream);
+    border-radius: 14px;
+    padding: 1.2rem 1.4rem;
+    overflow-y: auto;
+    display: none;
+    z-index: 5;
+  }
+  .zoom-overlay.open { display: block; }
+
+  .zoom-overlay h3 {
+    font-family: var(--mono);
+    font-size: 14px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--stream);
+    margin-bottom: 0.8rem;
+  }
+
+  .zoom-close {
+    position: absolute;
+    top: 10px; right: 12px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    background: transparent;
+    border: 1px solid var(--hairline);
+    border-radius: 6px;
+    padding: 4px 10px;
+    cursor: pointer;
+  }
+  .zoom-close:hover { color: var(--ink); border-color: var(--stream); }
+
+  .chain {
+    font-family: var(--mono);
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 0.45rem 0;
+  }
+  .shp {
+    padding: 2px 9px;
+    border: 1px solid;
+    border-radius: 6px;
+    white-space: nowrap;
+  }
+  .shp-p { color: var(--stream);  border-color: var(--stream);  background: rgba(94,231,255,.07); }
+  .shp-a { color: var(--attn);    border-color: var(--attn);    background: rgba(139,124,255,.08); }
+  .shp-o { color: var(--predict); border-color: var(--predict); background: rgba(255,180,84,.08); }
+  .xc  { text-decoration: line-through; opacity: .5; }
+  .op  { color: var(--muted); }
+  .zoom-note { font-size: 13.5px; color: var(--muted); margin-top: 0.7rem; max-width: 70ch; }
+  .zoom-note strong { color: var(--ink); font-weight: 600; }
+
+  /* ------------------------------------------------------------------ */
+  /* 1e. Prose, questions, footnotes                                     */
+  /* ------------------------------------------------------------------ */
+  .prose { max-width: 74ch; }
+  .prose p { margin-bottom: 0.9rem; }
+  .prose code {
+    font-family: var(--mono);
+    font-size: 0.88em;
+    color: var(--stream);
+    background: rgba(94,231,255,.07);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+
+  section h2 {
+    font-family: var(--mono);
+    font-size: 13px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--hairline);
+    padding-bottom: 0.5rem;
+    margin: 2.4rem 0 1.1rem;
+  }
+
+  details.q {
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    margin-bottom: 0.6rem;
+    background: var(--panel);
+  }
+  details.q summary {
+    cursor: pointer;
+    padding: 0.7rem 1rem;
+    font-weight: 550;
+    list-style: none;
+  }
+  details.q summary::before { content: "▸ "; color: var(--stream); }
+  details.q[open] summary::before { content: "▾ "; }
+  details.q .a {
+    padding: 0 1rem 0.9rem;
+    color: var(--muted);
+    font-size: 0.95rem;
+    max-width: 72ch;
+  }
+  details.q .a strong { color: var(--ink); }
+
+  .footnotes { font-size: 0.85rem; color: var(--muted); max-width: 76ch; }
+  .footnotes li { margin: 0.35rem 0 0.35rem 1.2rem; }
+
+  /* ------------------------------------------------------------------ */
+  /* 1f. Motion — signal pulses along lanes                              */
+  /* ------------------------------------------------------------------ */
+  @keyframes pulse-x {
+    from { transform: translateX(0); opacity: 0; }
+    8%   { opacity: 1; }
+    92%  { opacity: 1; }
+    to   { transform: translateX(880px); opacity: 0; }
+  }
+  .pulse {
+    animation: pulse-x 7s linear infinite;
+    will-change: transform;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pulse { animation: none; opacity: 0; }
+  }
+
+  @media (max-width: 640px) {
+    body { padding: 1.5rem 0.8rem 3rem; }
+    .dial button { padding: 7px 10px; font-size: 11.5px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ================================================================ -->
+  <!-- 2. HEADER + LEVEL DIAL                                           -->
+  <!-- ================================================================ -->
+  <header>
+    <p class="eyebrow">Schematic 01 · language model internals</p>
+    <h1>Inside a transformer</h1>
+    <p class="subtitle">
+      One machine, five depths of explanation. Every level shows the same
+      diagram — turning the dial adds detail instead of changing the story.
+    </p>
+
+    <div class="dial" role="group" aria-label="Explanation depth">
+      <button data-level="1" aria-pressed="true">1 · Kids</button>
+      <button data-level="2" aria-pressed="false">2 · Everyone</button>
+      <button data-level="3" aria-pressed="false">3 · STEM</button>
+      <button data-level="4" aria-pressed="false">4 · CS</button>
+      <button data-level="5" aria-pressed="false">5 · Mech interp</button>
+    </div>
+    <p class="level-tagline" id="tagline"></p>
+  </header>
+
+  <!-- ================================================================ -->
+  <!-- 3. THE BASE GRAPHIC                                              -->
+  <!--                                                                  -->
+  <!-- Geometry: 5 token lanes flow left → right.                       -->
+  <!--   x  60  tokens        x 175 embedding                           -->
+  <!--   x 250-420 layer A    x 470-640 layer B  (repeat marker after)  -->
+  <!--   x 760 unembed        x 830+ probability bars                   -->
+
+  <!-- Lanes only ever touch inside the violet attention zones.         -->
+  <!-- data-min-level / data-max-level gate visibility per level.       -->
+  <!-- ================================================================ -->
+  <figure class="schematic" id="fig">
+    <svg viewBox="0 0 1080 470" role="img" aria-labelledby="svgtitle svgdesc">
+      <title id="svgtitle">Transformer schematic</title>
+      <desc id="svgdesc">Five tokens travel on parallel lanes through embedding,
+      repeated layers of attention and MLP, and an unembedding step that yields
+      next-word probabilities. Lanes cross only inside attention.</desc>
+
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5"
+                markerWidth="5.5" markerHeight="5.5" orient="auto">
+          <path d="M1 1 L9 5 L1 9" fill="none" stroke="var(--attn)"
+                stroke-width="1.6" stroke-linecap="round"/>
+        </marker>
+      </defs>
+
+      <!-- ················ token lanes (the residual streams) ·········· -->
+      <!-- lanes y: 110 / 175 / 240 / 305 / 370 ; token order top→bottom  -->
+      <g stroke="var(--stream)" stroke-opacity="0.35" stroke-width="2">
+        <line x1="115" y1="110" x2="1000" y2="110"/>
+        <line x1="115" y1="175" x2="1000" y2="175"/>
+        <line x1="115" y1="240" x2="1000" y2="240"/>
+        <line x1="115" y1="305" x2="1000" y2="305"/>
+        <line x1="115" y1="370" x2="1000" y2="370"/>
+      </g>
+
+      <!-- animated pulses (decorative) -->
+      <g fill="var(--stream)" aria-hidden="true">
+        <circle class="pulse" cx="115" cy="110" r="3" style="animation-delay:0s"/>
+        <circle class="pulse" cx="115" cy="175" r="3" style="animation-delay:1.1s"/>
+        <circle class="pulse" cx="115" cy="240" r="3" style="animation-delay:2.3s"/>
+        <circle class="pulse" cx="115" cy="305" r="3" style="animation-delay:3.1s"/>
+        <circle class="pulse" cx="115" cy="370" r="3" style="animation-delay:4.2s"/>
+      </g>
+
+      <!-- ················ input tokens ································ -->
+      <g class="lbl" text-anchor="end">
+        <text x="98" y="114">the</text>
+        <text x="98" y="179">cat</text>
+        <text x="98" y="244">sat</text>
+        <text x="98" y="309">on</text>
+        <text x="98" y="374">the</text>
+      </g>
+      <text class="lbl-sm" x="60" y="80" text-anchor="middle">input</text>
+      <text class="lbl-sm" data-min-level="3" x="60" y="94" text-anchor="middle">5 tokens</text>
+
+      <!-- lane annotation: every level ≥2 learns lanes are parallel -->
+      <text class="lbl-sm" data-min-level="2" x="557" y="418" text-anchor="middle">
+        each word travels on its own lane — lanes touch ONLY inside attention
+      </text>
+      <text class="lbl-shape" data-min-level="4" x="557" y="436" text-anchor="middle">
+        one lane = one residual stream · [5 × 768] in total · nothing is ever overwritten, only added to
+      </text>
+
+      <!-- ················ embedding column ···························· -->
+      <g>
+        <rect x="150" y="88" width="52" height="300" rx="9"
+              fill="rgba(94,231,255,.08)" stroke="var(--stream)" stroke-opacity=".5"/>
+        <text class="lbl" x="176" y="76" text-anchor="middle">embed</text>
+        <text class="lbl-shape" data-min-level="3" x="176" y="62" text-anchor="middle">word → 768 numbers</text>
+        <text class="lbl-shape" data-min-level="4" x="176" y="48" text-anchor="middle">W_E + W_pos</text>
+      </g>
+
+      <!-- ················ LEVEL 1 ONLY: the magic box ················· -->
+      <g data-max-level="1">
+        <rect x="250" y="88" width="470" height="300" rx="14"
+              fill="rgba(139,124,255,.10)" stroke="var(--attn)"/>
+        <text class="lbl" x="485" y="225" text-anchor="middle"
+              style="font-size:17px">the pattern machine</text>
+        <text class="lbl-sm" x="485" y="252" text-anchor="middle">
+          it read millions of books and learned which word comes next
+        </text>
+      </g>
+
+      <!-- ················ LAYERS (levels ≥ 2) ························· -->
+      <!-- Two layers drawn; a repeat marker stands in for the rest.      -->
+      <g data-min-level="2" id="layers">
+
+        <!-- ~~~~~~~~~~~~~~~~~ layer template A ~~~~~~~~~~~~~~~~~ -->
+        <g class="zoomable" role="button" tabindex="0" data-zoom="attn"
+           aria-label="Zoom into the attention block">
+          <rect class="zoom-hit" x="250" y="88" width="90" height="300" rx="10"
+                fill="rgba(139,124,255,.09)" stroke="var(--attn)" stroke-opacity=".55"/>
+          <text class="lbl lbl-attn" x="295" y="76" text-anchor="middle">attention</text>
+          <!-- causal crossings: information flows only downward
+               (earlier lanes → later lanes) = the causal mask -->
+          <g stroke="var(--attn)" fill="none" marker-end="url(#arr)">
+            <path d="M262 110 C 285 110, 300 160, 320 172" stroke-width="2.4"/>
+            <path d="M262 175 C 285 175, 300 225, 320 237" stroke-width="1.6"/>
+            <path d="M262 110 C 290 115, 305 290, 322 302" stroke-width="1.2" stroke-opacity=".7"/>
+            <path d="M262 240 C 285 240, 300 355, 320 367" stroke-width="2.0"/>
+            <path d="M262 305 C 282 308, 300 358, 318 368" stroke-width="1.3" stroke-opacity=".8"/>
+          </g>
+          <text class="lbl-sm" data-min-level="3" x="295" y="404" text-anchor="middle">
+            line weight = attention
+          </text>
+          <text class="lbl-shape" data-min-level="5" x="295" y="102" text-anchor="middle">× 12 heads</text>
+        </g>
+
+        <g class="zoomable" role="button" tabindex="0" data-zoom="mlp"
+           aria-label="Zoom into the MLP block">
+          <rect class="zoom-hit" x="352" y="88" width="66" height="300" rx="10"
+                fill="rgba(94,231,255,.06)" stroke="var(--stream)" stroke-opacity=".45"/>
+          <text class="lbl" x="385" y="76" text-anchor="middle">MLP</text>
+          <!-- one node per lane: strictly per-token processing -->
+          <g fill="var(--bg)" stroke="var(--stream)" stroke-width="1.6">
+            <circle cx="385" cy="110" r="9"/><circle cx="385" cy="175" r="9"/>
+            <circle cx="385" cy="240" r="9"/><circle cx="385" cy="305" r="9"/>
+            <circle cx="385" cy="370" r="9"/>
+          </g>
+          <text class="lbl-sm" data-min-level="3" x="385" y="404" text-anchor="middle">no crossing</text>
+        </g>
+
+        <!-- residual add marker, level 4+ -->
+        <g data-min-level="4" fill="none" stroke="var(--stream)" stroke-opacity=".8">
+          <circle cx="435" cy="110" r="6"/><circle cx="435" cy="175" r="6"/>
+          <circle cx="435" cy="240" r="6"/><circle cx="435" cy="305" r="6"/>
+          <circle cx="435" cy="370" r="6"/>
+        </g>
+        <g data-min-level="4" class="lbl-shape" text-anchor="middle">
+          <text x="435" y="114" style="font-size:9px" fill="var(--stream)">+</text>
+          <text x="435" y="179" style="font-size:9px" fill="var(--stream)">+</text>
+          <text x="435" y="244" style="font-size:9px" fill="var(--stream)">+</text>
+          <text x="435" y="309" style="font-size:9px" fill="var(--stream)">+</text>
+          <text x="435" y="374" style="font-size:9px" fill="var(--stream)">+</text>
+        </g>
+        <text class="lbl-shape" data-min-level="4" x="435" y="62" text-anchor="middle">add back</text>
+
+        <!-- logit-lens probe point, level 5 -->
+        <g data-min-level="5">
+          <path d="M455 232 L463 240 L455 248 L447 240 Z" fill="var(--predict)"/>
+          <text class="lbl-sm lbl-pred" x="455" y="222" text-anchor="middle">probe</text>
+        </g>
+
+        <!-- ~~~~~~~~~~~~~~~~~ layer template B (same anatomy) ~~~~~~~~~~ -->
+        <g class="zoomable" role="button" tabindex="0" data-zoom="attn"
+           aria-label="Zoom into the attention block">
+          <rect class="zoom-hit" x="480" y="88" width="90" height="300" rx="10"
+                fill="rgba(139,124,255,.09)" stroke="var(--attn)" stroke-opacity=".55"/>
+          <text class="lbl lbl-attn" x="525" y="76" text-anchor="middle">attention</text>
+          <g stroke="var(--attn)" fill="none" marker-end="url(#arr)">
+            <path d="M492 175 C 515 175, 530 225, 550 237" stroke-width="2.2"/>
+            <path d="M492 110 C 520 118, 535 355, 552 367" stroke-width="2.6"/>
+            <path d="M492 240 C 515 242, 532 292, 550 302" stroke-width="1.4"/>
+            <path d="M492 305 C 512 308, 530 358, 548 368" stroke-width="1.2" stroke-opacity=".8"/>
+          </g>
+          <text class="lbl-shape" data-min-level="5" x="525" y="102" text-anchor="middle">× 12 heads</text>
+        </g>
+
+        <g class="zoomable" role="button" tabindex="0" data-zoom="mlp"
+           aria-label="Zoom into the MLP block">
+          <rect class="zoom-hit" x="582" y="88" width="66" height="300" rx="10"
+                fill="rgba(94,231,255,.06)" stroke="var(--stream)" stroke-opacity=".45"/>
+          <text class="lbl" x="615" y="76" text-anchor="middle">MLP</text>
+          <g fill="var(--bg)" stroke="var(--stream)" stroke-width="1.6">
+            <circle cx="615" cy="110" r="9"/><circle cx="615" cy="175" r="9"/>
+            <circle cx="615" cy="240" r="9"/><circle cx="615" cy="305" r="9"/>
+            <circle cx="615" cy="370" r="9"/>
+          </g>
+        </g>
+
+        <!-- repeat marker -->
+        <g>
+          <text class="lbl" x="688" y="235" text-anchor="middle" fill="var(--muted)">···</text>
+          <text class="lbl-sm" x="688" y="256" text-anchor="middle" id="repeat-label">more layers</text>
+        </g>
+      </g>
+
+      <!-- ················ unembed + probabilities (levels ≥ 2) ········ -->
+      <g data-min-level="2">
+        <rect x="726" y="88" width="52" height="300" rx="9"
+              fill="rgba(255,180,84,.08)" stroke="var(--predict)" stroke-opacity=".6"/>
+        <text class="lbl lbl-pred" x="752" y="76" text-anchor="middle">score</text>
+        <text class="lbl-shape" data-min-level="4" x="752" y="62" text-anchor="middle">W_U · [768 × 50257]</text>
+
+        <!-- only the LAST lane's scores are used for the next word -->
+        <g class="lbl-pred">
+          <text class="lbl" x="800" y="330">next word?</text>
+          <g style="font-size:12px">
+            <rect x="800" y="342" width="150" height="12" rx="3" fill="var(--predict)" fill-opacity=".9"/>
+            <text x="958" y="352">mat 42%</text>
+            <rect x="800" y="360" width="68"  height="12" rx="3" fill="var(--predict)" fill-opacity=".55"/>
+            <text x="876" y="370">floor 19%</text>
+            <rect x="800" y="378" width="39"  height="12" rx="3" fill="var(--predict)" fill-opacity=".35"/>
+            <text x="847" y="388">couch 11%</text>
+          </g>
+        </g>
+        <text class="lbl-sm" data-min-level="3" x="800" y="310">
+          softmax → probabilities (sum to 1)
+        </text>
+        <text class="lbl-sm" data-min-level="4" x="800" y="294">
+          every lane predicts; only the last is used to generate
+        </text>
+      </g>
+
+      <!-- level-1 output: single guessed word -->
+      <g data-max-level="1" class="lbl-pred">
+        <text class="lbl" x="800" y="240" style="font-size:16px">→ “mat”</text>
+        <text class="lbl-sm" x="800" y="262">its best guess!</text>
+      </g>
+    </svg>
+
+    <figcaption id="caption"></figcaption>
+
+    <!-- ---------------- zoom overlays (content injected by JS) ------- -->
+    <div class="zoom-overlay" id="zoom" role="dialog" aria-modal="true" aria-label="Component detail">
+      <button class="zoom-close" id="zoom-close">close ✕</button>
+      <div id="zoom-body"></div>
+    </div>
+  </figure>
+
+  <!-- ================================================================ -->
+  <!-- Prose + questions + footnotes                                    -->
+  <!-- ================================================================ -->
+  <section>
+    <h2>What you are looking at</h2>
+    <div class="prose" id="prose"></div>
+  </section>
+
+  <section>
+    <h2>Questions people ask at this level</h2>
+    <div id="questions"></div>
+  </section>
+
+  <section>
+    <h2>Honest footnotes — where this picture simplifies</h2>
+    <ol class="footnotes">
+      <li>Two layers are drawn; GPT-2 small has 12 and frontier models have far more. The repeat marker stands in for the rest.</li>
+      <li>Words are split naively here. Real models use subword tokenization (BPE), so “transformer” may become “transform” + “er”, and a beginning-of-sequence token is usually prepended.</li>
+      <li>The attention crossings show one illustrative pattern. In reality every layer has many heads (12 in GPT-2 small), each with its own full pattern, all running at once.</li>
+      <li>LayerNorm steps (before attention, before the MLP, and before scoring) are omitted from the graphic — they rescale each lane's vector but move no information between lanes.</li>
+      <li>All numbers (768, 12, 50,257, the percentages) are for GPT-2 small and this example; they are architecture choices, not laws.</li>
+      <li>Modern architectures vary: grouped-query attention shares keys/values across heads, mixture-of-experts models route between many MLPs, and some interleave local and global attention.</li>
+      <li>Level 5's circuit stories (induction heads, IOI) are real published findings, but mechanistic explanations of large models remain partial — treat any single clean story with healthy suspicion.</li>
+    </ol>
+  </section>
+</div>
+
+<script>
+/* =====================================================================
+   4. BEHAVIOUR
+   ---------------------------------------------------------------------
+   LEVELS: all level-dependent copy in one config object.
+   setLevel(n): stores state, toggles data-min/max-level elements,
+                swaps prose / questions / caption / zoom content.
+   Zoom: clicking attention or MLP (levels ≥ 4) opens an overlay whose
+         depth of detail also depends on the current level.
+   ===================================================================== */
+
+const LEVELS = {
+  1: {
+    name: "Kids",
+    tagline: "a guessing machine that read a LOT",
+    caption: "words go in → the machine guesses the next word",
+    prose: `
+      <p>This machine plays one game: <strong>guess the next word</strong>.
+      To get good at it, it read millions and millions of sentences and
+      slowly learned which words like to follow which. Nobody typed rules
+      into it — it figured the patterns out from examples, the way you
+      learn that “once upon a…” is probably followed by “time”.</p>
+      <p>When you give it “the cat sat on the”, it guesses “mat”. Then it
+      adds “mat” to the sentence and guesses again, one word at a time.
+      That's it — everything it writes is made of next-word guesses.</p>`,
+    questions: [
+      ["Is it alive or thinking?", "No — it's a very good pattern-spotter. It doesn't see, hear, or want things. It just got amazingly good at the guessing game."],
+      ["How did it learn?", "Practice! It guessed the next word of real sentences billions of times. Every wrong guess nudged it a tiny bit toward the right answer."],
+      ["Does it always guess right?", "Nope. It picks likely words, and sometimes the likely word is wrong. That's why it can make things up."]
+    ]
+  },
+
+  2: {
+    name: "Everyone",
+    tagline: "parallel lanes, mixing only at attention",
+    caption: "each word rides its own lane; violet zones are where words look at each other",
+    prose: `
+      <p>Zooming in, the machine has structure. The sentence is split into
+      <strong>tokens</strong> (word-pieces), and each token travels on its
+      own lane through the network — all lanes processed at the same time,
+      in parallel.</p>
+      <p>The lanes touch in exactly one kind of place: the violet
+      <strong>attention</strong> zones. There, each word gets to look back
+      at earlier words and pull in what's relevant — “sat” can check who is
+      sitting, the final “the” can gather the whole scene. Between attention
+      zones, every lane is private: the cyan MLP stations refine each word's
+      lane on its own, with no peeking at neighbours.</p>
+      <p>This attention-then-refine block repeats many times. By the end,
+      the last word's lane has soaked up the context it needs, and the
+      machine scores every word it knows — “mat” 42%, “floor” 19% — and
+      picks from the top.</p>`,
+    questions: [
+      ["Does it understand what it reads?", "It builds surprisingly rich internal representations of grammar, topics, even facts — but whether that counts as “understanding” is a genuinely open debate. What's certain is that everything it does is learned statistics, not looked-up rules."],
+      ["Is it copying sentences it memorized?", "Mostly no. It can memorize rare exact phrases, but with billions of sentences compressed into it, it mostly stores <strong>patterns</strong>, and composes new sentences from them."],
+      ["Why does it sometimes make things up?", "It always outputs a plausible next word, even when it doesn't know the truth. Plausible and true usually overlap — but not always. That gap is a “hallucination”."],
+      ["Do the words really not interact except at attention?", "Correct — and it's the deepest fact in this diagram. Every other part of the machine works on one lane at a time. Attention is the only doorway between words."]
+    ]
+  },
+
+  3: {
+    name: "STEM",
+    tagline: "vectors in, weighted mixing, probabilities out",
+    caption: "each lane carries a 768-dimensional vector; line thickness = attention weight",
+    prose: `
+      <p>Each token is embedded as a vector of <code>768</code> numbers, and
+      the lane carries that vector through the network. Attention computes a
+      <strong>weight</strong> between the current token and every earlier
+      token — how relevant is each? — shown here as line thickness. Each
+      token's vector is then updated with a weighted average of what the
+      relevant tokens offer. Arrows only point downward (later words looking
+      at earlier ones): the model may never peek at the future it's trying
+      to predict.</p>
+      <p>The MLP stations then transform each vector individually — the same
+      learned function applied to every lane, where much of the network's
+      factual knowledge is thought to live. Attention <em>routes</em>
+      information between tokens; MLPs <em>process</em> it within a token.
+      The block repeats, so later layers can build on what earlier layers
+      figured out.</p>
+      <p>Finally, the last token's vector is scored against every word in
+      the vocabulary, and a <strong>softmax</strong> turns those raw scores
+      into probabilities that sum to 1. Training is the reverse trip: the
+      model's probability for the <em>true</em> next word defines an error,
+      and gradient descent nudges millions of weights to shrink it — over
+      and over, across a mountain of text.</p>`,
+    questions: [
+      ["Where is the knowledge actually stored?", "In the learned weights — the numbers inside embedding, attention, and especially the MLPs. There's no database; “Paris is in France” exists as directions and associations spread across the weights."],
+      ["What do the 768 numbers mean?", "No single number means anything alone. Meaning lives in <strong>directions</strong> in the 768-dimensional space — there are directions correlated with plurality, sentiment, being-a-place-name. The vector is a blend of many such features."],
+      ["Why probabilities instead of one answer?", "Language genuinely has many valid continuations. A distribution captures that; sampling from it is what makes output varied rather than robotic."],
+      ["Is the model updated while I talk to it?", "No. Learning happened during training and the weights are now frozen. When it seems to “remember” your conversation, that's because the whole conversation is re-fed as input each time."]
+    ]
+  },
+
+  4: {
+    name: "CS",
+    tagline: "residual streams, Q·Kᵀ, causal masking — click the blocks",
+    caption: "click an attention or MLP block to zoom into its matrix arithmetic",
+    prose: `
+      <p>Precise names for everything drawn. Each lane is a
+      <strong>residual stream</strong>: a <code>[768]</code> vector per
+      token that every block <em>reads from and adds to</em> — the ⊕ marks —
+      never overwrites. The whole state is one <code>[5 × 768]</code>
+      tensor flowing left to right.</p>
+      <p>Inside attention (click it): each token's stream is projected to a
+      query, key, and value. Scores are <code>Q·Kᵀ</code> — every pair of
+      positions compared at once — scaled by <code>1/√64</code>, masked so
+      position <em>i</em> only sees <em>j ≤ i</em> (the downward-only
+      arrows), and softmaxed into the attention pattern. The pattern mixes
+      value vectors across lanes: the single inter-token operation in the
+      architecture. The MLP (click it) expands each stream vector
+      <code>768 → 3072</code>, applies a nonlinearity, and contracts back —
+      identically and independently per lane.</p>
+      <p>At the output, every position's stream is scored against the full
+      vocabulary: logits <code>[5 × 50257]</code>. During training all 5
+      rows are graded against the actual next tokens (5 lessons per pass);
+      during generation only the last row is softmaxed and sampled. The
+      predicted token is appended and the whole pass runs again — past keys
+      and values are cached and reused, which is only possible because
+      nothing ever flows backward.</p>`,
+    questions: [
+      ["Do later layers update earlier layers' outputs?", "Never within a pass — the network is a one-way DAG. Later layers influence earlier ones only <strong>across</strong> passes, via the sampled token being appended to the input. The KV cache's very existence certifies this."],
+      ["Why transpose K?", "Bookkeeping. You want all pairwise dot products q<sub>i</sub>·k<sub>j</sub>; writing K as [64 × 5] puts the 64s adjacent so one matmul computes the whole [5 × 5] grid. No information changes."],
+      ["Why 768 dimensions?", "Convention and hardware: 12 heads × 64 dims per head, inherited from BERT, friendly to GPU tile sizes. It's a dial, not a law — GPT-2 XL uses 1600."],
+      ["Are the attention heads independent?", "Within a layer, fully: separate weights, no communication, outputs simply summed. Across layers they compose — a later head reads what an earlier head wrote into the stream. That's where circuits come from (see level 5)."]
+    ]
+  },
+
+  5: {
+    name: "Mech interp",
+    tagline: "the stream is a bus; heads are readers and writers on it",
+    caption: "amber ◆ = logit-lens probe points; zoom panels now show QK/OV circuit framing",
+    prose: `
+      <p>Reframe the diagram the way the field does. The residual stream is
+      a <strong>shared communication bus</strong>: every head and MLP reads
+      some subspace of it and writes an additive contribution into some
+      subspace. Because everything is additive, the final logits decompose
+      into per-component contributions (direct logit attribution), and you
+      can tap the bus mid-network — the amber probes — multiply by
+      <code>W_U</code>, and watch the prediction sharpen layer by layer
+      (the logit lens).</p>
+      <p>Each attention head factors into two low-rank linear circuits:
+      <strong>QK</strong> (<code>W_Q W_Kᵀ</code>, rank ≤ 64) decides
+      <em>where</em> to attend; <strong>OV</strong> (<code>W_V W_O</code>)
+      decides <em>what</em> to move and <em>which bus subspace to write it
+      into</em>. The softmax between them is the block's only nonlinearity.
+      Heads in the same layer can't see each other — but a head can read
+      what an earlier layer's head wrote: composition. The canonical
+      example is the <strong>induction circuit</strong>: a previous-token
+      head writes “my predecessor was X” into the bus; an induction head
+      layers later builds its keys from that signal and completes repeated
+      patterns.</p>
+      <p>The open problems are the field's frontier: features outnumber
+      dimensions, so directions are shared (<strong>superposition</strong>)
+      and neurons are polysemantic; sparse autoencoders try to unmix them.
+      Circuits at scale are redundant and self-repairing — ablate a head
+      and backups wake up — so causal interventions (patching) need careful
+      controls. And the safety question underneath it all: can we verify
+      what a model is computing well enough to audit it, faster than models
+      grow?</p>`,
+    questions: [
+      ["What does W_O add that the 64-dim head output lacks?", "Nothing, informationally — the output is rank ≤ 64 by construction. W_O's learned content is <strong>routing</strong>: which 64 directions of the 768-dim bus this head writes into, i.e. who downstream will read its message. Address, not content."],
+      ["Do two heads with related jobs interact?", "Only via the bus, only forward. A later head can read an earlier head's write through its keys (K-composition), values (V-composition), or queries (Q-composition) — measurable from the weights alone. Same-layer heads just sum."],
+      ["If I probe a direction and it correlates with a concept, is that the mechanism?", "Not yet — that's rung one of the evidence ladder. Correlation ≠ causation ≠ mechanism. Show that intervening on the direction changes behavior, and that your explanation predicts interventions it wasn't fit on."],
+      ["Why does any of this matter for safety?", "Behavioral testing can't distinguish a model that is aligned from one that behaves aligned while evaluated. Reading internals is the main hoped-for path to telling those apart — if the tools can be made faithful, scalable, and relevant in time."],
+      ["Is the clean circuit story too clean?", "Often, yes. Published circuits are the legible tip; most computation is distributed, redundant, and superposed. Healthy default: treat every neat explanation as a hypothesis that owes you a causal test."]
+    ]
+  }
+};
+
+/* -------- zoom panel content (depth depends on level) --------------- */
+const ZOOMS = {
+  attn: (lvl) => `
+    <h3>attention — one head, six matmuls</h3>
+    <div class="chain">1–3&nbsp; X <span class="shp shp-p">[5 × <span class="xc">768</span>]</span>
+      <span class="op">@</span> W_Q, W_K, W_V <span class="shp shp-a">[<span class="xc">768</span> × 64]</span>
+      <span class="op">=</span> Q, K, V <span class="shp shp-a">[5 × 64]</span></div>
+    <div class="chain">4&nbsp;&nbsp;&nbsp; Q <span class="shp shp-a">[5 × <span class="xc">64</span>]</span>
+      <span class="op">@</span> Kᵀ <span class="shp shp-a">[<span class="xc">64</span> × 5]</span>
+      <span class="op">=</span> scores <span class="shp shp-a">[5 × 5]</span>
+      <span class="op">→ ÷√64 → causal mask → softmax</span></div>
+    <div class="chain">5&nbsp;&nbsp;&nbsp; pattern <span class="shp shp-a">[5 × <span class="xc">5</span>]</span>
+      <span class="op">@</span> V <span class="shp shp-a">[<span class="xc">5</span> × 64]</span>
+      <span class="op">=</span> z <span class="shp shp-a">[5 × 64]</span></div>
+    <div class="chain">6&nbsp;&nbsp;&nbsp; z <span class="shp shp-a">[5 × <span class="xc">64</span>]</span>
+      <span class="op">@</span> W_O <span class="shp shp-a">[<span class="xc">64</span> × 768]</span>
+      <span class="op">=</span> head out <span class="shp shp-p">[5 × 768]</span>
+      <span class="op">→ added to the stream</span></div>
+    <p class="zoom-note">Follow the struck-through inner dimensions cancelling:
+    768, then 64, then 5, then 64. Step 4 is the only moment lanes compare
+    (<strong>where</strong> to look); step 5 is the only moment content crosses
+    lanes (<strong>what</strong> moves). All 12 heads run this in parallel and
+    their outputs sum.</p>
+    ${lvl >= 5 ? `
+    <p class="zoom-note"><strong>Circuit view:</strong> steps 1–4 are the QK
+    circuit (<code style="color:var(--attn)">W_Q W_Kᵀ</code>, a rank-≤64
+    bilinear form: where); steps 5–6 are the OV circuit
+    (<code style="color:var(--attn)">W_V W_O</code>: what, and which bus
+    subspace to write into). The 64 never appears in the head's input-output
+    behaviour — it's the private bottleneck of two low-rank matrices. Softmax,
+    the only nonlinearity, lives entirely on the QK side: freeze the pattern
+    and the head is linear, which is what makes per-head attribution exact.</p>` : ``}`,
+
+  mlp: (lvl) => `
+    <h3>MLP — per-lane processing</h3>
+    <div class="chain">stream <span class="shp shp-p">[5 × <span class="xc">768</span>]</span>
+      <span class="op">@</span> W_in <span class="shp shp-p">[<span class="xc">768</span> × 3072]</span>
+      <span class="op">=</span> <span class="shp shp-p">[5 × 3072]</span>
+      <span class="op">→ GELU →</span></div>
+    <div class="chain"><span class="shp shp-p">[5 × <span class="xc">3072</span>]</span>
+      <span class="op">@</span> W_out <span class="shp shp-p">[<span class="xc">3072</span> × 768]</span>
+      <span class="op">=</span> mlp out <span class="shp shp-p">[5 × 768]</span>
+      <span class="op">→ added to the stream</span></div>
+    <p class="zoom-note">Expand 4×, nonlinearity, contract. The same weights
+    hit every lane, and no lane can see another — the MLP can only chew on
+    what attention has already carried in. Routing before processing, every
+    layer.</p>
+    ${lvl >= 5 ? `
+    <p class="zoom-note"><strong>Interp view:</strong> MLPs hold much of the
+    model's factual/associative knowledge (key-value memory reading of W_in
+    rows and W_out columns). Individual neurons are mostly
+    <strong>polysemantic</strong> — superposition packs more features than
+    dimensions — which is why sparse autoencoders are trained on these
+    activations to recover cleaner features.</p>` : ``}`
+};
+
+/* -------------------- wiring ---------------------------------------- */
+let level = 1;
+const $  = (s) => document.querySelector(s);
+const $$ = (s) => document.querySelectorAll(s);
+
+function setLevel(n) {
+  level = n;
+  const cfg = LEVELS[n];
+
+  /* dial state */
+  $$(".dial button").forEach(b =>
+    b.setAttribute("aria-pressed", String(+b.dataset.level === n)));
+
+  /* gate SVG detail by level */
+  $$("[data-min-level]").forEach(el =>
+    el.classList.toggle("lvl-hidden", n < +el.dataset.minLevel));
+  $$("[data-max-level]").forEach(el =>
+    el.classList.toggle("lvl-hidden", n > +el.dataset.maxLevel));
+
+  /* copy swaps */
+  $("#tagline").textContent = "level " + n + " — " + cfg.tagline;
+  $("#caption").textContent = cfg.caption;
+  $("#prose").innerHTML = cfg.prose;
+  $("#repeat-label").textContent = n >= 4 ? "× 12 layers total" : "more layers";
+  $("#questions").innerHTML = cfg.questions.map(([q, a]) =>
+    `<details class="q"><summary>${q}</summary><div class="a">${a}</div></details>`
+  ).join("");
+
+  /* zoom affordance only at level 4+ */
+  $$(".zoomable").forEach(z => {
+    z.style.cursor = n >= 4 ? "zoom-in" : "default";
+    z.setAttribute("aria-disabled", String(n < 4));
+  });
+  closeZoom();
+}
+
+/* -------------------- zoom overlay ---------------------------------- */
+function openZoom(kind) {
+  if (level < 4) return;
+  $("#zoom-body").innerHTML = ZOOMS[kind](level);
+  $("#zoom").classList.add("open");
+  $("#zoom-close").focus();
+}
+function closeZoom() { $("#zoom").classList.remove("open"); }
+
+$$(".zoomable").forEach(z => {
+  z.addEventListener("click", () => openZoom(z.dataset.zoom));
+  z.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openZoom(z.dataset.zoom); }
+  });
+});
+$("#zoom-close").addEventListener("click", closeZoom);
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeZoom(); });
+
+$$(".dial button").forEach(b =>
+  b.addEventListener("click", () => setLevel(+b.dataset.level)));
+
+setLevel(1);
+</script>
+</body>
+</html>
