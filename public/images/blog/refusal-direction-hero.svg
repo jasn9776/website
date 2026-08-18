@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 480">
+  <defs>
+    <radialGradient id="rd-g1" cx="18%" cy="60%" r="55%">
+      <stop offset="0%" stop-color="#1E47E6" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="transparent"/>
+    </radialGradient>
+    <radialGradient id="rd-g2" cx="85%" cy="35%" r="55%">
+      <stop offset="0%" stop-color="#A8BDF5" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="transparent"/>
+    </radialGradient>
+    <pattern id="rd-grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M 24 0 L 0 0 0 24" fill="none" stroke="rgba(233,238,246,0.1)" stroke-width="1"/>
+    </pattern>
+    <filter id="rd-glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <marker id="rd-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#E9EEF6"/>
+    </marker>
+    <marker id="rd-arrow-dim" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#A8BDF5"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="480" fill="#0B1730"/>
+  <rect width="1200" height="480" fill="url(#rd-grid)"/>
+  <rect width="1200" height="480" fill="url(#rd-g1)"/>
+  <rect width="1200" height="480" fill="url(#rd-g2)"/>
+
+  <!-- full refusal direction: one bold vector -->
+  <line x1="130" y1="350" x2="620" y2="150" stroke="#E9EEF6" stroke-width="6" stroke-linecap="round"
+        marker-end="url(#rd-arrow)" filter="url(#rd-glow)"/>
+  <text x="150" y="395" font-family="'JetBrains Mono', monospace" font-size="20" fill="#E9EEF6" font-weight="600">
+    refusal_direction
+  </text>
+
+  <!-- it fans out into weaker, individually-labeled feature vectors -->
+  <g stroke-width="3" stroke-linecap="round" opacity="0.85">
+    <line x1="620" y1="150" x2="840" y2="90"  stroke="#A8BDF5" marker-end="url(#rd-arrow-dim)"/>
+    <line x1="620" y1="150" x2="880" y2="150" stroke="#A8BDF5" marker-end="url(#rd-arrow-dim)"/>
+    <line x1="620" y1="150" x2="870" y2="215" stroke="#A8BDF5" marker-end="url(#rd-arrow-dim)"/>
+    <line x1="620" y1="150" x2="820" y2="270" stroke="#A8BDF5" marker-end="url(#rd-arrow-dim)"/>
+  </g>
+
+  <circle cx="620" cy="150" r="7" fill="#E9EEF6"/>
+
+  <g font-family="'JetBrains Mono', monospace" font-size="16" fill="#DDE5F0">
+    <text x="852" y="82">"sorry"</text>
+    <text x="892" y="146">"I"</text>
+    <text x="882" y="230">"honestly"</text>
+    <text x="828" y="292">"me"</text>
+  </g>
+
+  <!-- faint SAE-style sparse dot field on the right -->
+  <g fill="#A8BDF5">
+    <circle cx="980" cy="70"  r="3" opacity="0.5"/>
+    <circle cx="1030" cy="110" r="2" opacity="0.35"/>
+    <circle cx="960" cy="140" r="2" opacity="0.3"/>
+    <circle cx="1060" cy="60" r="2.5" opacity="0.4"/>
+    <circle cx="1000" cy="200" r="3" opacity="0.5"/>
+    <circle cx="1080" cy="180" r="2" opacity="0.3"/>
+    <circle cx="1040" cy="250" r="2.5" opacity="0.4"/>
+    <circle cx="960" cy="280" r="2" opacity="0.3"/>
+    <circle cx="1100" cy="240" r="2" opacity="0.3"/>
+    <circle cx="1020" cy="320" r="2.5" opacity="0.4"/>
+    <circle cx="1080" cy="350" r="2" opacity="0.3"/>
+    <circle cx="940" cy="350" r="2" opacity="0.3"/>
+  </g>
+</svg>

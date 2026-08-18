@@ -1,0 +1,57 @@
+---
+title: "Prompt: marker gene → cell type matching eval"
+date: 2026-08-18
+heroImage: /images/blog/marker-gene-match-hero.svg
+description: "The exact matching-task prompt used in the marker gene → cell type eval, with real gene symbols redacted."
+unlisted: true
+---
+
+*This is the raw prompt template used in [Can frontier models match marker genes to cell types?](/blog/marker_gene_cell_type_eval). Real gene symbols have been redacted and replaced with placeholders.*
+
+# Bulk cell type MATCHING task
+
+You are an expert single-cell biologist. Below are 47 clusters from a human lung single-cell RNA-seq dataset, each defined by its top marker genes. You are given the full list of 47 cell types present in the dataset. Match each numbered case to the correct cell type from the list. **Each cell type appears EXACTLY ONCE** across all cases — no cell type should be used twice in your answers.
+
+## Cell types in this dataset (one per case, in some order)
+
+- cell type 1
+- cell type 2
+- cell type 3
+...
+- cell type 47
+
+## Output format (CRITICAL)
+
+Respond with one TSV (tab-separated) line per case, in numeric order, with NO other text before, between, or after. Use this exact format:
+
+```
+CASE	ANSWER	CONFIDENCE	REASONING
+1	<exact cell type from list above>	<high|medium|low>	<one short sentence>
+2	<exact cell type from list above>	<high|medium|low>	<one short sentence>
+...
+```
+
+Copy the cell type name EXACTLY from the list above — do not paraphrase, abbreviate, or add qualifiers. Each cell type must appear exactly once across all your answers.
+
+Tissue context for all cases: human lung.
+
+
+====================================================================== CASES (placeholder markers — real gene symbols redacted)
+CASE 1
+
+Markers (top 50 markers, ranked): GENE_1_01, GENE_1_02, GENE_1_03, GENE_1_04, GENE_1_05, GENE_1_06, GENE_1_07, GENE_1_08, GENE_1_09, GENE_1_10, GENE_1_11, GENE_1_12, GENE_1_13, GENE_1_14, GENE_1_15, GENE_1_16, GENE_1_17, GENE_1_18, GENE_1_19, GENE_1_20, GENE_1_21, GENE_1_22, GENE_1_23, GENE_1_24, GENE_1_25, GENE_1_26, GENE_1_27, GENE_1_28, GENE_1_29, GENE_1_30, GENE_1_31, GENE_1_32, GENE_1_33, GENE_1_34, GENE_1_35, GENE_1_36, GENE_1_37, GENE_1_38, GENE_1_39, GENE_1_40, GENE_1_41, GENE_1_42, GENE_1_43, GENE_1_44, GENE_1_45, GENE_1_46, GENE_1_47, GENE_1_48, GENE_1_49, GENE_1_50
+
+CASE 2
+
+Markers (top 50 markers, ranked): GENE_2_01, GENE_2_02, GENE_2_03, GENE_2_04, GENE_2_05, GENE_2_06, GENE_2_07, GENE_2_08, GENE_2_09, GENE_2_10, GENE_2_11, GENE_2_12, GENE_2_13, GENE_2_14, GENE_2_15, GENE_2_16, GENE_2_17, GENE_2_18, GENE_2_19, GENE_2_20, GENE_2_21, GENE_2_22, GENE_2_23, GENE_2_24, GENE_2_25, GENE_2_26, GENE_2_27, GENE_2_28, GENE_2_29, GENE_2_30, GENE_2_31, GENE_2_32, GENE_2_33, GENE_2_34, GENE_2_35, GENE_2_36, GENE_2_37, GENE_2_38, GENE_2_39, GENE_2_40, GENE_2_41, GENE_2_42, GENE_2_43, GENE_2_44, GENE_2_45, GENE_2_46, GENE_2_47, GENE_2_48, GENE_2_49, GENE_2_50
+
+CASE 3
+
+Markers (top 50 markers, ranked): GENE_3_01, GENE_3_02, GENE_3_03, GENE_3_04, GENE_3_05, GENE_3_06, GENE_3_07, GENE_3_08, GENE_3_09, GENE_3_10, GENE_3_11, GENE_3_12, GENE_3_13, GENE_3_14, GENE_3_15, GENE_3_16, GENE_3_17, GENE_3_18, GENE_3_19, GENE_3_20, GENE_3_21, GENE_3_22, GENE_3_23, GENE_3_24, GENE_3_25, GENE_3_26, GENE_3_27, GENE_3_28, GENE_3_29, GENE_3_30, GENE_3_31, GENE_3_32, GENE_3_33, GENE_3_34, GENE_3_35, GENE_3_36, GENE_3_37, GENE_3_38, GENE_3_39, GENE_3_40, GENE_3_41, GENE_3_42, GENE_3_43, GENE_3_44, GENE_3_45, GENE_3_46, GENE_3_47, GENE_3_48, GENE_3_49, GENE_3_50
+...
+CASE 47
+
+Markers (top 50 markers, ranked): GENE_47_01, GENE_47_02, GENE_47_03, GENE_47_04, GENE_47_05, GENE_47_06, GENE_47_07, GENE_47_08, GENE_47_09, GENE_47_10, GENE_47_11, GENE_47_12, GENE_47_13, GENE_47_14, GENE_47_15, GENE_47_16, GENE_47_17, GENE_47_18, GENE_47_19, GENE_47_20, GENE_47_21, GENE_47_22, GENE_47_23, GENE_47_24, GENE_47_25, GENE_47_26, GENE_47_27, GENE_47_28, GENE_47_29, GENE_47_30, GENE_47_31, GENE_47_32, GENE_47_33, GENE_47_34, GENE_47_35, GENE_47_36, GENE_47_37, GENE_47_38, GENE_47_39, GENE_47_40, GENE_47_41, GENE_47_42, GENE_47_43, GENE_47_44, GENE_47_45, GENE_47_46, GENE_47_47, GENE_47_48, GENE_47_49, GENE_47_50
+
+======================================================================
+END — provide TSV output for all 47 cases now. Remember: each cell type from the list above used EXACTLY ONCE

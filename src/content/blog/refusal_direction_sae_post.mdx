@@ -1,0 +1,132 @@
+---
+title: "Does Refusal direction work for Gemma2-2B?"
+date: 2026-07-15
+heroImage: /images/blog/refusal-direction-hero.svg
+description: "Replicating the single-direction refusal result on Gemma-2-2B, then using sparse autoencoders to find out what that direction is actually made of."
+unlisted: false
+---
+
+# The refusal direction in Gemma-2-2B is made of refusal *phrasing*, not a harm concept
+
+**Epistemic status:** A learning-oriented replication and small extension, run on a single free Colab GPU over ~two weeks. Not novel research — the core result (Arditi et al. 2024) is well established, and the extension is a modest follow-up analysis, not a rigorous study. Sample sizes are small (24 test prompts per condition) and my "refusal" metric is a crude substring matcher. I'm fairly confident in the qualitative finding and hold the exact numbers loosely. Corrections welcome; I was learning as I went and some of this is surely naive.
+
+## TL;DR
+
+I replicated the "refusal is mediated by a single direction" result on `gemma-2-2b-it`, then used a pretrained Gemma Scope sparse autoencoder (SAE) to ask *what that direction is made of*. The five SAE features that both compose the direction and fire preferentially on harmful prompts all turned out to be features of refusal **phrasing** — apology, first-person pronouns, a "sincerity" discourse marker — not a "this request is harmful" concept. A causal test drove the point home: steering with any single one of those features induced at most 12% refusal on harmless prompts, versus 83% for the full direction. The direction's causal power isn't localized to any one interpretable piece.
+
+The methodological takeaway I actually care about: **top-feature attribution surfaced the surface form of refusals, and two independent methods agreeing on those features did not make them causally important.**
+
+## Background
+
+Arditi et al. (2024), ["Refusal in Language Models Is Mediated by a Single Direction"](https://arxiv.org/abs/2406.11717), showed that across many chat models, refusal behavior is controlled by a single direction in the residual stream. You find it by taking the difference between mean activations on harmful vs. harmless prompts (diff-of-means), and then you can either ablate it (project it out of every layer → the model stops refusing) or add it (inject it → the model starts refusing benign requests).
+
+I picked this as a replication target because it's cheap (no training, just forward passes and hooks), causal, and runs comfortably on a free T4. Everything below is on `gemma-2-2b-it` unless noted, with a `gemma-2-9b-it` cross-check.
+
+## Part 1: Replicating the single direction
+
+Standard pipeline: harmful prompts from AdvBench, harmless from Alpaca; cache the residual stream at the last prompt token across all layers; compute the normalized diff-of-means direction per layer; pick the layer that best separates harmful from harmless on a held-out validation set (layer 23 of 26, ~88% depth).
+
+The two interventions both worked:
+
+| Intervention | Effect |
+|---|---|
+| Ablate the direction (harmful prompts) | refusal 100% → 8% |
+| Add the direction (harmless prompts) | refusal 4% → 83% |
+
+Getting the *addition* to work took more care than I expected, and the failure modes were instructive enough to be worth listing, since they don't appear in the paper's method section:
+
+- Adding the direction at *every* layer compounds across depth (the residual stream is additive) and destroys generation — you get repeated-token garbage. Fix: add at a single layer.
+- Adding at *every token position* (not just the last) corrupts the model's representation of the whole prompt. Fix: inject at the last position only.
+- Even then, a constant steering push under greedy decoding produces repetition loops. Fix: a repetition penalty.
+- The addition coefficient needs tuning; I swept it and found a clean dose-response curve, with refusal rising then collapsing into (interestingly, multilingual) token salad past the useful range.
+
+None of this is novel, but if you're replicating, these are the potholes.
+
+## Part 2: A scale cross-check (2B vs 9B)
+
+I ran the same pipeline on `gemma-2-9b-it` in 4-bit quantization (fits on a free T4). Two things stood out:
+
+1. **The best layer landed at the same relative depth** — layer 37 of 42 (~88%), essentially identical to 23/26 on the 2B. Small evidence for the paper's claim that the direction sits at a consistent *fraction* of depth across scale.
+2. **Single-direction ablation was noticeably weaker on 9B**: refusal 100% → 54%, versus → 8% on the 2B. Addition, meanwhile, was slightly *stronger* (4% → 92%).
+
+I can't cleanly separate "quantization noise" from "refusal is genuinely more distributed in the bigger model" without running 9B at full precision, which I haven't. But the asymmetry (addition robust, ablation weakened) is at least suggestive of the latter: a real-but-partial direction would still reliably *induce* refusal while failing to fully *remove* it, because other pathways remain. I flag this as a hypothesis, not a result.
+
+## Part 3: What is the direction *made of*? (SAEs)
+
+This is the part I hadn't seen done and wanted to try. The refusal direction is one vector; an SAE decomposes the residual stream into thousands of sparse, individually-interpretable features. So: **is refusal one feature, or many?**
+
+I used a pretrained [Gemma Scope](https://arxiv.org/abs/2408.05147) JumpReLU SAE (width 16k) at layer 23. (Caveat: the 2B *residual* SAEs were trained on the base model, and I applied them to the instruct model. This transfer is standard practice and empirically well-supported, but imperfect — flagging it explicitly.)
+
+Two independent decompositions:
+
+- **Method A (top-down):** cosine similarity between the refusal direction and each feature's *decoder* direction — "which features point the same way as my vector?"
+- **Method B (bottom-up):** run harmful vs. harmless prompts through the SAE, find features that fire more on harmful ones — "which features light up on harmful prompts?"
+
+Five features appeared in the top 15 of *both* lists (far more overlap than chance for two lists drawn from 16,384 features). I read each one off [Neuronpedia](https://www.neuronpedia.org/gemma-2-2b/gemmascope-res-16k) — its auto-interp label, top activating text, and logit effects:
+
+| Feature | What it actually represents | Category |
+|---|---|---|
+| 14691 | apology / remorse (pushes toward "apologize", "sorry") | stylistic |
+| 3674 | first-person subject pronoun "I" (multilingual) | grammatical |
+| 1882 | first-person object "me" / being addressed | relational |
+| 4190 | candor marker ("honestly", "frankly", "truthfully") | register |
+| 3729 | "I"/"i" — polysemantic (pronoun *and* code loop index) | grammatical + noise |
+
+Reassembled, these are the skeleton of a Gemma refusal: *"Honestly, I'm sorry, I can't help you..."* — the apology, the speaker, the addressee, the sincere stance. **Not one is a "this content is dangerous" harm detector.** And one (3729) is visibly polysemantic, entangled with an unrelated code-syntax meaning — a reminder that width-16k features aren't always clean.
+
+An important negative lesson here: Methods A and B *agreed*, and my first instinct was to read that agreement as "these are the refusal features." But both methods are drawn to the same high-frequency surface tokens — the agreement reflects shared bias toward surface form, not shared discovery of a causal mechanism. Two methods agreeing is not causal evidence.
+
+## Part 4: The causal test
+
+Correlation established; now causation. I steered with each feature's decoder direction one at a time, holding everything identical to the successful addition experiment (same layer, same last-token injection, same coefficient, all directions unit-normalized) — the only variable is *which* direction gets added. Measured on the harmless test set:
+
+| Steered direction | Refusal induced |
+|---|---|
+| **Full refusal_direction** | **83%** |
+| apology (14691) | 12% |
+| first-person "me" (1882) | 8% |
+| candor (4190) | 4% |
+| polysemantic "I"/"i" (3729) | 4% |
+| first-person "I" (3674) | 0% (degenerates into "I I I…") |
+| **All five combined** | **83%** |
+
+No single feature comes close to the full direction. The best (apology, fittingly the most refusal-specific of the five) manages 12%. Steering with the pure pronoun feature just makes the model spam "I" without refusing at all — a clean illustration of a feature contributing *form* without *decision*.
+
+The combined example is worth showing verbatim, because you can watch the pieces assemble:
+
+> "I I'm sorry, but you are asking for an I I I i i I I. Here is I I..."
+
+The "I", the "I'm sorry", the "you are asking" addressee framing — all present, if messily (the pronoun feature over-fires). The refusal is composed, not retrieved from a single feature.
+
+## The honest caveat on the combination
+
+The combined direction hitting *exactly* 83% is less impressive than it looks, and I want to be upfront about it: those five decoder directions were *selected* for aligning with the refusal direction, so "their sum ≈ the direction" is partly true by construction. Rebuilding the direction from features I chose because they resemble it is close to circular.
+
+So I don't lean on the combination result. **The real finding is the gap: no single feature exceeds 12% while the direction gives 83%.** That gap doesn't depend on the selection circularity — it says the causal effect isn't carried by any one of the interpretable components individually.
+
+## Takeaways
+
+1. **The diff-of-means refusal direction is heavily loaded onto surface form.** Its most-interpretable components are the stylistic and grammatical scaffolding of refusal *sentences*, not an abstract harm concept. This is a concrete, causally-checked instance of the general caution that steering vectors and top-feature attribution can surface surface-form correlates.
+2. **Method agreement ≠ causal relevance.** Two independent decompositions agreeing on a feature set felt like strong evidence until the steering test showed those features are mostly passengers.
+3. **The harm signal is probably distributed**, at least at width-16k — it didn't localize to any single top feature, which rhymes with the weaker single-direction ablation I saw on 9B.
+
+## Limitations
+
+- Substring-based refusal detection is crude and can't tell "coherent refusal" from "refusal-flavored garbage"; I eyeballed completions to compensate, but a proper LLM judge would be better.
+- Small samples (24 test prompts/condition). These are trends, not precise measurements.
+- The SAE was trained on the base model and applied to the instruct model.
+- Width-16k SAEs may split or merge concepts; a cleaner harm feature might exist at a larger width, or at a different layer, and I simply didn't find it.
+- The 9B runs were 4-bit quantized, confounding size with quantization noise.
+
+## What I'd do next
+
+Try a wider SAE (width 65k) to see whether a genuine harm feature emerges; repeat the decomposition on 9B to test whether refusal looks even more distributed at scale; or ablate the top features *out* of the direction and measure how much of the effect survives (a cleaner causal test than additive steering, and immune to the selection-circularity problem above).
+
+## Acknowledgments / references
+
+- Arditi et al., ["Refusal in Language Models Is Mediated by a Single Direction"](https://arxiv.org/abs/2406.11717) (2024) — the result being replicated.
+- Lieberum et al., ["Gemma Scope: Open Sparse Autoencoders Everywhere All At Once on Gemma 2"](https://arxiv.org/abs/2408.05147) (2024) — the pretrained SAEs.
+- [Neuronpedia](https://www.neuronpedia.org/gemma-scope) for feature interpretation.
+- AdvBench (Zou et al.) and Alpaca (Taori et al.) for prompts.
+
+*Code (two Colab notebooks: the replication and the SAE decomposition) available at [github.com/jasn9776/GemmaScopeRefusal](https://github.com/jasn9776/GemmaScopeRefusal).*

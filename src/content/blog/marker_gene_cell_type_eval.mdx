@@ -1,0 +1,93 @@
+---
+title: "Can frontier models match marker genes to cell types?"
+date: 2026-08-18
+heroImage: /images/blog/marker-gene-match-hero.svg
+description: "A small eval testing whether frontier LLMs can correctly match marker genes to their cell types, comparing Claude, GPT, Grok, and an open-source model."
+unlisted: false
+---
+
+## Motivation
+
+A common problem in bioinformatics is inferring the biology based on a set of marker genes. One specific application of this is annotating cells based on which genes are most upregulated (its marker genes).
+
+This Investigation aims to measure the capability of frontier Large langauge Models to reason biologically on a task with a known ground truth. It could be used to track the progress with which AI models are learning biological knowledge and thus becoming more useful for scientists. However, with this increasing knowledge, and without appropriate safeguards, 
+it also poses risks if used for malicious purposes such as assiting with dangerous biological tasks. 
+
+## Method
+
+The task is simple: 
+1. I have downloaded the HCLA (Human Cell Lung Atlas) dataset and used AI to make a script to extract the top 50 markers from each cell type in the HCLA. 
+2. The AI used those top 50 markers and made a "Matching Excercise" where the AI is required to supply the cell type (from a list) for each of the 47 marker lists, in a specified format. A link to the prompt (real genes redacted) can be found [here](/blog/marker_gene_cell_type_eval_prompt).
+3. I Scored each of the models based on the number of correct matches and also used AI to provide commentary on the mistakes that each model made and its confidence calibration.
+
+NOTE: Other study designs were considered for example, entering each marker list into a new session so that the errors on one marker list would be independent of others as well as allowing the model to provide its own cell_type not just those from the list of 47.
+Ultimately, due to time and compute constraints, I chose to provide the final results for the above mentioned format. This reduced the ambiguity of the results as the ground truth could be obtained easily. However, this study design also introduces biases as it measures not only the 
+biological knowledge of the model but also the ability for the model to reason about constraints. I also noticed that some models thought for a lot longer than others. For example ChatGPT Pro (presumably GPT 5.5), thought for ~10 minutes on one evaluation. Thus, the score could be based not only on biological knowledge, but also the ability for the model to optimally allocate the cell_types to marker genes, and this could presumably be done better if the model just thought for longer. 
+
+## Results
+
+### 2.3 Closed-book matching (easy mode — canonical markers present)
+
+| Model | Correct / 47 | % | Duplicates | Notes |
+|---|---|---|---|---|
+| ChatGPT free (run 1) | 27 | 57% | 0 | — |
+| ChatGPT free (run 2) | 29 | 62% | 0 | — |
+| Grok 4? Pro (thinking) | 31 | 66% | 1 | Thinking penalty persists |
+| ChatGPT Pro (run by someone else on May 14th)| 39 | 83% | 0 | Resolves fibroblast tangle |
+| Claude Sonnet 4.6| 39 | 81% | 0 | Unknown Notes: lost|
+| Claude Opus 4.7| 39 | 81% | 0 | Resolves fibroblast tangle |
+| ChatGPT 5.6 Sol (High effort)*| 39 | 83% | 0 | Resolves fibroblast tangle |
+| ChatGPT 5.5 High (don't have too much confidence on the model label for this one)* | 35 | 74% | 0 | — |
+| Opus 5* | 39 | 83% | 0 | Smallest Δ from hard mode (+6 pts) |
+| Opus 4.8 (run 1)* | 42 | 89% | 0 | Best single run; resolves fibroblast and goblet subtypes |
+| Opus 4.8 (run 2)* | 39 | 83% | 0 | Run-to-run variance ~6 pts |
+| **Opus 4.8 mean** | **~40–41** | **~86%** | 0 | True estimate across 2 runs |
+
+* indicates the run was made later than on the week of May 14th. (Those models weren't released then)
+
+
+
+
+## Discussion
+
+The frontier models from OpenAI and Anthropic performed simialrly to each other (within run variance).
+The absolute highest score was recorded by Opus 4.8. 
+Grok Performed much worse than either the paid OpenAI or the Anthropic models.
+The free OpenAI models (without subscription) seem a lot worse than the free Claude Models (sonnet 5), although with a paid subscription.
+Opus 4.8 seems to be getting a little better than Opus 4.7, but this is also within run variance. 
+Opus 5 does not seem to be better than Opus 4.8. However, subsequent testing suggests it loses less performance when the top 5 makers are removed (result not shown).
+
+From the discussion of the errors (aided by AI interpretation), it seems like the frontier models are only getting errors on closely related sister cell types or cell types defined by location, rather than function.
+It is unclear whether it is possible to differentiate all 47 cases by marker genes alone, especially if the cell types differ only by location. 
+However, the results support the conclusion that frontier models are getting quite capable at biologtical reasoning and that there is a large gap between free and pro (paid) models. 
+
+
+## Failure examples
+
+[PLACEHOLDER: 2-3 concrete misses worth quoting — e.g. confusing NK cells with CD8 effector T cells because of overlapping cytotoxic markers (GZMB, PRF1), or hallucinating a marker gene that wasn't in the input set. Include the exact prompt/response if possible.]
+
+## Takeaways
+
+[PLACEHOLDER: 2-3 bullet takeaways — e.g. whether this eval predicts real-world annotation reliability, whether errors clustered around biologically similar cell types (a "reasonable" failure mode) vs. arbitrary ones, whether the result changes how much you'd trust an AI-generated cluster annotation unsupervised.]
+
+## Limitations
+
+- Small number of repeats used for each model
+- Some of the results were scored by AI (Opus 4.7-8), although running the script manually and visual inspection did not uncover any obvious errors in the ground truth marking
+- There is some scoring subjectivity, e.g. synonymous cell type names counted as correct/incorrect
+- Tests the model's ability to perform well on tests rather than just biological knowledge
+- This tests recall of canonical marker-to-cell-type mappings in isolation, not the harder task of annotating a real, noisy clustering from expression data alone.
+
+- Ultimately this was not planned to be a write-up but I thought I might do a quick one to demonstrate my skills for a recent program I am applying to. The documentation is a bit messy so It is hard to piece together the actual results (I also told the AI model that was evaluating it that Claude was Grok and Grok was Claude, just to ensure no model favouritism but now I have lost track of my swaps)
+
+## Further Tests Done
+
+I have also tested some of the models on the harder task (same. -but with the top 5 markers removed). This seemed to reduce the performance for all models. 
+
+## What I'd do next
+
+*Code / eval harness: not public yet.*
+
+## Changelog
+
+18-08-2026 — Initial draft uploaded.
