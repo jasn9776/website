@@ -8,86 +8,158 @@ unlisted: false
 
 ## Motivation
 
-A common problem in bioinformatics is inferring the biology based on a set of marker genes. One specific application of this is annotating cells based on which genes are most upregulated (its marker genes).
+A common problem in bioinformatics is inferring the biology based on a set of marker genes.
+ This problem could have many related forms: assigning and describing a 
+ function or biological pathway to a set of genes that are discovered to be upregulated in an experimental condition, or in this case, assigning cells to a cell type based on which genes are most upregulated (its marker genes).
 
-This Investigation aims to measure the capability of frontier Large langauge Models to reason biologically on a task with a known ground truth. It could be used to track the progress with which AI models are learning biological knowledge and thus becoming more useful for scientists. However, with this increasing knowledge, and without appropriate safeguards, 
-it also poses risks if used for malicious purposes such as assiting with dangerous biological tasks. 
+This Investigation aims to measure the capability of frontier Large langauge Models to reason biologically on a specific task with a known ground truth. It could be used help to track the progress with which AI models are learning biological knowledge and thus becoming more useful for scientists. However, with this increasing knowledge, and without appropriate safeguards, 
+this progress also poses risks if used for malicious purposes such as assisting with dangerous biological tasks, for example, designing sequences to make infectious viruses. Further reading on topic of measuring dangerous model bio-capabilities in relation to viruses: [Virology Capabilities test](https://securebio.org/virologytest/)  
 
 ## Method
 
 The task is simple: 
 1. I have downloaded the HCLA (Human Cell Lung Atlas) dataset and used AI to make a script to extract the top 50 markers from each cell type in the HCLA. 
-2. The AI used those top 50 markers and made a "Matching Excercise" where the AI is required to supply the cell type (from a list) for each of the 47 marker lists, in a specified format. A link to the prompt (real genes redacted) can be found [here](/blog/marker_gene_cell_type_eval_prompt).
-3. I Scored each of the models based on the number of correct matches and also used AI to provide commentary on the mistakes that each model made and its confidence calibration.
+2. The AI used those top 50 markers and made a "Matching Excercise" where the AI is required to supply the cell type (from a list) for each of the 47 marker lists
+, in a specified format. A link to the prompt (real genes redacted) can be found [here](marker_gene_cell_type_eval_prompt).
+3. I scored each of the models based on the number of correct matches and also used AI to provide commentary on the mistakes that each model made and its confidence calibration. 
+Note: AI was used to mark most responses, but occasionally spot checked by manually running the marking script to ensure accuracy of the AI marking. 
 
-NOTE: Other study designs were considered for example, entering each marker list into a new session so that the errors on one marker list would be independent of others as well as allowing the model to provide its own cell_type not just those from the list of 47.
-Ultimately, due to time and compute constraints, I chose to provide the final results for the above mentioned format. This reduced the ambiguity of the results as the ground truth could be obtained easily. However, this study design also introduces biases as it measures not only the 
-biological knowledge of the model but also the ability for the model to reason about constraints. I also noticed that some models thought for a lot longer than others. For example ChatGPT Pro (presumably GPT 5.5), thought for ~10 minutes on one evaluation. Thus, the score could be based not only on biological knowledge, but also the ability for the model to optimally allocate the cell_types to marker genes, and this could presumably be done better if the model just thought for longer. 
+
 
 ## Results
 
-### 2.3 Closed-book matching (easy mode — canonical markers present)
+### (easy mode — all top 50 genes present)
 
 | Model | Correct / 47 | % | Duplicates | Notes |
 |---|---|---|---|---|
 | ChatGPT free (run 1) | 27 | 57% | 0 | — |
 | ChatGPT free (run 2) | 29 | 62% | 0 | — |
-| Grok 4? Pro (thinking) | 31 | 66% | 1 | Thinking penalty persists |
-| ChatGPT Pro (run by someone else on May 14th)| 39 | 83% | 0 | Resolves fibroblast tangle |
-| Claude Sonnet 4.6| 39 | 81% | 0 | Unknown Notes: lost|
-| Claude Opus 4.7| 39 | 81% | 0 | Resolves fibroblast tangle |
+| ChatGPT Free (19-08-2026)| 32 | 68% | 0 | Claude noted that the calibration was poor. Note this ran much faster than Sonnet 5, even with thinking mode enabled. |
+| ChatGPT Pro (run by someone else on May 14th)| 39 | 83% | 0 | Resolves fibroblast tangle. Ran for ~10 minutes|
 | ChatGPT 5.6 Sol (High effort)*| 39 | 83% | 0 | Resolves fibroblast tangle |
 | ChatGPT 5.5 High (don't have too much confidence on the model label for this one)* | 35 | 74% | 0 | — |
+| Grok 4? Pro (thinking) ^ | 31 | 66% | 1 | Thinking penalty persists |
+| Claude Sonnet 4.6 ^ | 39 | 81% | 0 | Unknown Notes: lost|
+| Claude Sonnet 5 (Medium-default) (19-08-2026)| 37 | 79% | 0 | |
+| Claude Opus 4.7| 39 | 81% | 0 | Resolves fibroblast tangle |
 | Opus 5* | 39 | 83% | 0 | Smallest Δ from hard mode (+6 pts) |
 | Opus 4.8 (run 1)* | 42 | 89% | 0 | Best single run; resolves fibroblast and goblet subtypes |
 | Opus 4.8 (run 2)* | 39 | 83% | 0 | Run-to-run variance ~6 pts |
 | **Opus 4.8 mean** | **~40–41** | **~86%** | 0 | True estimate across 2 runs |
-
-* indicates the run was made later than on the week of May 14th. (Those models weren't released then)
-
+| Gemini 3.1 Pro (free model 19-08-2026) *| 30 | 64% | 0 | Calibration below "High" Confidence is flat (medium and low are near identical in accuracy) |
 
 
+\* indicates the run was made later than on the week of May 14th. (Those models weren't released then)
+
+^ indicates that there is a small chance the model labels may have been mixed up
+
+NOTE: The percentages should be trusted over the raw scores. The duplicates data may also be incorrect.
 
 ## Discussion
 
 The frontier models from OpenAI and Anthropic performed simialrly to each other (within run variance).
 The absolute highest score was recorded by Opus 4.8. 
-Grok Performed much worse than either the paid OpenAI or the Anthropic models.
-The free OpenAI models (without subscription) seem a lot worse than the free Claude Models (sonnet 5), although with a paid subscription.
+Grok and Gemini Performed much worse than either the paid OpenAI or the free and paid Anthropic models.
+The free OpenAI models (without subscription) seem a lot worse than the free Claude Models (Sonnet 5), although with a paid subscription.
 Opus 4.8 seems to be getting a little better than Opus 4.7, but this is also within run variance. 
 Opus 5 does not seem to be better than Opus 4.8. However, subsequent testing suggests it loses less performance when the top 5 makers are removed (result not shown).
 
 From the discussion of the errors (aided by AI interpretation), it seems like the frontier models are only getting errors on closely related sister cell types or cell types defined by location, rather than function.
 It is unclear whether it is possible to differentiate all 47 cases by marker genes alone, especially if the cell types differ only by location. 
-However, the results support the conclusion that frontier models are getting quite capable at biologtical reasoning and that there is a large gap between free and pro (paid) models. 
+However, the results support the conclusion that frontier models are getting quite capable at biologtical reasoning and that there is a large gap between free and pro (paid) models with the exception of Anthropic's Sonnet models (with a paid account). 
+
+Other study designs were considered for example, entering each marker list into a new session so that the errors on one marker list would be independent of others as well as allowing the model to provide its own cell_type not just those from the list of 47.
+Ultimately, due to time and compute constraints, I chose to provide the final results for the above mentioned format. This reduced the ambiguity of the results as the ground truth could be obtained easily. However, this study design also introduces biases as it measures not only the 
+biological knowledge of the model but also the ability for the model to reason about constraints. I also noticed that some models thought for a lot longer than others. For example ChatGPT Pro (presumably GPT 5.5), thought for ~10 minutes on one evaluation. Thus, the score could be based not only on biological knowledge, but also the ability for the model to optimally allocate the cell_types to marker genes, and this could presumably be done better if the model just thought for longer. 
+
+Here's an **AI summary** of the Differences between the major models tested:
+
+Claude models from Sonnet 5 upward show the most consistent calibration — confidence tiers form a genuine gradient, with high-confidence answers near-reliable (95–100%) and low confidence correctly clustering on the persistent failure cases. Their errors are concentrated in well-defined pairs: the universal club↔lower-respiratory swap and the gland-cell tangle. Opus 5 is unique in achieving zero high-confidence errors on the hard task.
+
+ChatGPT models produce larger rotation errors — free-tier runs showed 5-way epithelial and 4-way gland rotations rather than clean pairwise swaps. Medium-confidence accuracy is weaker across the ChatGPT family (31–56%) than equivalent Claude tiers, making confidence a less reliable triage signal. The Pro tier resolves the fibroblast tangle but still shows flat medium accuracy.
+
+Grok 4 standard makes clean independent per-case decisions, partly resolving the fibroblast tangle, but fails on the same gland and SMC clusters as other models.
+
+Gemini 3.1 Pro produces the flattest calibration — medium and low tiers are nearly identical in accuracy (43% vs 42%), meaning only high-confidence annotations carry useful signal. Its error rotations span more cases simultaneously than any other model tested.
 
 
-## Failure examples
 
-[PLACEHOLDER: 2-3 concrete misses worth quoting — e.g. confusing NK cells with CD8 effector T cells because of overlapping cytotoxic markers (GZMB, PRF1), or hallucinating a marker gene that wasn't in the input set. Include the exact prompt/response if possible.]
+## Failure Analysis
+
+Note: Since this is a post-hoc report, discussion for many of the models will be missing. 
+
+Most frontier models were able to get the "fibroblast tangle" correct. (fibroblast	Generic, alveolar adventitial fibroblast, alveolar type 1 fibroblast cell and bronchus fibroblast of lung).
+This suggests an ability to identify subtly different cell types. Inadvertantly, an advantage of this eval design is it forces the model to anchor a type (if it anchors the wrong type to one, the chances of getting the rest incorrect increase) 
+and may be testing rare secondary-marker knowledge.
+Interestingly Sonnet seems to perform similarly to Opus models (Only slightly weaker results). 
+However, the free ChatGPT models have a almost ~15% performance deficit compared to the pro model.
+
+## ChatGPT Free
+ 
+| Confidence | Correct | Wrong | Accuracy |
+|------------|---------|-------|----------|
+| High       | 27/33   | 6     | 82%      |
+| Medium     | 4/13    | 9     | 31%      |
+| Low        | —       | —     | —        |
+ 
+**Overall: 32/47 (68%)**
+AI analysis:
+High-confidence answers are broadly reliable, 
+but medium-confidence accuracy falls to 31% — barely above chance. 
+The model never assigned low confidence.
+ Systematic overconfidence on the gland cluster (cases 13, 19) and SMC cluster (cases 35, 39) inflates the error count in the medium tier specifically.
+ 
+---
+ 
+## Claude Sonnet 5 Medium (default)
+ 
+| Confidence | Correct | Wrong | Accuracy |
+|------------|---------|-------|----------|
+| High       | 21/22   | 1 (case 32) | 95%  |
+| Medium     | 10/13   | 3 (cases 13, 35, 40) | 77% |
+| Low        | 6/12    | 6 (cases 7, 28, 30, 31, 33, 39) | 50% |
+ 
+**Overall: 37/47 (79%)**
+AI analysis:
+Confidence tiers are well-ordered and genuinely predictive. 
+The single high-confidence wrong answer (case 32: club cell ↔ lower respiratory epithelium) is the universal failure seen across all frontier models. 
+Low-confidence cases correctly flag the hardest distinctions in the eval — the model knows what it doesn't know.
+ 
+
 
 ## Takeaways
 
-[PLACEHOLDER: 2-3 bullet takeaways — e.g. whether this eval predicts real-world annotation reliability, whether errors clustered around biologically similar cell types (a "reasonable" failure mode) vs. arbitrary ones, whether the result changes how much you'd trust an AI-generated cluster annotation unsupervised.]
+Large Language Models show a good ability to differentiate common cell types based on lists of marker genes. The errors remaining center on cell types that are closely related. Overall, the paid Claude and ChatGPT Models are within run variance of each other, although I would say Claude has a slight edge on this task. 
+Interestingly, the Sonnet class models seem to show similar performance to the paid Opus Models.
+Free models from Grok and Gemini show much weaker performance than the frontier class. 
 
 ## Limitations
 
 - Small number of repeats used for each model
 - Some of the results were scored by AI (Opus 4.7-8), although running the script manually and visual inspection did not uncover any obvious errors in the ground truth marking
-- There is some scoring subjectivity, e.g. synonymous cell type names counted as correct/incorrect
 - Tests the model's ability to perform well on tests rather than just biological knowledge
 - This tests recall of canonical marker-to-cell-type mappings in isolation, not the harder task of annotating a real, noisy clustering from expression data alone.
+- ChatGPT paid runs after May 14th were done using a free trial that was offered to me. 
 
-- Ultimately this was not planned to be a write-up but I thought I might do a quick one to demonstrate my skills for a recent program I am applying to. The documentation is a bit messy so It is hard to piece together the actual results (I also told the AI model that was evaluating it that Claude was Grok and Grok was Claude, just to ensure no model favouritism but now I have lost track of my swaps)
+- Ultimately this was not planned to be a write-up but I thought I might do a quick one to demonstrate my skills for a recent program I am applying to. The documentation is a bit messy so It is hard to piece together the actual results 
+(I also told the AI model that was evaluating it that Claude was Grok and Grok was Claude, just to ensure no model favouritism but now I have lost track of my swaps)
 
 ## Further Tests Done
 
 I have also tested some of the models on the harder task (same. -but with the top 5 markers removed). This seemed to reduce the performance for all models. 
+It seems that Opus 5 suffers the least (performance only drops 6% when top 5 markers are removed). This needs to be confirmed with more repetitions.
+Grok Heavy also doesn't show much improvement over free Grok (results not shown).
 
 ## What I'd do next
 
 *Code / eval harness: not public yet.*
 
+If anyone is interested in this eval, it is possible to re-run it with proper documentation. Please contact me for more details.
+
+## AI Usage
+This article was written by hand, however, AI (Claude Opus 4.7-8 as the main model) was used to generate all code to produce the eval as well as to assist in marking the answers and provide commentary on the calibration and errors of the AI models. Very little code was written by hand. 
+
 ## Changelog
 
 18-08-2026 — Initial draft uploaded.
+
