@@ -20,7 +20,7 @@ this progress also poses risks if used for malicious purposes such as assisting 
 The task is simple: 
 1. I have downloaded the HCLA (Human Cell Lung Atlas) dataset and used AI to make a script to extract the top 50 markers from each cell type in the HCLA. 
 2. The AI used those top 50 markers and made a "Matching Excercise" where the AI is required to supply the cell type (from a list) for each of the 47 marker lists
-, in a specified format. A link to the prompt (real genes redacted) can be found [here](marker_gene_cell_type_eval_prompt).
+, in a specified format. A link to the prompt (real genes redacted) can be found [here](/website/blog/marker_gene_cell_type_eval_prompt).
 3. I scored each of the models based on the number of correct matches and also used AI to provide commentary on the mistakes that each model made and its confidence calibration. 
 Note: AI was used to mark most responses, but occasionally spot checked by manually running the marking script to ensure accuracy of the AI marking. 
 
@@ -129,7 +129,7 @@ Low-confidence cases correctly flag the hardest distinctions in the eval — the
 
 ## Takeaways
 
-Large Language Models show a good ability to differentiate common cell types based on lists of marker genes. The errors remaining center on cell types that are closely related. Overall, the paid Claude and ChatGPT Models are within run variance of each other, although I would say Claude has a slight edge on this task. 
+Large Language Models show a good ability to differentiate common cell types based on lists of marker genes. The errors remaining center on cell types that are closely related. Overall, the paid Claude and ChatGPT Models are within run variance of each other, although I would say Claude has a slight edge on this task and display better calibration of their confidence. 
 Interestingly, the Sonnet class models seem to show similar performance to the paid Opus Models.
 Free models from Grok and Gemini show much weaker performance than the frontier class. 
 
