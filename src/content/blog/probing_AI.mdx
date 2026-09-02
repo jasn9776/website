@@ -11,7 +11,9 @@ import Caption from '../../components/Caption.astro';
 
 ## Disclaimer
 This article was written almost entirely by AI. There are probably too many references and most of them are not directly relevant. Further work on this contrast showed that ablation of this direction did not result in 
-reduction of sycophancy, suggesting that the direction is not causal.
+reduction of sycophancy, suggesting that the direction is not causal. 
+
+However, even further work using a grok model showed that activation patching (which is probably not the best technique for studying this contrast, nor am I confident the implementationw as correct - see Code and reproducibility) of the non-sycophantic activations onto the corrupted (sycophantic prompt), it made the sycophancy rate go up to 100%. I think this result needs to be treated with caution mainly because we only had a total of 6 non-sycophantic examples where the answer was "B" (this is because Gemma2B has a tendency to output "A", when given an option). Further studies should use a more balanced number of "B" examples. Ultimately this was a good first learning experience, giving a practical example of real mechanistic interpretability techniques and the importance of good study design. 
 
 ## Context
 AI is getting more powerful, at least according to the most credible and widely known benchmarks and evaluations (evals) such as [METR Time Horizons](https://metr.org/time-horizons/) which measures the most complex software engineering tasks AI can complete in terms of how many hours it would have taken a human (Calude Mythos can apparently complete a task that a human software engineer would take 16 hours - (including time the human would take to actually learn to actually do the task if they didn't know it already)), [epoch AI capabilities Index](https://epoch.ai/eci) which measures both Software Engineering and Math abilities and the UK based [AI Security institute](https://www.aisi.gov.uk/blog/how-fast-is-autonomous-ai-cyber-capability-advancing) which measures AI cyber capabilties. 
@@ -143,7 +145,7 @@ What I think is not novel: the underlying finding that SAE-based approaches lose
 
 ## Code and reproducibility
 
-The full pipeline runs on a free Colab T4 in approximately 2.5 hours of wall-clock time, including model loading, SAE loading, two extractions (SAE features and raw residuals), and all analyses. Code at [link].
+The full pipeline runs on a free Colab T4 in approximately 2.5 hours of wall-clock time, including model loading, SAE loading, two extractions (SAE features and raw residuals), and all analyses. Code at [link](https://github.com/jasn9776/SycophancyGemma2B/tree/main). Note 02_extraction_plus_grok_extension.ipynb contains code for stronger ablation and activation patching. However, upon further conversations with Opus 4.7, I'm not sure that activation patching is the correct method for this contrast (there are no clean pairs of prompts - my clean and corrupted prompts differed in many ways beyond just the behavioural label, so any patching effect I observed reflects the transfer of many correlated properties, not sycophancy specifically.)
 
 ## Acknowledgements
 
