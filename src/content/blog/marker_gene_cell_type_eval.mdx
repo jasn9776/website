@@ -2,7 +2,7 @@
 title: "Can frontier models match marker genes to cell types?"
 date: 2026-08-18
 heroImage: /images/blog/marker-gene-match-hero.svg
-description: "A small eval testing whether frontier LLMs can correctly match marker genes to their cell types, comparing Claude, GPT, Grok, and an open-source model."
+description: "A small eval testing whether frontier LLMs can correctly match marker genes to their cell types, comparing Claude, ChatGPT and Grok"
 unlisted: false
 ---
 
@@ -47,6 +47,12 @@ Note: AI was used to mark most responses, but occasionally spot checked by manua
 | Opus 4.8 (run 2)* | 39 | 83% | 0 | Run-to-run variance ~6 pts |
 | **Opus 4.8 mean** | **~40–41** | **~86%** | 0 | True estimate across 2 runs |
 | Gemini 3.1 Pro (free model 19-08-2026) *| 30 | 64% | 0 | Calibration below "High" Confidence is flat (medium and low are near identical in accuracy) |
+| Opus 5.5 (High effort) (23-09-2026) *| 39-42 | 83-89% | 0 | Run three times (more notes in article) |
+
+### (hard mode — top 5 marker genes removed - incomplete not all results shown)
+| Model | Correct / 47 | % | Duplicates | Notes |
+|---|---|---|---|---|
+| Opus 5.5 (High effort) (23-09-2026) *| 40-42 | 85-89% | 0 | Run three times (more notes in article) |
 
 
 \* indicates the run was made later than on the week of May 14th. (Those models weren't released then)
@@ -125,7 +131,13 @@ Confidence tiers are well-ordered and genuinely predictive.
 The single high-confidence wrong answer (case 32: club cell ↔ lower respiratory epithelium) is the universal failure seen across all frontier models. 
 Low-confidence cases correctly flag the hardest distinctions in the eval — the model knows what it doesn't know.
  
-
+## Opus 5.5
+Opus 5.5 (high effort) was tested six times on a 47-cluster HLCA lung annotation task (3 easy runs with all markers, 
+3 hard runs with top-5 canonical markers removed). Both variants averaged 87.2% (range 83–89%), showing removing top markers 
+had no effect — the model synthesizes from full profiles rather than pattern-matching to famous genes. Confidence 
+calibration was exemplary: high-confidence calls were 100% correct across all runs. Three cases (smooth muscle / 
+stromal triangle) failed every run, likely reflecting HLCA labels encoding atlas context beyond markers. Run-to-run 
+variance (~6 points) came from label-swap noise on ambiguous ontology clusters, not biology recognition.
 
 ## Takeaways
 
@@ -144,13 +156,17 @@ Free models from Grok and Gemini show much weaker performance than the frontier 
 - Ultimately this was not planned to be a write-up but I thought I might do a quick one to demonstrate my skills for a recent program I am applying to. The documentation is a bit messy so It is hard to piece together the actual results 
 (I also told the AI model that was evaluating it that Claude was Grok and Grok was Claude, just to ensure no model favouritism but now I have lost track of my swaps)
 
+- There is evidence of saturation of this eval as the top models keep improving. It is unclear whether remaining errors on opus 5.5 come from label-swap noise on ambiguous ontology clusters, rather than lack of biological knowledge.
+
 ## Further Tests Done
 
 I have also tested some of the models on the harder task (same. -but with the top 5 markers removed). This seemed to reduce the performance for all models. 
-It seems that Opus 5 suffers the least (performance only drops 6% when top 5 markers are removed). This needs to be confirmed with more repetitions.
+It seems that Opus 5 suffers the least (performance only drops 6% when top 5 markers are removed). Opus 5.5 seems to show no degradation at all. This needs to be confirmed with more repetitions.
 Grok Heavy also doesn't show much improvement over free Grok (results not shown).
 
 ## What I'd do next
+
+- Due to recent model improvements, moving to top 10+ marker genes removed may be required.
 
 *Code / eval harness: not public yet.*
 
@@ -161,5 +177,5 @@ This article was written by hand, however, AI (Claude Opus 4.7-8 as the main mod
 
 ## Changelog
 
-18-08-2026 — Initial draft uploaded.
-
+18-08-2026 — Initial draft uploaded.\
+23-09-2026 - Added Analysis of the latest Opus 5.5 models, showing impressive ability to maintain accuracy even when top 5 markers are removed
