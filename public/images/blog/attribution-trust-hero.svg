@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 480">
+  <defs>
+    <radialGradient id="at-g1" cx="25%" cy="55%" r="55%">
+      <stop offset="0%" stop-color="#1E47E6" stop-opacity="0.75"/>
+      <stop offset="100%" stop-color="transparent"/>
+    </radialGradient>
+    <radialGradient id="at-g2" cx="80%" cy="45%" r="45%">
+      <stop offset="0%" stop-color="#A8BDF5" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="transparent"/>
+    </radialGradient>
+    <pattern id="at-grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M 24 0 L 0 0 0 24" fill="none" stroke="rgba(233,238,246,0.1)" stroke-width="1"/>
+    </pattern>
+    <filter id="at-glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="480" fill="#0B1730"/>
+  <rect width="1200" height="480" fill="url(#at-grid)"/>
+  <rect width="1200" height="480" fill="url(#at-g1)"/>
+  <rect width="1200" height="480" fill="url(#at-g2)"/>
+
+  <!-- left: a small attribution graph -->
+  <g stroke="#E9EEF6" stroke-linecap="round" fill="none" filter="url(#at-glow)">
+    <path d="M 170 380 C 170 330, 270 310, 290 280" stroke-width="5"/>
+    <path d="M 410 380 C 410 330, 350 310, 330 280" stroke-width="3.5"/>
+    <path d="M 310 280 C 310 220, 400 200, 420 170" stroke-width="5"/>
+    <path d="M 420 170 C 420 130, 480 110, 500 90" stroke-width="6"/>
+  </g>
+  <g stroke="#A8BDF5" stroke-width="2.5" stroke-dasharray="6 7" fill="none" opacity="0.8">
+    <path d="M 560 280 C 560 220, 520 140, 500 90"/>
+    <path d="M 410 380 C 450 340, 540 310, 560 280"/>
+  </g>
+  <g fill="#1E47E6" stroke="#E9EEF6" stroke-width="2.5">
+    <rect x="290" y="266" width="40" height="28" rx="6"/>
+    <rect x="400" y="156" width="40" height="28" rx="6"/>
+  </g>
+  <path d="M 560 265 L 575 280 L 560 295 L 545 280 Z" fill="#0B1730" stroke="#A8BDF5" stroke-width="2.5"/>
+  <g font-family="'JetBrains Mono', monospace" font-size="18" fill="#E9EEF6" text-anchor="middle">
+    <rect x="115" y="364" width="110" height="34" rx="17" fill="#0B1730" stroke="#E9EEF6" stroke-width="2"/>
+    <text x="170" y="387">Dallas</text>
+    <rect x="355" y="364" width="110" height="34" rx="17" fill="#0B1730" stroke="#E9EEF6" stroke-width="2"/>
+    <text x="410" y="387">capital</text>
+  </g>
+  <rect x="440" y="68" width="120" height="42" rx="8" fill="#E9EEF6" filter="url(#at-glow)"/>
+  <text x="500" y="96" font-family="'JetBrains Mono', monospace" font-size="20" font-weight="600" fill="#0B1730" text-anchor="middle">Austin</text>
+
+  <!-- right: cheap metrics → trust gauge -->
+  <g font-family="'JetBrains Mono', monospace" font-size="15" fill="#DDE5F0">
+    <text x="700" y="100">replacement</text>
+    <rect x="850" y="88" width="150" height="10" rx="5" fill="#2C3E5E"/>
+    <rect x="850" y="88" width="118" height="10" rx="5" fill="#A8BDF5"/>
+    <text x="700" y="150">completeness</text>
+    <rect x="850" y="138" width="150" height="10" rx="5" fill="#2C3E5E"/>
+    <rect x="850" y="138" width="72" height="10" rx="5" fill="#A8BDF5"/>
+    <text x="700" y="200">prompt length</text>
+    <rect x="850" y="188" width="150" height="10" rx="5" fill="#2C3E5E"/>
+    <rect x="850" y="188" width="96" height="10" rx="5" fill="#A8BDF5"/>
+  </g>
+
+  <!-- gauge -->
+  <g transform="translate(850 380)">
+    <path d="M -110 0 A 110 110 0 0 1 110 0" fill="none" stroke="#2C3E5E" stroke-width="14" stroke-linecap="round"/>
+    <path d="M -110 0 A 110 110 0 0 1 -31.4 -105.4" fill="none" stroke="#1E47E6" stroke-width="14" stroke-linecap="round"/>
+    <line x1="0" y1="0" x2="-40" y2="-78" stroke="#E9EEF6" stroke-width="4" stroke-linecap="round" filter="url(#at-glow)"/>
+    <circle r="8" fill="#E9EEF6"/>
+    <text x="0" y="-130" font-family="'Fraunces', serif" font-size="44" fill="#E9EEF6" text-anchor="middle">?</text>
+    <text x="-110" y="34" font-family="'JetBrains Mono', monospace" font-size="12" fill="#6B7A94" text-anchor="middle" letter-spacing="2">DISTRUST</text>
+    <text x="110" y="34" font-family="'JetBrains Mono', monospace" font-size="12" fill="#6B7A94" text-anchor="middle" letter-spacing="2">TRUST</text>
+  </g>
+  <path d="M 600 150 L 670 150" stroke="#A8BDF5" stroke-width="2" stroke-dasharray="4 6"/>
+</svg>

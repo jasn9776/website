@@ -1,0 +1,99 @@
+---
+title: "Research Summary: Can we predict when to trust an Attribution Graph"
+date: 2026-10-08
+heroImage: /images/blog/attribution-trust-hero.svg
+description: "Attribution Graphs are one of the latest LLM mechanistic interpretability tools, but they take hours per graph and only produce satisfying results 25% of the time. Can we use cheap metrics to predict when to trust an Attribution Graph?"
+unlisted: false
+---
+
+export const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+# When should you not trust an attribution graph?
+
+**Jason Soo** · 8 October 2026, summarised by Claude Opus 5.5
+
+*Pre-registered. 255 attribution graphs on Gemma-2-2B, free-tier compute.*
+
+---
+
+## Links to Explainer and Full version
+
+- **Interactive explainer:** <a href={`${base}/interactive/transcoders.html`}>Attribution Graphs Triage Explainer</a>
+- **Full version:** <a href={`${base}/blog/attribution_graphs_full_article`}>Attribution Graphs Triage Full Article</a>
+- **Code:** <a href="https://github.com/jasn9776/attribution-graph-triage">jasn9776/attribution-graph-triage</a> on GitHub
+
+Oct 8, 2026 · Jason Soo
+
+## What the project did
+
+The author's conclusion is negative: no usable cheap pre-flight check for attribution-graph quality was found. The search was pre-registered, but neither pre-registered null rule fired, so the negative headline is the author's judgement rather than a registered verdict. A single student, with an LLM in the loop, asked whether **replacement score** (the built-in quality metric in attribution-graph circuit tracing) can tell you in advance which prompts are worth an afternoon of manual analysis.
+
+- **Corpus:** 255 prompts in 8 categories (factual recall, multi-hop, induction, arithmetic, obfuscated text, code, known and unknown entities).
+- **Model and tools:** Gemma-2-2B, GemmaScope per-layer transcoders, a free Kaggle T4.
+- **Pre-registration:** five predictions registered before data collection. P1 to P3 failed (P2 only on its variance-ratio test); P4 and P5 held, though the author notes P5's threshold was nearly vacuous.
+- **Human ratings:** 40 graphs rated 0/1/2, 3 to 7 per category, shown in a custom top-4-edge, depth-4 subgraph rather than the standard viewer.
+- **Version:** this summary reflects the latest revision of the writeup (8 October 2026).
+
+## How it relates to current research
+
+The work builds directly on Anthropic's 2025 [circuit-tracing methods paper](https://transformer-circuits.pub/2025/attribution-graphs/methods.html) and the open-source [circuit-tracer library](https://github.com/safety-research/circuit-tracer), whose main demo replicates two of the paper's findings on Gemma-2 (2B) with GemmaScope transcoders. That is the setup used here.
+
+The most striking finding, the "induction inversion", is an instance of a known limitation. Because attention is frozen, attribution graphs capture OV circuits: they show what information moved between positions, not why the model chose to move it ([explainer](https://mohakchugh.is-a.dev/blog/cross-layer-transcoders-attribution-graphs-circuit-tracing)).
+
+Anthropic has since addressed this. Their [QK-attribution update](https://transformer-circuits.pub/2025/attention-qk/) says the missing QK information makes the original graphs useless for many prompts, and extends them to explain attention patterns. OpenMOSS's [complete replacement models](https://www.neuronpedia.org/llama-scope-2) take a related route, decomposing attention into sparse heads with QK tracing. The writeup does not use either, but now explicitly scopes the inversion to frozen-attention attribution as circuit-tracer ships, and notes that methods attributing through attention target exactly this failure.
+
+The new contribution is quantitative. Replacement score was designed to compare dictionaries (cross-layer versus per-layer transcoders). This project tests it as a per-prompt instrument, shows it does not work as one, and shows it *rewards* the case where the graph explains least.
+
+## Findings likely to be useful
+
+The prompt-length effect and the induction inversion are the most robust results; the rest are smaller but practical.
+
+- **Replacement score is nearly flat across tasks.** The eight categories span only 0.036; completeness spans 0.008. Category explains about 24% of a quantity that barely varies.
+- **Prompt length moves it as much as task type.** With the same fact in short versus long frames, the score rose in 27 of 27 pairs, by +0.032 on average, with no human ratings involved.
+  - The within-fact estimate is +0.0458 logit points per token, 3.4× the cross-sectional figure; the author now states the scale of every coefficient.
+  - A corruption ladder adds a third demonstration: corruption's apparent effect is fully explained by the extra tokens it creates (exploratory, n = 11).
+  - Mechanism: holding feature count fixed roughly halves the cross-sectional coefficient (+0.0133 to +0.0068, p = 0.035). So about half is "more routes" rather than more computation. The matched pairs cannot split the rest, because tokens and features move together at r = 0.999.
+  - Caveat: short frames also carry a "Fact:" prefix, an open confound.
+- **Coverage is not insight.** Induction prompts score highest, yet all 5 rated induction graphs got 0: the explanation amounts to "the token appeared earlier." This applies to frozen-attention attribution, not attribution graphs in general. Arithmetic scores lowest, but the model predicted a line break rather than the sum, which looks like task failure rather than method failure.
+- **A direct/mediated decomposition.** About 0.095 of the score flows straight from token embeddings to logits with no feature in between. Removing it moves the correlation with ratings only from +0.243 to +0.297 (p = 0.06), and the author advises not leaning on it. The author also corrected an earlier fourfold overestimate, with a general lesson: measure on the adjacency matrix, not the displayed edges.
+- **Out-of-category generalisation is weak.** Three of six outcomes have positive leave-one-category-out R², but only one exceeds 0.07, and that one (0.275) is essentially prompt length in disguise.
+- **Practical notes for circuit-tracer users:** the node layout, a structural-zero check on error nodes, `prune_graph` dominating runtime, the size of bf16 re-attribution noise, and an install break on Python 3.13.
+- **Methodological ideas:**
+  - An LLM audit of the rater's written reasoning (12% of ratings rested on unsupported reasons).
+  - An identified rubric ambiguity: a generic feature at the read-out position with no cross-position edge.
+  - A pre-registration lesson: a threshold written as |x| < k, with no direction or effect-size floor, can be passed by a meaningless result. Three of this project's registered criteria had that flaw.
+
+**Possible safety relevance (my inference, not the author's):** if attribution graphs are used in auditing, such as finding hidden objectives, replacement score should not be read as a confidence signal. Attention-driven behaviours like in-context retrieval or acting on injected text may be where graphs look most complete while explaining least.
+
+## Limitations
+
+Anything resting on the human ratings is suggestive at best; the main limitations, roughly in order of severity:
+
+1. **The human ratings are weak evidence.**
+   - One rater, who knew the hypotheses.
+   - Median 262 seconds per graph, against the hours per graph Anthropic describes.
+   - 40 graphs, 3 to 7 per category, and only six in the top rating bin.
+   - Rated in a custom viewer that can display paths carrying almost no influence and truncates longer graphs more often, unevenly across categories. Feature labels were cut to 34 to 48 characters.
+   - The +0.243 and +0.297 correlations are not significant at n = 40, and P5's threshold would also have passed a zero or negative correlation.
+2. **The negative headline overrides the pre-registration.** Neither registered null rule fired; the analysis script printed `NULL RESULT HEADLINE: False`. The author's case that the rules tested the wrong thing is reasonable, but it is the kind of post-hoc call pre-registration exists to prevent.
+3. **AI involvement compromises independence.** Claude helped write the rating criteria and produced two of the three rating streams, so agreement between them is not corroboration. This summary was also written by Claude: treat it as a consistency check, not independent validation.
+4. **Narrow scope.** One model at one size, per-layer transcoders only (cross-layer ones are the stronger baseline), frozen attention, and no causal interventions to check that edges are faithful.
+5. **Cheap checks listed but not yet run.**
+   - The "Fact:" prefix control, about seven minutes of GPU time, which would settle the main confound in the length test.
+   - A joint test of entropy and top-1 probability. Their collinearity (r = −0.958) leaves their contribution undetermined, which the author now says.
+   - A manipulation that changes feature count and token count independently, needed to resolve the other half of the length mechanism.
+
+Successive revisions fixed every internal inconsistency flagged in earlier drafts: the conflicting Spearman figures, the missing P4 and P5 tables, the fact and pair counts, the leave-one-category-out wording, and the coefficient scales. The statistics spot-checked are internally consistent, including the exact Wilcoxon p for 27/27 (≈ 1.5×10⁻⁸), the Friedman p for 12 ordered items (≈ 6.1×10⁻⁶), and the corruption-ladder table. One small looseness remains: +0.0458 logit points per token over 4.8 tokens implies about +0.044 in probability, against the observed +0.032. A slope and a mean difference can legitimately differ, but "roughly" is generous.
+
+## Bottom line
+
+A careful, unusually transparent small-scale negative result, best read as a well-argued judgement rather than a pre-registered verdict. The robust takeaways are the length effect, now shown three ways with about half attributable to feature count, and the finding that replacement score rewards trivial induction graphs under frozen attention. The next checks are the "Fact:" prefix control, a feature-count manipulation, cross-layer transcoders and attention-aware attribution.
+
+## Sources
+
+- [Circuit Tracing: Revealing Computational Graphs in Language Models](https://transformer-circuits.pub/2025/attribution-graphs/methods.html)
+- [Tracing Attention Computation Through Feature Interactions](https://transformer-circuits.pub/2025/attention-qk/)
+- [Circuit Tracing with Interpretable Attention (Neuronpedia)](https://www.neuronpedia.org/llama-scope-2)
+- [circuit-tracer (GitHub)](https://github.com/safety-research/circuit-tracer)
+- [One Nonlinearity Left: Cross-Layer Transcoders and Attribution Graphs](https://mohakchugh.is-a.dev/blog/cross-layer-transcoders-attribution-graphs-circuit-tracing)
+- Soo, J. "When should you not trust an attribution graph?" (latest revision, 8 Oct 2026), the writeup summarised here

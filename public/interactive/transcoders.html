@@ -1,0 +1,986 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Transcoders and Attribution Graphs</title>
+<meta name="description" content="An interactive explainer of sparse autoencoders, transcoders, replacement models and attribution graphs, with examples from Anthropic's Circuit Tracing paper.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Layout: one reading column (~44rem) with figures that break wider (~62rem); a schematic, lab-bench look.
+   Node colours are semantic and shared by every figure: slate = token embedding, teal = feature,
+   vermilion = error, amber = output logit. Blue = attention, graphite = MLP. */
+:root{
+  --bg:#f3f5f8; --surface:#ffffff; --sunk:#e8ecf2; --ink:#131821; --ink-2:#444e60; --ink-3:#737d91; --rule:#d6dce6;
+  --accent:#2445c4; --accent-soft:#e2e8fb; --on-accent:#ffffff;
+  --n-emb:#5c687f; --n-feat:#0b8270; --n-err:#cc4f27; --n-logit:#a96f12;
+  --m-attn:#3567d3; --m-mlp:#394050; --m-resid:#bcc4d1;
+  --f-display:"Bricolage Grotesque","IBM Plex Sans",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --read:44rem; --wide:62rem;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1117; --surface:#161a22; --sunk:#1d222c; --ink:#e6e9ef; --ink-2:#adb5c4; --ink-3:#7f889a; --rule:#2a313d;
+  --accent:#8ea6ff; --accent-soft:#1e2742; --on-accent:#0e1117;
+  --n-emb:#9ba5bb; --n-feat:#3cc3ab; --n-err:#f0805a; --n-logit:#e3ad4f;
+  --m-attn:#76a0ff; --m-mlp:#a3abbb; --m-resid:#3a4250; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1117; --surface:#161a22; --sunk:#1d222c; --ink:#e6e9ef; --ink-2:#adb5c4; --ink-3:#7f889a; --rule:#2a313d;
+  --accent:#8ea6ff; --accent-soft:#1e2742; --on-accent:#0e1117;
+  --n-emb:#9ba5bb; --n-feat:#3cc3ab; --n-err:#f0805a; --n-logit:#e3ad4f;
+  --m-attn:#76a0ff; --m-mlp:#a3abbb; --m-resid:#3a4250; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:400 1.0625rem/1.65 var(--f-body);-webkit-font-smoothing:antialiased}
+.page{padding-inline:clamp(16px,4vw,40px);padding-block:0 5rem}
+.col{max-width:var(--read);margin-inline:auto}
+.wide{max-width:var(--wide);margin-inline:auto}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;letter-spacing:-.01em}
+h1{font-size:clamp(2.3rem,6vw,3.6rem);line-height:1.04;font-weight:700}
+h2{font-size:clamp(1.6rem,3.6vw,2.1rem);line-height:1.15;font-weight:700}
+h3{font-size:1.15rem;line-height:1.3;font-weight:700}
+p{margin:0}
+.prose{display:flex;flex-direction:column;gap:1rem}
+.prose ul{margin:0;padding-left:1.2rem;display:flex;flex-direction:column;gap:.4rem}
+a{color:var(--accent);text-underline-offset:2px}
+em{font-style:italic}
+code,.mono{font-family:var(--f-mono);font-size:.88em}
+.eyebrow{font:500 .75rem/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.muted{color:var(--ink-2)}
+.small{font-size:.875rem;line-height:1.55}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+
+/* hero */
+.hero{padding-block:3.5rem 2.5rem;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:2.5rem;align-items:center}
+.hero .dek{font-size:1.2rem;line-height:1.55;color:var(--ink-2);margin-top:1.1rem;max-width:34rem}
+.hero .for{margin-top:1.4rem;font-size:.9rem;color:var(--ink-3)}
+.hero-fig{background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:1rem 1rem .6rem}
+.hero-fig svg{width:100%;height:auto;display:block}
+.hero-fig figcaption{font-size:.8rem;color:var(--ink-3);margin-top:.4rem}
+@media (max-width:820px){.hero{grid-template-columns:minmax(0,1fr)}}
+
+.toc{display:flex;flex-wrap:wrap;gap:.4rem .5rem;padding-block:1rem;border-block:1px solid var(--rule);margin-bottom:1rem}
+.toc a{font:500 .8rem/1 var(--f-mono);color:var(--ink-2);text-decoration:none;padding:.45rem .6rem;border-radius:6px;background:var(--sunk)}
+.toc a:hover{color:var(--accent)}
+.toc a b{color:var(--ink-3);font-weight:500;margin-right:.35rem}
+
+section{padding-block:3.2rem 0}
+.sec-head{display:flex;flex-direction:column;gap:.55rem;margin-bottom:1.3rem}
+
+/* figures */
+figure{margin:0}
+.fig{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:1.2rem;margin-block:1.8rem;display:flex;flex-direction:column;gap:1rem}
+.fig > .cap{font-size:.875rem;line-height:1.55;color:var(--ink-2)}
+.fig > .cap b{color:var(--ink)}
+.scroll-x{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.scroll-x > svg{display:block;width:100%;height:auto}
+.min620 > svg{min-width:620px}
+.min560 > svg{min-width:560px}
+
+.seg{display:flex;flex-wrap:wrap;gap:.35rem}
+.seg button,.btn{font:500 .82rem/1 var(--f-body);color:var(--ink-2);background:var(--sunk);border:1px solid transparent;border-radius:999px;padding:.55rem .85rem;cursor:pointer}
+.seg button:hover,.btn:hover{color:var(--ink);border-color:var(--rule)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent)}
+.btn[disabled]{opacity:.4;cursor:default}
+.row{display:flex;flex-wrap:wrap;gap:.8rem 1.2rem;align-items:center}
+.split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:1.2rem}
+@media (max-width:720px){.split{grid-template-columns:minmax(0,1fr)}}
+
+.eq{font-family:var(--f-mono);font-size:.9rem;line-height:1.8;background:var(--sunk);border-radius:8px;padding:.8rem 1rem;overflow-x:auto;white-space:nowrap;color:var(--ink)}
+.eq .c{color:var(--ink-3)}
+details{border-top:1px solid var(--rule);padding-top:.8rem}
+summary{cursor:pointer;font-weight:600;font-size:.95rem}
+details > div{margin-top:.8rem;display:flex;flex-direction:column;gap:.8rem}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,15rem),1fr));gap:.8rem;margin-block:1.6rem}
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:1rem;display:flex;flex-direction:column;gap:.45rem}
+.card h3{font-size:1rem}
+.card p{font-size:.92rem;line-height:1.55;color:var(--ink-2)}
+.card .verdict{font:500 .75rem/1.3 var(--f-mono);color:var(--ink-3);margin-top:auto;padding-top:.4rem;border-top:1px dashed var(--rule)}
+.card.lead{border-color:var(--accent)}
+.card.lead .verdict{color:var(--accent)}
+
+.legend{display:flex;flex-wrap:wrap;gap:.4rem 1rem;font-size:.8rem;color:var(--ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:.4rem}
+.sw{width:.8rem;height:.8rem;border-radius:3px;border:1.5px solid;display:inline-block}
+.sw.emb{border-color:var(--n-emb);background:color-mix(in srgb,var(--n-emb) 16%,var(--surface))}
+.sw.feat{border-color:var(--n-feat);background:color-mix(in srgb,var(--n-feat) 16%,var(--surface))}
+.sw.err{border-color:var(--n-err);background:color-mix(in srgb,var(--n-err) 16%,var(--surface));transform:rotate(45deg) scale(.85)}
+.sw.logit{border-color:var(--n-logit);background:color-mix(in srgb,var(--n-logit) 18%,var(--surface))}
+
+/* SVG classes */
+svg text{font-family:var(--f-body);fill:var(--ink)}
+svg .t-mono{font-family:var(--f-mono)}
+svg .t-dim{fill:var(--ink-3)}
+svg .t-2{fill:var(--ink-2)}
+svg .resid{stroke:var(--m-resid);fill:none}
+svg .ln{stroke:var(--ink-3);fill:none}
+svg .ln-acc{stroke:var(--accent);fill:none}
+svg .box-attn{fill:color-mix(in srgb,var(--m-attn) 12%,var(--surface));stroke:var(--m-attn)}
+svg .box-mlp{fill:color-mix(in srgb,var(--m-mlp) 14%,var(--surface));stroke:var(--m-mlp)}
+svg .box-ghost{fill:none;stroke:var(--ink-3);stroke-dasharray:4 4;opacity:.7}
+svg .box-feat{fill:color-mix(in srgb,var(--n-feat) 13%,var(--surface));stroke:var(--n-feat)}
+svg .box-err{fill:color-mix(in srgb,var(--n-err) 15%,var(--surface));stroke:var(--n-err)}
+svg .box-emb{fill:color-mix(in srgb,var(--n-emb) 13%,var(--surface));stroke:var(--n-emb)}
+svg .box-logit{fill:color-mix(in srgb,var(--n-logit) 16%,var(--surface));stroke:var(--n-logit)}
+svg .box-plain{fill:var(--sunk);stroke:var(--rule)}
+svg .dot-on{fill:var(--n-feat)}
+svg .dot-off{fill:var(--rule)}
+svg .e-feat{stroke:var(--n-feat);fill:none}
+svg .e-err{stroke:var(--n-err);fill:none}
+svg .e-emb{stroke:var(--n-emb);fill:none}
+svg .e-attn{stroke:var(--m-attn);fill:none}
+svg .fill-feat{fill:var(--n-feat)}
+svg .fill-err{fill:var(--n-err)}
+svg .fill-emb{fill:var(--n-emb)}
+svg .fill-acc{fill:var(--accent)}
+svg .fill-attn{fill:var(--m-attn)}
+svg .fill-ink3{fill:var(--ink-3)}
+svg .grid{stroke:var(--rule);fill:none}
+
+/* superposition */
+.chips{display:flex;flex-wrap:wrap;gap:.4rem}
+.chips button{font:500 .82rem/1 var(--f-body);border:1.5px solid var(--n-feat);color:var(--n-feat);background:transparent;border-radius:999px;padding:.5rem .75rem;cursor:pointer}
+.chips button[aria-pressed="true"]{background:var(--n-feat);color:var(--surface)}
+.readout{display:flex;flex-direction:column;gap:.7rem;font-size:.92rem}
+.meter{display:grid;grid-template-columns:5.5rem minmax(0,1fr) 3.2rem;gap:.6rem;align-items:center}
+.meter .track{height:12px;background:var(--sunk);border-radius:3px;position:relative;overflow:hidden}
+.meter .track i{position:absolute;top:0;bottom:0;background:var(--accent);border-radius:2px}
+.meter .track::after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--ink-3)}
+.meter .v{font-family:var(--f-mono);font-size:.82rem;text-align:right;font-variant-numeric:tabular-nums}
+.note{font-size:.88rem;color:var(--ink-2);background:var(--sunk);border-radius:8px;padding:.7rem .85rem}
+
+/* SAE */
+.slider{display:flex;flex-direction:column;gap:.35rem;min-width:min(100%,16rem);flex:1}
+.slider label{font-size:.85rem;color:var(--ink-2);display:flex;justify-content:space-between;gap:1rem}
+.slider output{font-family:var(--f-mono);color:var(--ink);font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(9rem,1fr));gap:.6rem}
+.stat{background:var(--sunk);border-radius:8px;padding:.6rem .75rem}
+.stat .k{font-size:.75rem;color:var(--ink-3)}
+.stat .v{font:500 1.25rem/1.2 var(--f-mono);font-variant-numeric:tabular-nums}
+
+/* graph explorer */
+.gx-top{display:flex;flex-direction:column;gap:.7rem}
+.prompt{font-family:var(--f-mono);font-size:.95rem;background:var(--sunk);border-radius:8px;padding:.7rem .9rem;overflow-wrap:anywhere}
+.prompt mark{background:color-mix(in srgb,var(--n-logit) 25%,transparent);color:var(--ink);border-radius:3px;padding:0 .15em}
+.gx-body{display:flex;flex-direction:column;gap:1rem}
+.gx-side{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:1rem;font-size:.92rem;align-items:start}
+@media (max-width:720px){.gx-side{grid-template-columns:minmax(0,1fr)}}
+.gx-node{border:1px solid var(--rule);border-radius:8px;padding:.75rem .85rem;display:flex;flex-direction:column;gap:.3rem}
+.gx-node .kind{font:500 .72rem/1 var(--f-mono);letter-spacing:.06em;text-transform:uppercase}
+.gx-node .name{font-weight:600}
+svg .gnode{cursor:pointer}
+svg .gnode rect,svg .gnode path{transition:opacity .15s}
+svg .gnode.dim{opacity:.22}
+svg .gedge{transition:opacity .15s}
+svg .gedge.dim{opacity:.08}
+svg .gnode.sel rect,svg .gnode.sel path{stroke-width:2.6}
+
+table{border-collapse:collapse;width:100%;font-size:.92rem}
+th,td{text-align:left;padding:.5rem .6rem;border-bottom:1px solid var(--rule);vertical-align:top}
+th{font:500 .75rem/1.2 var(--f-mono);color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em}
+td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+
+/* score */
+.stack{display:flex;height:22px;border-radius:5px;overflow:hidden;background:var(--sunk)}
+.stack i{display:block;height:100%;transition:width .2s}
+.stack .s-med{background:var(--n-feat)}
+.stack .s-dir{background:var(--n-emb)}
+.stack .s-err{background:var(--n-err)}
+
+/* project */
+.project{background:var(--surface);border:1px solid var(--rule);border-radius:14px;padding:clamp(1.1rem,3vw,2rem);display:flex;flex-direction:column;gap:1.2rem}
+.bigs{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,13rem),1fr));gap:.8rem}
+.big{border-top:2px solid var(--ink);padding-top:.6rem;display:flex;flex-direction:column;gap:.3rem}
+.big .n{font:700 2rem/1 var(--f-display);font-variant-numeric:tabular-nums}
+.big p{font-size:.88rem;line-height:1.5;color:var(--ink-2)}
+
+dl.gloss{display:grid;grid-template-columns:minmax(9rem,12rem) minmax(0,1fr);gap:.6rem 1.2rem;margin:0}
+dl.gloss dt{font-weight:600}
+dl.gloss dd{margin:0;color:var(--ink-2)}
+@media (max-width:560px){dl.gloss{grid-template-columns:minmax(0,1fr)}dl.gloss dd{margin-bottom:.5rem}}
+
+footer{margin-top:4rem;padding-top:1.2rem;border-top:1px solid var(--rule);font-size:.85rem;color:var(--ink-3)}
+
+@keyframes pulse{0%{stroke-dashoffset:24}100%{stroke-dashoffset:0}}
+.flow{stroke-dasharray:6 6;animation:pulse 1.4s linear infinite}
+@media (prefers-reduced-motion: reduce){.flow{animation:none}*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="page">
+
+<header class="wide hero">
+  <div>
+    <div class="eyebrow">An interactive explainer</div>
+    <h1>Transcoders and attribution graphs</h1>
+    <p class="dek">How researchers turn a language model's hidden arithmetic into a wiring diagram of concepts, built up from neurons to sparse autoencoders to the cross-layer transcoders used in Anthropic's <em>Circuit Tracing</em>.</p>
+    <p class="for">No background in interpretability needed. Sections 1 to 3 assume none at all; later sections assume you know roughly what a neural network layer is.</p>
+  </div>
+  <figure class="hero-fig">
+    <svg id="heroGraph" viewBox="0 0 400 270" role="img" aria-label="Small attribution graph: the tokens Dallas and capital activate features Texas and say a capital, which together activate say Austin, which produces the output Austin."></svg>
+    <figcaption>What we are working towards: a graph of the concepts a model used for one answer. Simplified from the companion paper's Dallas example.</figcaption>
+  </figure>
+</header>
+
+<nav class="wide toc" aria-label="Contents">
+  <a href="#question"><b>1</b>The question</a>
+  <a href="#neurons"><b>2</b>Neurons</a>
+  <a href="#approaches"><b>3</b>Approaches</a>
+  <a href="#saes"><b>4</b>Sparse autoencoders</a>
+  <a href="#transcoders"><b>5</b>Transcoders</a>
+  <a href="#crosslayer"><b>6</b>Per-layer vs cross-layer</a>
+  <a href="#replacement"><b>7</b>Replacement model</a>
+  <a href="#graphs"><b>8</b>Attribution graphs</a>
+  <a href="#scoring"><b>9</b>Scoring a graph</a>
+  <a href="#limits"><b>10</b>Limits</a>
+  <a href="#glossary"><b>11</b>Glossary</a>
+</nav>
+
+<!-- 1 -->
+<section id="question" class="col">
+  <div class="sec-head"><div class="eyebrow">1 · The question</div><h2>The answer is visible. The reasoning is not.</h2></div>
+  <div class="prose">
+    <p>Give Claude 3.5 Haiku the text <em>“Fact: the capital of the state containing Dallas is”</em> and it continues with <em>“Austin”</em>. To get that right, something has to connect Dallas to Texas, and Texas to its capital.</p>
+    <p>Did the model actually take that step through Texas? Or did it memorise “Dallas … capital … Austin” as one association? Both produce the same word. The difference lives inside the model: dozens of layers, each turning a list of thousands of numbers into another list of thousands of numbers. Looking at those numbers directly tells you almost nothing.</p>
+    <p><strong>Circuit tracing</strong> is a method from Anthropic for turning that arithmetic into a diagram you can read: which concepts became active, and which ones pushed on which. For this prompt, the diagram shows a Texas step in the middle. This page builds up, one piece at a time, how such a diagram is made. The central piece is a component called a <strong>transcoder</strong>.</p>
+  </div>
+</section>
+
+<!-- 2 -->
+<section id="neurons" class="col">
+  <div class="sec-head"><div class="eyebrow">2 · Neurons and superposition</div><h2>Why not just read the neurons?</h2></div>
+  <div class="prose">
+    <p>A neural network already has named parts: its neurons. Each one outputs a number for every word the model processes. If each neuron meant one thing (“Texas”, “is a capital city”), we could read the model like a dashboard.</p>
+    <p>Most don't. They are <strong>polysemantic</strong>: one neuron responds to several unrelated things. In Anthropic's 2023 study of a small model, a single neuron responded to academic citations, English dialogue, HTTP requests and Korean text.</p>
+    <p>The leading explanation is <strong>superposition</strong>. A model needs to represent far more concepts than it has neurons, so it stores each concept as a <em>direction</em>: a particular mix of many neurons. Those directions overlap. This works because language is sparse: any one sentence uses a tiny fraction of everything the model knows, so overlapping concepts rarely collide.</p>
+    <p>The toy below squeezes five concepts into two neurons. Switch concepts on and watch what the neurons report.</p>
+  </div>
+</section>
+
+<div class="wide">
+  <figure class="fig" aria-labelledby="supCap">
+    <div class="split">
+      <div class="scroll-x"><svg id="supSvg" viewBox="0 0 360 340" role="img" aria-label="Five feature directions arranged in a pentagon in a two-neuron space, with the combined activation drawn as an arrow."></svg></div>
+      <div class="readout">
+        <div class="eyebrow">Concepts active in this sentence</div>
+        <div class="chips" id="supChips"></div>
+        <div class="eyebrow" style="margin-top:.4rem">What the two neurons report</div>
+        <div class="meter"><span>Neuron A</span><span class="track"><i id="supA"></i></span><span class="v" id="supAv"></span></div>
+        <div class="meter"><span>Neuron B</span><span class="track"><i id="supB"></i></span><span class="v" id="supBv"></span></div>
+        <div class="note" id="supRead"></div>
+        <p class="small muted" id="supPoly"></p>
+      </div>
+    </div>
+    <p class="cap" id="supCap"><b>Five concepts, two neurons.</b> Each concept is an arrow in a two-neuron space; the model's activation is the sum of the active arrows. With one concept on, its direction identifies it, even though both neurons fire. With two on, the sum can point somewhere that resembles neither. Real models do this with thousands of neurons and millions of concepts. Concept names are illustrative.</p>
+  </figure>
+</div>
+
+<!-- 3 -->
+<section id="approaches" class="col">
+  <div class="sec-head"><div class="eyebrow">3 · Approaches</div><h2>What researchers have tried</h2></div>
+  <div class="prose"><p>Several tools existed before circuit tracing. Each answers part of the question.</p></div>
+</section>
+<div class="wide">
+  <div class="cards">
+    <div class="card"><h3>Read individual neurons</h3><p>Find the inputs that make a neuron fire most and describe them.</p><div class="verdict">Breaks on polysemantic neurons</div></div>
+    <div class="card"><h3>Linear probes</h3><p>Train a small classifier to detect a concept you suspect is there, such as “this sentence is about Texas”.</p><div class="verdict">Finds only what you already guessed; shows presence, not use</div></div>
+    <div class="card"><h3>Ablation and patching</h3><p>Switch off or swap a component and see whether the output changes.</p><div class="verdict">Causal, but coarse, and needs a hypothesis to test</div></div>
+    <div class="card lead"><h3>Dictionary learning</h3><p>Learn, without labels, a large set of directions (“features”) that each mean one thing, and rewrite activations in terms of them.</p><div class="verdict">Discovers concepts unsupervised → SAEs, transcoders</div></div>
+  </div>
+</div>
+
+<!-- 4 -->
+<section id="saes" class="col">
+  <div class="sec-head"><div class="eyebrow">4 · Sparse autoencoders</div><h2>Rewriting activations as a few clean features</h2></div>
+  <div class="prose">
+    <p>A <strong>sparse autoencoder (SAE)</strong> is a second, much simpler network trained to undo superposition. It takes a snapshot of the model's activations at one point (a vector of a few thousand numbers) and has two halves:</p>
+    <ul>
+      <li>An <strong>encoder</strong> that turns the vector into activations for a very large number of features (tens of thousands to millions), almost all of them zero.</li>
+      <li>A <strong>decoder</strong> that gives each feature a fixed direction and rebuilds the original vector as the sum of the active features' directions, each scaled by how strongly it fired.</li>
+    </ul>
+    <p>Training rewards two things that pull against each other: the rebuilt vector should match the original closely, and as few features as possible should be active. That second pressure, sparsity, is what makes features tend to mean one thing each. When researchers look at what makes a single SAE feature fire, it is usually far easier to describe than a neuron.</p>
+    <div class="eq" aria-label="SAE equations">
+      f = JumpReLU(W<sub>enc</sub> x + b<sub>enc</sub>) &nbsp;<span class="c">// sparse feature activations</span><br>
+      x̂ = W<sub>dec</sub> f + b<sub>dec</sub> &nbsp;<span class="c">// reconstruction of the same x</span><br>
+      loss = ‖x − x̂‖² + λ · sparsity(f)
+    </div>
+    <p>JumpReLU is the activation function used here: a feature outputs zero unless its input clears a learned threshold θ, and then passes it through unchanged. The toy below lets you move that threshold yourself.</p>
+  </div>
+</section>
+
+<div class="wide">
+  <figure class="fig" aria-labelledby="saeCap">
+    <div class="row">
+      <div class="slider"><label for="saeTheta"><span>JumpReLU threshold θ</span><output id="saeThetaOut"></output></label><input id="saeTheta" type="range" min="0" max="1.6" step="0.01" value="0.8"></div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="k">Active features (L0)</div><div class="v" id="saeL0"></div></div>
+      <div class="stat"><div class="k">Reconstruction error</div><div class="v" id="saeErr"></div></div>
+      <div class="stat"><div class="k">True features found</div><div class="v" id="saeTrue"></div></div>
+      <div class="stat"><div class="k">Impostor features</div><div class="v" id="saeFalse"></div></div>
+    </div>
+    <div class="split">
+      <div><div class="eyebrow" style="margin-bottom:.4rem">Encoder input → features (12)</div><div class="scroll-x"><svg id="saeFeat" viewBox="0 0 420 230" role="img" aria-label="Bar chart of the twelve feature pre-activations with the JumpReLU threshold line."></svg></div></div>
+      <div><div class="eyebrow" style="margin-bottom:.4rem">Original vs reconstructed activation (8 neurons)</div><div class="scroll-x"><svg id="saeRecon" viewBox="0 0 420 230" role="img" aria-label="Paired bars comparing the original eight-neuron activation with its reconstruction."></svg></div></div>
+    </div>
+    <p class="cap" id="saeCap"><b>A toy SAE.</b> The activation was made from three real features (dotted) plus a little noise. Raise θ and the dictionary uses fewer features: below about 0.6, impostor features that merely overlap with the real ones switch on; above about 1.0, real features drop out and the reconstruction error climbs. Real SAEs face the same trade-off across millions of features. In this toy the decoder is refitted exactly for whichever features are active.</p>
+  </figure>
+</div>
+
+<section class="col" style="padding-top:0">
+  <div class="prose">
+    <h3>What SAEs can't do on their own</h3>
+    <p>An SAE tells you what is present at one point in the model. Circuit tracing needs something more: how one feature <em>caused</em> another. In a transformer, much of that causing happens inside the <strong>MLP</strong> layers, blocks of ordinary nonlinear neurons that sit between the points where you'd attach SAEs.</p>
+    <p>Put one SAE before an MLP and one after it and you get readable features on both sides. But the path from one side to the other still runs through the MLP's polysemantic neurons, so any explanation of how input features became output features has to go back through exactly the mess the SAE was meant to avoid.</p>
+  </div>
+</section>
+
+<!-- 5 -->
+<section id="transcoders" class="col">
+  <div class="sec-head"><div class="eyebrow">5 · Transcoders</div><h2>Replace the MLP instead of describing around it</h2></div>
+  <div class="prose">
+    <p>A <strong>transcoder</strong> changes one thing in the SAE recipe. Instead of rebuilding its own input, it reads what goes <em>into</em> an MLP and is trained to predict what comes <em>out</em>. Its hidden layer is still wide and sparse, so its features are still readable.</p>
+    <p>Once it is accurate enough, the transcoder can stand in for the MLP. The MLP's work is then described as: <em>these few features switched on, and each one wrote its own fixed direction into the model</em>. Between one transcoder's output and the next one's input there are no more nonlinear neurons, so the influence of one feature on another becomes a number you can compute.</p>
+    <p>To see which part is being replaced, it helps to know the three ingredients of a transformer layer:</p>
+    <ul>
+      <li>The <strong>residual stream</strong>: a running vector for each word position that every layer reads from and adds to. Think of it as a shared notepad.</li>
+      <li><strong>Attention</strong>: moves information <em>between</em> positions, e.g. from “Dallas” to the last word, where the next word is chosen.</li>
+      <li>The <strong>MLP</strong>: processes each position on its own. A lot of stored knowledge appears to live here. This is what transcoders replace.</li>
+    </ul>
+  </div>
+</section>
+
+<div class="wide">
+  <figure class="fig" aria-labelledby="archCap">
+    <div class="seg" role="group" aria-label="Diagram mode" id="archModes">
+      <button type="button" data-mode="orig" aria-pressed="true">Original model</button>
+      <button type="button" data-mode="sae" aria-pressed="false">With an SAE</button>
+      <button type="button" data-mode="plt" aria-pressed="false">Per-layer transcoders</button>
+      <button type="button" data-mode="clt" aria-pressed="false">Cross-layer transcoder</button>
+    </div>
+    <div class="seg" role="group" aria-label="Cross-layer feature source layer" id="archLayers" hidden>
+      <span class="small muted" style="align-self:center;margin-right:.3rem">Show features that read at</span>
+      <button type="button" data-l="1" aria-pressed="true">Layer 1</button>
+      <button type="button" data-l="2" aria-pressed="false">Layer 2</button>
+      <button type="button" data-l="3" aria-pressed="false">Layer 3</button>
+      <button type="button" data-l="4" aria-pressed="false">Layer 4</button>
+    </div>
+    <div class="scroll-x min620"><svg id="arch" viewBox="0 0 720 560" role="img" aria-label="A four-layer transformer: a vertical residual stream with attention and MLP blocks reading from and writing to it."></svg></div>
+    <div class="cap" id="archCap" aria-live="polite"></div>
+    <div class="eq" id="archEq"></div>
+  </figure>
+</div>
+
+<!-- 6 -->
+<section id="crosslayer" class="col">
+  <div class="sec-head"><div class="eyebrow">6 · Per-layer vs cross-layer</div><h2>One dictionary per layer, or one for the whole model</h2></div>
+  <div class="prose">
+    <p>A <strong>per-layer transcoder (PLT)</strong> gives every MLP its own transcoder: features in transcoder 3 read the stream just before MLP 3 and write only MLP 3's output.</p>
+    <p>A <strong>cross-layer transcoder (CLT)</strong>, the version the <em>Circuit Tracing</em> paper uses, is a single dictionary for the whole model. Each feature still <em>reads</em> the stream at one layer, but it can <em>write</em> to the output of that layer's MLP and of every MLP after it. Use the layer buttons in the cross-layer view above to see one layer's fan-out.</p>
+    <p>Why bother? Models often build up the same concept gradually over several MLPs. A per-layer dictionary has to describe that as a chain of near-duplicates: a Texas feature in layer 2 that activates a Texas feature in layer 3 that activates one in layer 4. Each link is real, but none of them is interesting, and the chain makes every path longer. A cross-layer feature writes to all of those layers at once, so the chain collapses into one node.</p>
+  </div>
+</section>
+
+<div class="wide">
+  <figure class="fig" aria-labelledby="chainCap">
+    <div class="split">
+      <div><div class="eyebrow" style="margin-bottom:.4rem">Per-layer transcoders</div><div class="scroll-x"><svg id="chainPLT" viewBox="0 0 320 350" role="img" aria-label="Per-layer graph: Dallas, then three near-duplicate Texas features at layers 2, 3 and 4, then say Austin, then Austin."></svg></div></div>
+      <div><div class="eyebrow" style="margin-bottom:.4rem">Cross-layer transcoder</div><div class="scroll-x"><svg id="chainCLT" viewBox="0 0 320 350" role="img" aria-label="Cross-layer graph: Dallas, then one Texas feature that writes to layers 2 to 4, then say Austin, then Austin."></svg></div></div>
+    </div>
+    <p class="cap" id="chainCap"><b>The same concept in two dictionaries</b> (schematic). In the paper's comparison at matched cost, cross-layer transcoders gave shorter graphs (mean path length about 2.3 hops against 3.7) and a larger share of the computation explained by features (replacement score 0.61 against 0.37; see section 9). The price is size: each CLT feature carries a decoder vector for every layer it writes to, so CLTs are more expensive to train and store.</p>
+  </figure>
+</div>
+
+<section class="col" style="padding-top:0">
+  <div class="prose">
+    <div class="eq" aria-label="Cross-layer transcoder equations">
+      a<sup>ℓ</sup> = JumpReLU(W<sub>enc</sub><sup>ℓ</sup> x<sup>ℓ</sup>) &nbsp;<span class="c">// features reading the stream at layer ℓ</span><br>
+      ŷ<sup>ℓ</sup> = Σ<sub>ℓ′ ≤ ℓ</sub> W<sub>dec</sub><sup>ℓ′→ℓ</sup> a<sup>ℓ′</sup> &nbsp;<span class="c">// MLP ℓ output, written by features from every layer up to ℓ</span><br>
+      loss = Σ<sub>ℓ</sub> ‖ŷ<sup>ℓ</sup> − y<sup>ℓ</sup>‖² + λ Σ<sub>ℓ,i</sub> tanh(c · ‖W<sub>dec,i</sub><sup>ℓ</sup>‖ · a<sub>i</sub><sup>ℓ</sup>)
+    </div>
+    <details>
+      <summary>Reading the equations</summary>
+      <div class="small muted">
+        <p>x<sup>ℓ</sup> is the residual stream entering MLP ℓ and y<sup>ℓ</sup> is what MLP ℓ actually outputs. The transcoder never sees y while running; it only sees x and must predict y.</p>
+        <p>The sparsity term charges each active feature in proportion to how much it writes (the norm of all its decoder vectors together), squashed by tanh so that a few strongly active features are not punished much more than a few weakly active ones. The paper reports that JumpReLU with this tanh penalty did modestly better than the alternatives they tried.</p>
+        <p>Scale: the paper trains CLTs on an 18-layer research model and on Claude 3.5 Haiku, the largest with about 30 million features.</p>
+      </div>
+    </details>
+  </div>
+</section>
+
+<!-- 7 -->
+<section id="replacement" class="col">
+  <div class="sec-head"><div class="eyebrow">7 · The replacement model</div><h2>From a stand-in to an exact, linear copy for one prompt</h2></div>
+  <div class="prose">
+    <p>Swap every MLP for its transcoder and you have the <strong>replacement model</strong>: same attention, same embeddings, but every MLP's work now expressed in features. It's an approximation, and run on its own it doesn't always predict the same next word as the original.</p>
+    <p>To explain one particular prompt, the paper builds a <strong>local replacement model</strong> with two more changes. Step through them:</p>
+  </div>
+</section>
+
+<div class="wide">
+  <figure class="fig" aria-labelledby="stepCap">
+    <div class="row" style="justify-content:space-between">
+      <div class="seg" role="group" aria-label="Step" id="stepBtns">
+        <button type="button" data-s="0" aria-pressed="true">0 · Original</button>
+        <button type="button" data-s="1" aria-pressed="false">1 · Swap in transcoders</button>
+        <button type="button" data-s="2" aria-pressed="false">2 · Add error nodes</button>
+        <button type="button" data-s="3" aria-pressed="false">3 · Freeze attention</button>
+      </div>
+      <div class="row" style="gap:.4rem"><button type="button" class="btn" id="stepPrev">Back</button><button type="button" class="btn" id="stepNext">Next step</button></div>
+    </div>
+    <div class="scroll-x min620"><svg id="stepSvg" viewBox="0 0 720 380" role="img" aria-label="Grid of four token positions by two layers showing attention and MLP blocks."></svg></div>
+    <div class="cap" id="stepCap" aria-live="polite"></div>
+  </figure>
+</div>
+
+<!-- 8 -->
+<section id="graphs" class="col">
+  <div class="sec-head"><div class="eyebrow">8 · Attribution graphs</div><h2>Every edge is one exact number</h2></div>
+  <div class="prose">
+    <p>In the local replacement model the only nonlinear choices left are which features fire, and those are fixed by the prompt. Everything between one feature's output and another feature's input is linear: residual stream additions and attention with frozen weights. So the effect of feature <em>s</em> on feature <em>t</em> is simply</p>
+    <div class="eq">A<sub>s→t</sub> = a<sub>s</sub> · w<sub>s→t</sub> &nbsp;<span class="c">// s's activation × (s's decoder, carried through frozen attention, · t's encoder)</span></div>
+    <p>Computing this for every pair of active features gives the <strong>attribution graph</strong>. It has four kinds of node:</p>
+  </div>
+  <div class="scroll-x" style="margin-block:1.2rem">
+    <table>
+      <thead><tr><th>Node</th><th>What it is</th><th>Has inputs</th><th>Has outputs</th></tr></thead>
+      <tbody>
+        <tr><td><span class="legend"><span><i class="sw emb"></i>Embedding</span></span></td><td>A token of the prompt, as it first enters the model</td><td>no</td><td>yes</td></tr>
+        <tr><td><span class="legend"><span><i class="sw feat"></i>Feature</span></span></td><td>A transcoder feature active at one position and layer</td><td>yes</td><td>yes</td></tr>
+        <tr><td><span class="legend"><span><i class="sw err"></i>Error</span></span></td><td>What the transcoder missed at one position and layer</td><td>no</td><td>yes</td></tr>
+        <tr><td><span class="legend"><span><i class="sw logit"></i>Logit</span></span></td><td>A candidate next token</td><td>yes</td><td>no</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose">
+    <p>A full graph has thousands of nodes, so it is <strong>pruned</strong> to the ones that matter most for the output. The open-source <code>circuit-tracer</code> library by default keeps the nodes that carry 80% of the influence on the output and the edges that carry 98%. Researchers then label features by looking at what makes them fire, and group related ones into “supernodes”. The graphs below are drawn that way.</p>
+  </div>
+</section>
+
+<div class="wide">
+  <figure class="fig" aria-labelledby="gxCap">
+    <div class="gx-top">
+      <div class="seg" role="group" aria-label="Example" id="gxTabs">
+        <button type="button" data-ex="dallas" aria-pressed="true">Dallas → Austin</button>
+        <button type="button" data-ex="jordan" aria-pressed="false">Michael Jordan</button>
+        <button type="button" data-ex="acronym" aria-pressed="false">Acronym</button>
+        <button type="button" data-ex="addition" aria-pressed="false">36 + 59</button>
+      </div>
+      <div class="prompt" id="gxPrompt"></div>
+    </div>
+    <div class="gx-body">
+      <div>
+        <div class="scroll-x min560"><svg id="gxSvg" viewBox="0 0 760 440" role="img" aria-label="Attribution graph for the selected example. Select a node to highlight the paths through it."></svg></div>
+        <div class="legend" style="margin-top:.6rem"><span><i class="sw emb"></i>Token embedding</span><span><i class="sw feat"></i>Feature</span><span><i class="sw err"></i>Error</span><span><i class="sw logit"></i>Output logit</span><span>Thicker edge = stronger effect</span></div>
+      </div>
+      <div class="gx-side">
+        <div class="gx-node" id="gxNode" aria-live="polite"></div>
+        <div id="gxStory" class="small" style="display:flex;flex-direction:column;gap:.6rem"></div>
+      </div>
+    </div>
+    <p class="cap" id="gxCap"><b>Select any node</b> to highlight every path that runs through it. Columns are token positions; height is depth in the model. These are simplified redrawings of the paper's figures: the real graphs contain many more nodes, and the feature labels here are paraphrased.</p>
+  </figure>
+</div>
+
+<section class="col" style="padding-top:0">
+  <div class="prose">
+    <p>A graph is a hypothesis, not a proof: it describes the replacement model, which only approximates the real one. The paper checks key claims by <strong>intervening on the real model</strong>, for example turning down the Texas features and seeing whether “Austin” loses probability. In the companion paper, swapping in California features in place of Texas changed the answer to Sacramento.</p>
+  </div>
+</section>
+
+<!-- 9 -->
+<section id="scoring" class="col">
+  <div class="sec-head"><div class="eyebrow">9 · Scoring a graph</div><h2>How much of the answer do the features explain?</h2></div>
+  <div class="prose">
+    <p>Error nodes are honest bookkeeping: they mark where the transcoder fell short. A graph with lots of influence flowing through errors explains less. Two scores summarise this.</p>
+    <ul>
+      <li><strong>Replacement score.</strong> Start at the output and push influence backwards along every edge, in proportion to edge strength, until it can go no further. It can only stop at nodes with no inputs: token embeddings or error nodes. The replacement score is the share that ends on token embeddings.</li>
+      <li><strong>Completeness score.</strong> A gentler, local version: for each node, what fraction of its direct inputs come from non-error nodes, averaged with more weight on nodes that matter more.</li>
+    </ul>
+    <p>One subtlety: a token's embedding stays in the residual stream all the way to the top, so it can push on the output <em>directly</em>, without passing through any feature. That direct path counts towards the replacement score but explains nothing about how the model computed anything. The sliders below let you see how much it can contribute.</p>
+  </div>
+</section>
+
+<div class="wide">
+  <figure class="fig" aria-labelledby="scCap">
+    <div class="split">
+      <div class="scroll-x"><svg id="scSvg" viewBox="0 0 460 380" role="img" aria-label="Small attribution graph whose edge thicknesses show how influence flows back from the output to embeddings and error nodes."></svg></div>
+      <div style="display:flex;flex-direction:column;gap:1rem">
+        <div class="slider"><label for="scE1"><span>Error feeding “Texas”</span><output id="scE1o"></output></label><input id="scE1" type="range" min="0" max="2" step="0.05" value="0.4"></div>
+        <div class="slider"><label for="scE2"><span>Error feeding “say Austin”</span><output id="scE2o"></output></label><input id="scE2" type="range" min="0" max="2" step="0.05" value="0.3"></div>
+        <div class="slider"><label for="scD"><span>Direct path: “Dallas” → output</span><output id="scDo"></output></label><input id="scD" type="range" min="0" max="2" step="0.05" value="0.25"></div>
+        <div>
+          <div class="stack" aria-hidden="true"><i class="s-med" id="scBarM"></i><i class="s-dir" id="scBarD"></i><i class="s-err" id="scBarE"></i></div>
+          <div class="legend" style="margin-top:.5rem"><span><i class="sw feat"></i>Through features</span><span><i class="sw emb"></i>Direct from tokens</span><span><i class="sw err"></i>Absorbed by errors</span></div>
+        </div>
+        <div class="stats">
+          <div class="stat"><div class="k">Replacement score</div><div class="v" id="scRep"></div></div>
+          <div class="stat"><div class="k">…of which direct</div><div class="v" id="scDir"></div></div>
+          <div class="stat"><div class="k">Completeness</div><div class="v" id="scComp"></div></div>
+        </div>
+      </div>
+    </div>
+    <p class="cap" id="scCap"><b>Influence flowing backwards.</b> Edge thickness shows how much of the output's influence travels along each edge. Replacement score plus the share absorbed by errors always equals 1, because those are the only two places influence can end. Raising the direct path increases the replacement score while the features explain less of the answer.</p>
+  </figure>
+</div>
+
+<section class="col" style="padding-top:0">
+  <div class="prose">
+    <p>The paper uses these scores to compare dictionaries: cross-layer against per-layer transcoders against raw MLP neurons. It also notes they could flag prompts where the method performs poorly. Whether they can do that is the question the project below takes up.</p>
+  </div>
+</section>
+
+<div class="wide" style="margin-top:2rem">
+  <aside class="project" aria-labelledby="projTitle">
+    <div class="eyebrow">The project this explainer accompanies</div>
+    <h2 id="projTitle">When should you not trust an attribution graph?</h2>
+    <p class="muted" style="max-width:var(--read)">Jason Soo · pre-registered study of 255 attribution graphs on Gemma-2-2B with per-layer transcoders. The question: can a cheap check, such as the replacement score, tell you in advance whether a graph will be worth hours of human reading? The authors of the method report satisfying insight on roughly a quarter of the prompts they tried.</p>
+    <div class="bigs">
+      <div class="big"><span class="n">0.036</span><p>Spread of mean replacement score across eight prompt types, from arithmetic (0.709) to induction (0.746).</p></div>
+      <div class="big"><span class="n">27 / 27</span><p>Matched facts whose replacement score rose when the same question was padded with a longer frame (mean +0.032, about the whole between-category spread).</p></div>
+      <div class="big"><span class="n">Highest, yet 0</span><p>Induction (copying a token seen earlier) scores highest of all eight types, and every rated induction graph scored 0 for readability: well covered, but circular.</p></div>
+      <div class="big"><span class="n">+0.24</span><p>Rank correlation between replacement score and human-rated readability (n = 40, p = 0.13). Removing the direct token-to-output paths raises it to +0.30.</p></div>
+    </div>
+    <p class="muted" style="max-width:var(--read)">The headline is a negative result: no usable pre-flight check for graph quality was found on this model. The induction case shows why. Its explanation, “the token appeared earlier”, is fully covered by features, but the interesting part (how the model knew which earlier token to copy) happens in attention's query-key matching, which the local replacement model freezes.</p>
+  </aside>
+</div>
+
+<!-- 10 -->
+<section id="limits" class="col">
+  <div class="sec-head"><div class="eyebrow">10 · Limits</div><h2>What the graphs leave out</h2></div>
+  <div class="prose">
+    <ul>
+      <li><strong>Attention is frozen, so it is not explained.</strong> The graph shows information moving between positions, but not why the model attended where it did. The paper calls its induction case arguably a step back from earlier methods that could at least identify induction heads.</li>
+      <li><strong>Error nodes are unexplained by design.</strong> When much influence flows through them, part of the story is missing, and they tend to grow in deeper layers and on unusual text.</li>
+      <li><strong>Only active features appear.</strong> If the answer depends on something <em>not</em> firing (a “known entity” feature suppressing an “I don't know” response, say), the graph shows that only indirectly.</li>
+      <li><strong>Graphs are about one prompt.</strong> They describe one forward pass. General claims need many graphs and interventions on the real model.</li>
+      <li><strong>Reading them takes human work.</strong> Labelling features and grouping them into supernodes is slow; the authors describe a few hours per graph and useful insight on about a quarter of prompts.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 11 -->
+<section id="glossary" class="col">
+  <div class="sec-head"><div class="eyebrow">11 · Glossary</div><h2>Terms used on this page</h2></div>
+  <dl class="gloss">
+    <dt>Feature</dt><dd>A direction in a model's activations that corresponds to one recognisable concept, found by dictionary learning.</dd>
+    <dt>Polysemantic</dt><dd>Responding to several unrelated concepts. Most neurons are.</dd>
+    <dt>Superposition</dt><dd>Storing more concepts than there are neurons by giving each concept an overlapping direction.</dd>
+    <dt>Residual stream</dt><dd>The running vector at each token position that every layer reads from and adds to.</dd>
+    <dt>MLP</dt><dd>The per-position block of neurons in each transformer layer; the part a transcoder replaces.</dd>
+    <dt>SAE</dt><dd>Sparse autoencoder: rebuilds activations at one point from a few active features.</dd>
+    <dt>Transcoder</dt><dd>Like an SAE, but reads an MLP's input and predicts its output, so it can replace the MLP.</dd>
+    <dt>PLT / CLT</dt><dd>Per-layer transcoder (one per MLP) / cross-layer transcoder (one dictionary whose features write to all later MLPs).</dd>
+    <dt>JumpReLU</dt><dd>Activation that outputs zero below a learned threshold and passes the input through above it.</dd>
+    <dt>Error node</dt><dd>The difference between the real MLP output and the transcoder's prediction, at one layer and position.</dd>
+    <dt>Local replacement model</dt><dd>The replacement model plus error nodes, with attention and normalisation frozen, for one prompt. Its output matches the original exactly.</dd>
+    <dt>Attribution graph</dt><dd>The network of nodes and exact linear effects in the local replacement model, pruned to what matters for the output.</dd>
+    <dt>Supernode</dt><dd>A hand-made group of related features drawn as one node.</dd>
+    <dt>Replacement score</dt><dd>Share of the output's influence that traces back to token embeddings rather than error nodes.</dd>
+  </dl>
+</section>
+
+<footer class="col">
+  <p>Sources: Ameisen et al., <a href="https://transformer-circuits.pub/2025/attribution-graphs/methods.html" target="_blank" rel="noopener">Circuit Tracing: Revealing Computational Graphs in Language Models</a> (2025); Lindsey et al., <a href="https://transformer-circuits.pub/2025/attribution-graphs/biology.html" target="_blank" rel="noopener">On the Biology of a Large Language Model</a> (2025); Bricken et al., <a href="https://transformer-circuits.pub/2023/monosemantic-features" target="_blank" rel="noopener">Towards Monosemanticity</a> (2023). Graph figures are simplified redrawings with paraphrased labels; toy figures are illustrations, not data. Project figures are from the accompanying write-up.</p>
+</footer>
+</div>
+
+<script>
+(function(){
+'use strict';
+const $=(s,r=document)=>r.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const f2=v=>v.toFixed(2), f3=v=>v.toFixed(3);
+const ARROW_DEFS=`<defs>
+ <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fill-ink3"/></marker>
+ <marker id="ahF" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fill-feat"/></marker>
+ <marker id="ahA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fill-acc"/></marker>
+ <marker id="ahE" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fill-err"/></marker>
+ <marker id="ahT" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fill-attn"/></marker>
+</defs>`;
+function pill(x,y,label,cls,opts={}){
+  const w=opts.w||Math.max(56,label.length*7.2+22), h=opts.h||28;
+  if(cls==='box-err'){
+    return `<g transform="translate(${x},${y})"><path d="M0,${-h/2-3} L${w/2},0 L0,${h/2+3} L${-w/2},0 Z" class="${cls}" stroke-width="1.5"/><text text-anchor="middle" dy="4" font-size="${opts.fs||12}">${esc(label)}</text></g>`;
+  }
+  return `<g transform="translate(${x},${y})"><rect x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" rx="${cls==='box-emb'?4:8}" class="${cls}" stroke-width="1.5"/><text text-anchor="middle" dy="4" font-size="${opts.fs||12}">${esc(label)}</text></g>`;
+}
+
+/* ---------- hero ---------- */
+(function hero(){
+  const s=$('#heroGraph');
+  const N={dal:[95,235,'Dallas','box-emb'],cap:[290,235,'capital','box-emb'],tex:[95,150,'Texas','box-feat'],sc:[290,150,'say a capital','box-feat'],sa:[195,80,'say Austin','box-feat'],out:[195,22,'Austin','box-logit']};
+  const E=[['dal','tex',3],['cap','sc',3],['tex','sa',3.4],['sc','sa',2.6],['sa','out',4]];
+  let h=ARROW_DEFS;
+  for(const [a,b,w] of E){const A=N[a],B=N[b];const y1=A[1]-14,y2=B[1]+14;const my=(y1+y2)/2;
+    h+=`<path d="M${A[0]},${y1} C${A[0]},${my} ${B[0]},${my} ${B[0]},${y2}" class="e-feat flow" stroke-width="${w}" opacity=".65"/>`;}
+  for(const k in N){const n=N[k];h+=pill(n[0],n[1],n[2],n[3]);}
+  s.innerHTML=h;
+})();
+
+/* ---------- superposition ---------- */
+(function sup(){
+  const feats=[{n:'Academic citations',a:90},{n:'English dialogue',a:162},{n:'HTTP requests',a:234},{n:'Korean text',a:306},{n:'DNA sequences',a:18}];
+  feats.forEach(f=>{f.x=Math.cos(f.a*Math.PI/180);f.y=Math.sin(f.a*Math.PI/180);});
+  const on=new Set([3]);
+  const chips=$('#supChips');
+  chips.innerHTML=feats.map((f,i)=>`<button type="button" data-i="${i}" aria-pressed="${on.has(i)}">${esc(f.n)}</button>`).join('');
+  chips.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const i=+b.dataset.i;on.has(i)?on.delete(i):on.add(i);b.setAttribute('aria-pressed',on.has(i));draw();});
+  const cx=180,cy=170,R=82;
+  const pos=f=>feats.filter(g=>g[f]>0.3).map(g=>g.n), neg=f=>feats.filter(g=>g[f]<-0.3).map(g=>g.n);
+  $('#supPoly').innerHTML=`Neuron A rises for <b>${pos('x').join('</b> and <b>')}</b> and falls for ${neg('x').join(' and ')}. Neuron B rises for <b>${pos('y').join('</b>, <b>')}</b>. Neither neuron means one thing.`;
+  function draw(){
+    let vx=0,vy=0;for(const i of on){vx+=feats[i].x;vy+=feats[i].y;}
+    let h=ARROW_DEFS;
+    h+=`<line x1="20" y1="${cy}" x2="340" y2="${cy}" class="grid"/><line x1="${cx}" y1="15" x2="${cx}" y2="325" class="grid"/>`;
+    h+=`<text x="336" y="${cy-8}" text-anchor="end" font-size="11" class="t-dim">neuron A →</text><text x="${cx+8}" y="26" font-size="11" class="t-dim">↑ neuron B</text>`;
+    feats.forEach((f,i)=>{const x=cx+R*f.x,y=cy-R*f.y;const act=on.has(i);
+      h+=`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" class="e-feat" stroke-width="${act?2.5:1.3}" opacity="${act?1:.45}" marker-end="url(#ahF)"/>`;
+      const lx=cx+(R+16)*f.x,ly=cy-(R+16)*f.y;const anchor=f.x>0.3?'start':f.x<-0.3?'end':'middle';
+      h+=`<text x="${lx}" y="${ly+(f.y<-0.3?12:f.y>0.3?-4:4)}" text-anchor="${anchor}" font-size="11.5" ${act?'font-weight="600"':'class="t-2"'}>${esc(f.n)}</text>`;});
+    const mag=Math.hypot(vx,vy);
+    if(mag>1e-6) h+=`<line x1="${cx}" y1="${cy}" x2="${cx+R*vx}" y2="${cy-R*vy}" class="ln-acc" stroke-width="3.2" marker-end="url(#ahA)"/>`;
+    h+=`<circle cx="${cx}" cy="${cy}" r="3" class="fill-ink3"/>`;
+    $('#supSvg').innerHTML=h;
+    const bar=(el,v)=>{const p=Math.max(-1,Math.min(1,v/2));el.style.left=(p<0?50+p*50:50)+'%';el.style.width=Math.abs(p*50)+'%';};
+    bar($('#supA'),vx);bar($('#supB'),vy);$('#supAv').textContent=(vx>=0?'+':'')+f2(vx);$('#supBv').textContent=(vy>=0?'+':'')+f2(vy);
+    let msg;
+    if(on.size===0) msg='Nothing is active, so both neurons sit at zero.';
+    else if(mag<1e-3) msg='The arrows cancel out: the neurons read zero even though concepts are active. A clear case of interference.';
+    else{let best=-1,bc=-2;feats.forEach((f,i)=>{const c=(f.x*vx+f.y*vy)/mag;if(c>bc){bc=c;best=i;}});
+      const right=on.size===1;
+      msg=`Reading the direction back, the activation looks most like <b>${esc(feats[best].n)}</b> (cosine ${f2(bc)}). `+(right?'With one concept on, that is correct.':on.has(best)?`It names one of the ${on.size} active concepts but can't tell you the others.`:`That concept isn't even active: the overlap produced a false reading.`);}
+    $('#supRead').innerHTML=msg;
+  }
+  draw();
+})();
+
+/* ---------- SAE toy ---------- */
+(function sae(){
+  function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+  function gauss(r){let u=0;while(!u)u=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*r())}
+  const dot=(a,b)=>a.reduce((s,v,i)=>s+v*b[i],0);
+  const r=rng(59),d=8,m=12,D=[];
+  for(let i=0;i<m;i++){const v=Array.from({length:d},()=>gauss(r));const n=Math.hypot(...v);D.push(v.map(z=>z/n));}
+  const truth={2:1.25,6:0.85,9:0.5};const x=Array(d).fill(0);
+  for(const k in truth)D[k].forEach((v,i)=>x[i]+=truth[k]*v);
+  for(let i=0;i<d;i++)x[i]+=0.05*gauss(r);
+  const pre=D.map(v=>dot(v,x));
+  function lstsq(S){ // solve (D_S D_S^T) b = D_S x
+    const k=S.length;if(!k)return[];
+    const A=S.map(i=>S.map(j=>dot(D[i],D[j]))),y=S.map(i=>dot(D[i],x));
+    for(let i=0;i<k;i++)A[i][i]+=1e-9;
+    for(let c=0;c<k;c++){let p=c;for(let rr=c+1;rr<k;rr++)if(Math.abs(A[rr][c])>Math.abs(A[p][c]))p=rr;[A[c],A[p]]=[A[p],A[c]];[y[c],y[p]]=[y[p],y[c]];
+      for(let rr=0;rr<k;rr++){if(rr===c)continue;const f=A[rr][c]/A[c][c];for(let cc=c;cc<k;cc++)A[rr][cc]-=f*A[c][cc];y[rr]-=f*y[c];}}
+    return y.map((v,i)=>v/A[i][i]);
+  }
+  const xx=dot(x,x);
+  const th=$('#saeTheta');
+  function draw(){
+    const t=+th.value;$('#saeThetaOut').textContent=t.toFixed(2);
+    const S=pre.map((p,i)=>p>t?i:-1).filter(i=>i>=0);
+    const b=lstsq(S);const xh=Array(d).fill(0);S.forEach((i,k)=>D[i].forEach((v,j)=>xh[j]+=b[k]*v));
+    const err=x.reduce((s,v,j)=>s+(v-xh[j])**2,0)/xx;
+    const nTrue=S.filter(i=>i in truth).length;
+    $('#saeL0').textContent=S.length;$('#saeErr').textContent=(err*100).toFixed(1)+'%';$('#saeTrue').textContent=nTrue+' / 3';$('#saeFalse').textContent=S.length-nTrue;
+    // features chart
+    const W=420,H=230,pl=34,pb=26,pt=12,ymax=1.8,ymin=-0.6;const sy=v=>pt+(ymax-v)/(ymax-ymin)*(H-pt-pb);const bw=(W-pl-10)/m;
+    let h=ARROW_DEFS;
+    [-.5,0,.5,1,1.5].forEach(v=>{h+=`<line x1="${pl}" x2="${W-6}" y1="${sy(v)}" y2="${sy(v)}" class="grid"/><text x="${pl-6}" y="${sy(v)+4}" text-anchor="end" font-size="10" class="t-dim t-mono">${v}</text>`;});
+    pre.forEach((p,i)=>{const act=p>t;const x0=pl+i*bw+bw*.18,w=bw*.64;const y0=sy(Math.max(p,0)),y1=sy(Math.min(p,0));
+      h+=`<rect x="${x0}" y="${y0}" width="${w}" height="${Math.max(1,y1-y0)}" rx="2" class="${act?'dot-on':'dot-off'}"/>`;
+      if(i in truth)h+=`<circle cx="${x0+w/2}" cy="${H-pb+12}" r="3" class="fill-feat"/>`;
+      else h+=`<text x="${x0+w/2}" y="${H-pb+15}" text-anchor="middle" font-size="9" class="t-dim t-mono">${i+1}</text>`;});
+    h+=`<line x1="${pl}" x2="${W-6}" y1="${sy(t)}" y2="${sy(t)}" class="ln-acc" stroke-width="1.6" stroke-dasharray="5 4"/><text x="${W-8}" y="${sy(t)-5}" text-anchor="end" font-size="11" class="fill-acc" style="fill:var(--accent)">θ = ${t.toFixed(2)}</text>`;
+    $('#saeFeat').innerHTML=h;
+    // recon chart
+    let g='';const vmax=1.2;const sy2=v=>pt+(vmax-v)/(2*vmax)*(H-pt-pb);const bw2=(W-pl-10)/d;
+    [-1,-.5,0,.5,1].forEach(v=>{g+=`<line x1="${pl}" x2="${W-6}" y1="${sy2(v)}" y2="${sy2(v)}" class="grid"/><text x="${pl-6}" y="${sy2(v)+4}" text-anchor="end" font-size="10" class="t-dim t-mono">${v}</text>`;});
+    x.forEach((v,j)=>{const x0=pl+j*bw2+bw2*.14,w=bw2*.34;
+      const b1=(val,xo,cls)=>{const y0=sy2(Math.max(val,0)),y1=sy2(Math.min(val,0));return `<rect x="${xo}" y="${y0}" width="${w}" height="${Math.max(1,y1-y0)}" rx="2" class="${cls}"/>`;};
+      g+=b1(v,x0,'fill-ink3')+b1(xh[j],x0+w+2,'fill-acc');
+      g+=`<text x="${x0+w}" y="${H-pb+15}" text-anchor="middle" font-size="9" class="t-dim t-mono">n${j+1}</text>`;});
+    g+=`<rect x="${pl+4}" y="${pt}" width="9" height="9" class="fill-ink3"/><text x="${pl+17}" y="${pt+8}" font-size="10.5" class="t-2">original</text><rect x="${pl+74}" y="${pt}" width="9" height="9" class="fill-acc"/><text x="${pl+87}" y="${pt+8}" font-size="10.5" class="t-2">reconstruction</text>`;
+    $('#saeRecon').innerHTML=g;
+  }
+  th.addEventListener('input',draw);draw();
+})();
+
+/* ---------- architecture ---------- */
+(function arch(){
+  const svg=$('#arch');let mode='orig',sel=1;
+  const SX=330,BX=470,BW=150,L=4;
+  const base=l=>470-(l-1)*108, attnY=l=>base(l)-22, mlpY=l=>base(l)-72;
+  const caps={
+    orig:'<b>The original model.</b> Each layer has an attention block (blue) and an MLP block (graphite). Both read from the residual stream and add their output back into it. The MLPs hold many polysemantic neurons.',
+    sae:'<b>An SAE</b> attaches to one point of the residual stream, reads the vector there and rebuilds the <em>same</em> vector from a few active features. It describes what is present at that point. The MLPs are untouched and still opaque.',
+    plt:'<b>Per-layer transcoders.</b> Each MLP (dashed) is replaced by its own transcoder (teal). Transcoder ℓ reads the stream where MLP ℓ would read it and predicts what MLP ℓ would write. Its features write only to that one layer.',
+    clt:'<b>A cross-layer transcoder.</b> One dictionary for the whole model. Its features read the stream at one layer (grey arrows) and can write to that MLP\'s output and every later MLP\'s output (teal fan-out). Choose a layer to see its features\' reach.'
+  };
+  const eqs={
+    orig:'y<sup>ℓ</sup> = MLP<sup>ℓ</sup>(x<sup>ℓ</sup>) <span class="c">// what each MLP reads (x) and writes (y)</span>',
+    sae:'f = JumpReLU(W<sub>enc</sub> x), &nbsp; x̂ = W<sub>dec</sub> f ≈ x <span class="c">// same point in, same point out</span>',
+    plt:'a<sup>ℓ</sup> = JumpReLU(W<sub>enc</sub><sup>ℓ</sup> x<sup>ℓ</sup>), &nbsp; ŷ<sup>ℓ</sup> = W<sub>dec</sub><sup>ℓ</sup> a<sup>ℓ</sup> ≈ y<sup>ℓ</sup> <span class="c">// MLP input in, MLP output out</span>',
+    clt:'a<sup>ℓ</sup> = JumpReLU(W<sub>enc</sub><sup>ℓ</sup> x<sup>ℓ</sup>), &nbsp; ŷ<sup>ℓ</sup> = Σ<sub>ℓ′≤ℓ</sub> W<sub>dec</sub><sup>ℓ′→ℓ</sup> a<sup>ℓ′</sup> ≈ y<sup>ℓ</sup> <span class="c">// one feature, many output layers</span>'
+  };
+  function dots(x,y,n,onIdx,cols){let h='';cols=cols||n;for(let i=0;i<n;i++){const cx=x+(i%cols)*9,cy=y+Math.floor(i/cols)*9;h+=`<circle cx="${cx}" cy="${cy}" r="3" class="${onIdx.includes(i)?'dot-on':'dot-off'}"/>`;}return h;}
+  function draw(){
+    let h=ARROW_DEFS;
+    // stream
+    h+=`<line x1="${SX}" y1="510" x2="${SX}" y2="50" class="resid" stroke-width="14" stroke-linecap="round"/>`;
+    h+=`<text x="${SX+14}" y="500" font-size="11" class="t-dim">residual stream</text>`;
+    h+=pill(SX,525,'Token embeddings','box-emb',{w:170});
+    h+=pill(SX,28,'Unembedding → next-word probabilities','box-logit',{w:270});
+    for(let l=1;l<=L;l++){
+      const ay=attnY(l),my=mlpY(l);
+      h+=`<text x="${BX+BW+18}" y="${(ay+my)/2+4}" font-size="12" class="t-dim t-mono">layer ${l}</text>`;
+      // attention
+      h+=`<line x1="${SX+8}" y1="${ay+8}" x2="${BX}" y2="${ay+8}" class="ln" stroke-width="1.3" marker-end="url(#ah)"/>`;
+      h+=`<line x1="${BX}" y1="${ay-8}" x2="${SX+8}" y2="${ay-8}" class="ln" stroke-width="1.3" marker-end="url(#ah)"/>`;
+      h+=`<rect x="${BX}" y="${ay-16}" width="${BW}" height="32" rx="6" class="box-attn" stroke-width="1.5"/><text x="${BX+BW/2}" y="${ay+4}" text-anchor="middle" font-size="12">Attention ${l}</text>`;
+      // mlp
+      const replaced=mode==='plt'||mode==='clt';
+      if(!replaced||mode==='plt'){
+        h+=`<line x1="${SX+8}" y1="${my+8}" x2="${BX}" y2="${my+8}" class="${mode==='plt'?'e-feat':'ln'}" stroke-width="1.3" marker-end="url(#${mode==='plt'?'ahF':'ah'})"/>`;
+        h+=`<line x1="${BX}" y1="${my-8}" x2="${SX+8}" y2="${my-8}" class="${mode==='plt'?'e-feat':'ln'}" stroke-width="1.3" marker-end="url(#${mode==='plt'?'ahF':'ah'})"/>`;
+      }
+      if(!replaced){
+        h+=`<rect x="${BX}" y="${my-16}" width="${BW}" height="32" rx="6" class="box-mlp" stroke-width="1.5"/><text x="${BX+BW/2}" y="${my+4}" text-anchor="middle" font-size="12">MLP ${l}</text>`;
+      }else if(mode==='plt'){
+        h+=`<rect x="${BX}" y="${my-16}" width="${BW}" height="32" rx="6" class="box-feat" stroke-width="1.5"/><text x="${BX+10}" y="${my+4}" font-size="12">Transcoder ${l}</text>`+dots(BX+96,my-4,10,[[1,6],[3],[0,8],[5]][l-1],5);
+      }else{
+        const fed=l>=sel;h+=`<rect x="${BX}" y="${my-16}" width="${BW}" height="32" rx="6" class="box-ghost" stroke-width="1.3"/><text x="${BX+BW/2}" y="${my+4}" text-anchor="middle" font-size="11.5" ${fed?'style="fill:var(--n-feat)"':'class="t-dim"'}>${fed?`MLP ${l} output ← CLT`:`MLP ${l} (replaced)`}</text>`;
+      }
+    }
+    if(mode==='sae'){
+      const y=(attnY(2)+mlpY(3))/2+6;
+      h+=`<line x1="${SX-8}" y1="${y+10}" x2="250" y2="${y+10}" class="ln-acc" stroke-width="1.5" marker-end="url(#ahA)"/>`;
+      h+=`<line x1="250" y1="${y-10}" x2="${SX-8}" y2="${y-10}" class="ln-acc" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#ahA)"/>`;
+      h+=`<rect x="70" y="${y-34}" width="180" height="68" rx="8" class="box-feat" stroke-width="1.5"/><text x="82" y="${y-14}" font-size="12" font-weight="600">SAE</text><text x="82" y="${y+24}" font-size="10.5" class="t-2">reads x, rebuilds x̂ ≈ x</text>`+dots(120,y-18,14,[2,9,11],7);
+      h+=`<text x="${SX-12}" y="${y-16}" text-anchor="end" font-size="10" class="t-dim">x̂</text><text x="${SX-12}" y="${y+24}" text-anchor="end" font-size="10" class="t-dim">x</text>`;
+    }
+    if(mode==='clt'){
+      const top=mlpY(4)-30,bot=mlpY(1)+30;
+      h+=`<rect x="64" y="${top}" width="180" height="${bot-top}" rx="10" class="box-feat" stroke-width="1.5"/><text x="76" y="${top+18}" font-size="12" font-weight="600">Cross-layer transcoder</text>`;
+      // reads
+      for(let l=1;l<=L;l++){const my=mlpY(l);const active=l===sel;
+        h+=`<g opacity="${active?1:.35}">`+dots(84,my-4,10,[[1,6],[3],[0,8],[5]][l-1],10)+`<text x="84" y="${my+16}" font-size="10" class="t-2">reads layer ${l}</text></g>`;
+        h+=`<line x1="${SX-8}" y1="${my+8}" x2="246" y2="${my+8}" class="ln" stroke-width="1.3" opacity="${active?1:.35}" marker-end="url(#ah)"/>`;}
+      // writes fan-out from sel
+      const sy=mlpY(sel)-4;
+      for(let l2=sel;l2<=L;l2++){const ty=mlpY(l2)-8;
+        h+=`<path d="M200,${sy} C${270},${sy} ${265},${ty} ${SX-8},${ty}" class="e-feat" stroke-width="2" marker-end="url(#ahF)"/>`;
+}
+    }
+    svg.innerHTML=h;
+    $('#archCap').innerHTML=caps[mode];$('#archEq').innerHTML=eqs[mode];
+    $('#archLayers').hidden=mode!=='clt';
+  }
+  $('#archModes').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;mode=b.dataset.mode;
+    $('#archModes').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));draw();});
+  $('#archLayers').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;sel=+b.dataset.l;
+    $('#archLayers').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));draw();});
+  draw();
+})();
+
+/* ---------- PLT vs CLT chain ---------- */
+(function chain(){
+  function g(nodes,edges,extra=''){let h=ARROW_DEFS;
+    for(const [a,b] of edges){const A=nodes[a],B=nodes[b];h+=`<line x1="${A[0]}" y1="${A[1]-15}" x2="${B[0]}" y2="${B[1]+17}" class="e-feat" stroke-width="2" marker-end="url(#ahF)"/>`;}
+    h+=extra;for(const k in nodes){const n=nodes[k];h+=pill(n[0],n[1],n[2],n[3],{w:n[4]});}return h;}
+  $('#chainPLT').innerHTML=g({d:[160,325,'Dallas','box-emb'],t2:[160,262,'Texas · layer 2','box-feat'],t3:[160,204,'Texas · layer 3','box-feat'],t4:[160,146,'Texas · layer 4','box-feat'],sa:[160,88,'say Austin','box-feat'],o:[160,28,'Austin','box-logit']},
+    [['d','t2'],['t2','t3'],['t3','t4'],['t4','sa'],['sa','o']],
+    `<text x="250" y="208" font-size="10.5" class="t-dim">near-</text><text x="250" y="222" font-size="10.5" class="t-dim">duplicates</text><path d="M240,250 C252,240 252,160 240,150" class="ln" stroke-width="1"/>`);
+  $('#chainCLT').innerHTML=g({d:[160,325,'Dallas','box-emb'],t:[160,204,'Texas','box-feat',90],sa:[160,88,'say Austin','box-feat'],o:[160,28,'Austin','box-logit']},
+    [['d','t'],['t','sa'],['sa','o']],
+    `<text x="212" y="200" font-size="10.5" class="t-dim">reads layer 2</text><text x="212" y="214" font-size="10.5" class="t-dim">writes layers 2–4</text>`);
+})();
+
+/* ---------- local replacement stepper ---------- */
+(function stepper(){
+  const svg=$('#stepSvg');let step=0;
+  const toks=['the','state','Dallas','is'];const cx=i=>150+i*150;
+  const layerY=[{attn:270,mlp:222},{attn:150,mlp:102}];
+  const caps=[
+    '<b>The original model</b> on one prompt, drawn as positions (columns) by layers (rows). Attention (blue arcs) moves information towards the last position; each MLP (graphite) works on one position.',
+    '<b>Swap in transcoders.</b> Every MLP is replaced by its transcoder (teal). Now each MLP\'s work is a handful of readable features, but the transcoder is not perfect, so run end to end this replacement model can drift and may even predict a different word.',
+    '<b>Add error nodes.</b> At each layer and position, the gap between the real MLP output and the transcoder\'s is computed for this prompt and added back in as an error node (vermilion). The output now matches the original model exactly, and the errors show where the explanation is incomplete.',
+    '<b>Freeze attention and normalisation.</b> The attention patterns and the normalisation scale factors are fixed at the values they took on this prompt (dashed). Everything between features is now linear, so each feature-to-feature effect is a single exact number. The cost: the graph cannot explain why attention looked where it did.'
+  ];
+  const status=['Matches the original: by definition','Matches the original: only approximately','Matches the original: exactly, on this prompt','Matches the original: exactly, and is linear between features'];
+  function draw(){
+    let h=ARROW_DEFS;
+    toks.forEach((t,i)=>{h+=`<line x1="${cx(i)}" y1="335" x2="${cx(i)}" y2="${i===3?62:70}" class="resid" stroke-width="8" stroke-linecap="round"/>`;
+      h+=pill(cx(i),350,t,'box-emb',{w:84});});
+    h+=pill(cx(3),40,'→ Austin','box-logit',{w:100});
+    layerY.forEach((L,li)=>{
+      h+=`<text x="20" y="${(L.attn+L.mlp)/2+4}" font-size="12" class="t-dim t-mono">layer ${li+1}</text>`;
+      for(let j=0;j<3;j++){const x1=cx(j)+6,x2=cx(3)-6,dy=8+(3-j)*6;
+        h+=`<path d="M${x1},${L.attn} C${x1+30},${L.attn-dy} ${x2-30},${L.attn-dy} ${x2},${L.attn-4}" class="e-attn" stroke-width="1.6" ${step>=3?'stroke-dasharray="5 4"':''} marker-end="url(#ahT)" opacity=".85"/>`;}
+      if(step>=3)h+=`<text x="${(cx(1)+cx(2))/2}" y="${L.attn+20}" text-anchor="middle" font-size="10.5" style="fill:var(--m-attn)">attention fixed for this prompt</text>`;
+      toks.forEach((t,i)=>{const y=L.mlp;
+        if(step===0)h+=`<rect x="${cx(i)-46}" y="${y-15}" width="92" height="30" rx="6" class="box-mlp" stroke-width="1.5"/><text x="${cx(i)}" y="${y+4}" text-anchor="middle" font-size="11.5">MLP</text>`;
+        else{h+=`<rect x="${cx(i)-46}" y="${y-15}" width="92" height="30" rx="6" class="box-feat" stroke-width="1.5"/>`;
+          const on=[[0,3],[2],[1,4],[0,2,3]][(i+li)%4];for(let k=0;k<5;k++)h+=`<circle cx="${cx(i)-24+k*12}" cy="${y}" r="3.4" class="${on.includes(k)?'dot-on':'dot-off'}"/>`;}
+        if(step>=2){const ex=cx(i)+60;h+=`<path d="M${ex},${y-9} L${ex+9},${y} L${ex},${y+9} L${ex-9},${y} Z" class="box-err" stroke-width="1.4"/>`;}
+      });
+    });
+    svg.innerHTML=h;
+    $('#stepCap').innerHTML=caps[step]+`<br><span class="mono" style="color:var(--ink-3)">${status[step]}</span>`;
+    $('#stepBtns').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.s===step));
+    $('#stepPrev').disabled=step===0;$('#stepNext').disabled=step===3;
+  }
+  $('#stepBtns').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;step=+b.dataset.s;draw();});
+  $('#stepPrev').addEventListener('click',()=>{if(step>0){step--;draw();}});
+  $('#stepNext').addEventListener('click',()=>{if(step<3){step++;draw();}});
+  draw();
+})();
+
+/* ---------- attribution graph explorer ---------- */
+(function explorer(){
+  const KIND={emb:['box-emb','Token embedding','var(--n-emb)'],feat:['box-feat','Feature','var(--n-feat)'],err:['box-err','Error node','var(--n-err)'],logit:['box-logit','Output logit','var(--n-logit)']};
+  const EX={
+    dallas:{
+      prompt:'Fact: the capital of the state containing Dallas is',answer:' Austin',
+      source:'Companion paper, “On the Biology of a Large Language Model” · Claude 3.5 Haiku',
+      tokens:['capital','state','Dallas','is'],
+      nodes:[
+        {id:'t0',k:'emb',x:0,y:0,l:'capital'},{id:'t1',k:'emb',x:1,y:0,l:'state'},{id:'t2',k:'emb',x:2,y:0,l:'Dallas'},{id:'t3',k:'emb',x:3,y:0,l:'is'},
+        {id:'fcap',k:'feat',x:0,y:.28,l:'capital',d:'Fires on the word “capital” and related mentions of capital cities.'},
+        {id:'fst',k:'feat',x:1,y:.28,l:'state',d:'Fires on mentions of states, such as US states.'},
+        {id:'fdal',k:'feat',x:2,y:.26,l:'Dallas',d:'Fires on the token “Dallas” and closely related contexts.'},
+        {id:'ftex',k:'feat',x:2,y:.55,l:'Texas',d:'Represents Texas. Here it is activated by Dallas: the model has made the first hop. In the companion paper, replacing these features with California features changed the answer to Sacramento.'},
+        {id:'fsc',k:'feat',x:3,y:.45,l:'say a capital',d:'Pushes the output towards names of capital cities in general.'},
+        {id:'fsa',k:'feat',x:3,y:.75,l:'say Austin',d:'Pushes the output specifically towards “Austin”. Fed mainly by Texas and say a capital together.'},
+        {id:'e1',k:'err',x:3.62,y:.62,l:'error',d:'Part of the MLP output at this position that the transcoder did not reconstruct.'},
+        {id:'o',k:'logit',x:3,y:1,l:'Austin',d:'The model\'s top prediction.'}],
+      edges:[['t0','fcap',1],['t1','fst',1],['t2','fdal',1],['fdal','ftex',.9],['fcap','fsc',.8],['fst','fsc',.45],['t3','fsc',.3],['ftex','fsa',.85],['fsc','fsa',.7],['fdal','fsa',.3],['e1','fsa',.22],['fsa','o',1]],
+      story:['<b>Two hops, done internally.</b> Dallas activates Texas features; “capital” activates say-a-capital features. Neither alone gives Austin. Together they activate say Austin.','The paper also found a weaker direct path from Dallas to say Austin, running alongside the two-hop route. Select the Dallas feature to see both.'],
+      start:'ftex'},
+    jordan:{
+      prompt:'Fact: Michael Jordan plays the sport of',answer:' basketball',
+      source:'Circuit Tracing methods paper · factual recall example',
+      tokens:['Michael','Jordan','plays','sport','of'],
+      nodes:[
+        {id:'t0',k:'emb',x:0,y:0,l:'Michael'},{id:'t1',k:'emb',x:1,y:0,l:'Jordan'},{id:'t2',k:'emb',x:2,y:0,l:'plays'},{id:'t3',k:'emb',x:3,y:0,l:'sport'},{id:'t4',k:'emb',x:4,y:0,l:'of'},
+        {id:'fmj',k:'feat',x:1,y:.32,l:'Michael Jordan',d:'Fires on “Jordan” when it follows “Michael”: the person, not the country or the river.'},
+        {id:'fsp',k:'feat',x:3,y:.3,l:'sport',d:'Fires on mentions of sports.'},
+        {id:'fbb',k:'feat',x:4,y:.48,l:'basketball',d:'Represents basketball. Activated at the final position by the Michael Jordan features via attention.'},
+        {id:'fss',k:'feat',x:3.3,y:.62,l:'say a sport',d:'Pushes the output towards sport names in general, because the sentence is asking for a sport.'},
+        {id:'fsb',k:'feat',x:4,y:.8,l:'say basketball',d:'Pushes the output specifically towards “basketball”.'},
+        {id:'e1',k:'err',x:4.6,y:.64,l:'error',d:'Unreconstructed MLP output at the final position.'},
+        {id:'o',k:'logit',x:4,y:1,l:'basketball',d:'The model\'s top prediction.'}],
+      edges:[['t0','fmj',.6],['t1','fmj',1],['t3','fsp',1],['fmj','fbb',.9],['fsp','fss',.8],['t4','fss',.25],['fbb','fsb',.8],['fss','fsb',.6],['e1','fsb',.2],['fsb','o',1],['fbb','o',.25]],
+      story:['<b>Who plus what kind of answer.</b> Features recognising Michael Jordan bring basketball to the last position. Separately, the word “sport” sets up a request for a sport. The two meet in say basketball.','This is the simplest kind of graph that rated well in the accompanying project: an entity at a content position, a concept built from it, carried to the read-out position.'],
+      start:'fbb'},
+    acronym:{
+      prompt:'The National Digital Analytics Group (N',answer:'DAG',
+      source:'Circuit Tracing methods paper · acronym example',
+      tokens:['Digital','Analytics','Group','(N'],
+      nodes:[
+        {id:'t0',k:'emb',x:0,y:0,l:'Digital'},{id:'t1',k:'emb',x:1,y:0,l:'Analytics'},{id:'t2',k:'emb',x:2,y:0,l:'Group'},{id:'t3',k:'emb',x:3,y:0,l:'(N'},
+        {id:'fdig',k:'feat',x:0,y:.3,l:'“Digital”',d:'Fires on the word “Digital”; contributes the letter D.'},
+        {id:'fan',k:'feat',x:1,y:.3,l:'“Analytics”',d:'Fires on the word “Analytics”; contributes the letter A.'},
+        {id:'fgr',k:'feat',x:2,y:.3,l:'“Group”',d:'Fires on the word “Group”; contributes the letter G.'},
+        {id:'facr',k:'feat',x:3,y:.27,l:'acronym begun',d:'Fires when an acronym in parentheses has started. The N is already written, so the model must continue from the second word.'},
+        {id:'fsd',k:'feat',x:3,y:.5,l:'say D_',d:'Pushes towards outputs that begin with D. Fed by the Digital features, moved to the last position by attention.'},
+        {id:'fsda',k:'feat',x:3,y:.7,l:'say DA_',d:'Pushes towards outputs beginning DA, combining say D_ with the Analytics features.'},
+        {id:'e1',k:'err',x:3.62,y:.6,l:'error',d:'Unreconstructed MLP output at the final position.'},
+        {id:'o',k:'logit',x:3,y:1,l:'DAG',d:'The model outputs the remaining letters as a single token.'}],
+      edges:[['t0','fdig',1],['t1','fan',1],['t2','fgr',1],['t3','facr',1],['fdig','fsd',.85],['facr','fsd',.5],['fsd','fsda',.7],['fan','fsda',.6],['fsda','o',.9],['fgr','o',.35],['e1','fsda',.2],['facr','o',.2]],
+      story:['<b>Gathering first letters.</b> Features on each word carry its first letter. Attention moves them to the final position, where they build up “D…”, then “DA…”, and the G completes the single output token DAG.','Information moving between positions is shown, but the frozen attention means the graph does not explain how the model chose which words to look at.'],
+      start:'fsda'},
+    addition:{
+      prompt:'calc: 36+59=',answer:'95',
+      source:'Circuit Tracing methods paper / companion paper · addition example',
+      tokens:['36','+','59','='],
+      nodes:[
+        {id:'t0',k:'emb',x:0,y:0,l:'36'},{id:'t1',k:'emb',x:1,y:0,l:'+'},{id:'t2',k:'emb',x:2,y:0,l:'59'},{id:'t3',k:'emb',x:3,y:0,l:'='},
+        {id:'f36',k:'feat',x:0,y:.28,l:'≈36, ends in 6',d:'Number features for the first operand: its rough size and its last digit.'},
+        {id:'f59',k:'feat',x:2,y:.28,l:'≈59, ends in 9',d:'Number features for the second operand.'},
+        {id:'fapprox',k:'feat',x:2.5,y:.5,l:'≈36 + ≈60',d:'A low-precision addition path: it only knows the operands roughly.'},
+        {id:'flook',k:'feat',x:3.6,y:.5,l:'_6 + _9',d:'A lookup-table feature for adding a number ending in 6 to one ending in 9, whatever the tens.'},
+        {id:'frange',k:'feat',x:2.5,y:.75,l:'sum ≈ 90–97',d:'The rough path\'s conclusion: the answer is somewhere in the low-to-mid 90s.'},
+        {id:'fend5',k:'feat',x:3.6,y:.75,l:'sum ends in 5',d:'The exact path\'s conclusion: the last digit is 5.'},
+        {id:'o',k:'logit',x:3,y:1,l:'95',d:'The only number in the rough range that ends in 5.'}],
+      edges:[['t0','f36',1],['t2','f59',1],['f36','fapprox',.7],['f59','fapprox',.7],['f36','flook',.7],['f59','flook',.7],['t1','fapprox',.2],['t3','flook',.2],['fapprox','frange',.9],['flook','fend5',.9],['frange','o',.8],['fend5','o',.8]],
+      story:['<b>Two paths in parallel.</b> One estimates the rough size of the answer; the other works out the last digit exactly from a lookup table. Neither is the carry-the-one method taught in school, yet together they pin down 95.','Asked how it does addition, the model describes the school method. The graph shows something different.'],
+      start:'fend5'}
+  };
+  let cur='dallas',sel=null;
+  const svg=$('#gxSvg');
+  function layout(ex){const xs=ex.nodes.map(n=>n.x);const x0=Math.min(...xs)-.6,x1=Math.max(...xs)+.6;
+    return {X:x=>20+(x-x0)/(x1-x0)*720,Y:y=>405-y*365};}
+  function sets(ex,id){const up=new Set(),down=new Set();
+    const back=n=>{for(const e of ex.edges)if(e[1]===n&&!up.has(e[0])){up.add(e[0]);back(e[0]);}};
+    const fwd=n=>{for(const e of ex.edges)if(e[0]===n&&!down.has(e[1])){down.add(e[1]);fwd(e[1]);}};
+    back(id);fwd(id);return {up,down};}
+  function draw(){
+    const ex=EX[cur],{X,Y}=layout(ex);const byId=Object.fromEntries(ex.nodes.map(n=>[n.id,n]));
+    const S=sel?sets(ex,sel):null;
+    const onPath=e=>!S||((e[1]===sel||S.up.has(e[1]))&&S.up.has(e[0]))||((e[0]===sel||S.down.has(e[0]))&&S.down.has(e[1]))||e[0]===sel&&false;
+    const nodeOn=id=>!S||id===sel||S.up.has(id)||S.down.has(id);
+    let h=ARROW_DEFS;
+    ex.tokens.forEach((t,i)=>{h+=`<line x1="${X(i)}" y1="${Y(0)}" x2="${X(i)}" y2="${Y(1)}" class="grid" stroke-dasharray="2 5"/>`;});
+    for(const e of ex.edges){const a=byId[e[0]],b=byId[e[1]];const x1=X(a.x),y1=Y(a.y)-14,x2=X(b.x),y2=Y(b.y)+15;const my=(y1+y2)/2;
+      const cls=a.k==='err'?'e-err':a.k==='emb'?'e-emb':'e-feat';
+      h+=`<path class="gedge ${cls}${onPath(e)?'':' dim'}" d="M${x1},${y1} C${x1},${my} ${x2},${my} ${x2},${y2}" stroke-width="${(1+e[2]*5).toFixed(1)}" opacity=".7"/>`;}
+    for(const n of ex.nodes){const [cls]=KIND[n.k];
+      h+=`<g class="gnode${nodeOn(n.id)?'':' dim'}${n.id===sel?' sel':''}" data-id="${n.id}" tabindex="0" role="button" aria-label="${esc(KIND[n.k][1]+': '+n.l)}">`+pill(X(n.x),Y(n.y),n.l,cls,{fs:12})+`</g>`;}
+    svg.innerHTML=h;
+    const n=sel?byId[sel]:null;
+    $('#gxNode').innerHTML=n?`<span class="kind" style="color:${KIND[n.k][2]}">${KIND[n.k][1]}</span><span class="name">${esc(n.l)}</span><span class="muted">${n.d?esc(n.d):'The prompt token “'+esc(n.l)+'” as it enters the model.'}</span>`:'<span class="muted">Select a node to see what it represents.</span>';
+  }
+  function setEx(k){cur=k;sel=EX[k].start;const ex=EX[k];
+    $('#gxPrompt').innerHTML=esc(ex.prompt)+'<mark>'+esc(ex.answer)+'</mark><div class="small muted" style="font-family:var(--f-body);margin-top:.35rem">'+esc(ex.source)+'</div>';
+    $('#gxStory').innerHTML=ex.story.map(s=>`<p>${s}</p>`).join('');
+    $('#gxTabs').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.ex===k));draw();}
+  $('#gxTabs').addEventListener('click',e=>{const b=e.target.closest('button');if(b)setEx(b.dataset.ex);});
+  const pick=e=>{const g=e.target.closest('.gnode');if(!g)return;sel=sel===g.dataset.id?null:g.dataset.id;draw();
+    const again=svg.querySelector(`.gnode[data-id="${sel}"]`);if(again&&e.type==='keydown')again.focus();};
+  svg.addEventListener('click',pick);
+  svg.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick(e);}});
+  setEx('dallas');
+})();
+
+/* ---------- scoring demo ---------- */
+(function score(){
+  const N={E1:[110,335,'Dallas','emb'],E2:[345,335,'capital','emb'],R1:[230,275,'error','err'],F1:[110,240,'Texas','feat'],F2:[345,240,'say a capital','feat'],R2:[405,155,'error','err'],F3:[225,145,'say Austin','feat'],L:[225,40,'Austin','logit']};
+  const ids={e1:$('#scE1'),e2:$('#scE2'),d:$('#scD')};
+  function compute(){
+    const s1=+ids.e1.value,s2=+ids.e2.value,d=+ids.d.value;
+    const E=[['E1','F1',1],['R1','F1',s1],['E2','F2',1],['F1','F3',1],['F2','F3',.8],['R2','F3',s2],['F3','L',1],['E1','L',d]];
+    const order=['L','F3','F2','F1'];const mass={L:1,F3:0,F2:0,F1:0,E1:0,E2:0,R1:0,R2:0};const flow=new Map();
+    const inSum=t=>E.filter(e=>e[0]&&e[1]===t).reduce((s,e)=>s+e[2],0);
+    for(const t of order){const tot=inSum(t);if(tot<=0)continue;for(const e of E)if(e[1]===t){const f=mass[t]*e[2]/tot;flow.set(e,f);mass[e[0]]+=f;}}
+    const rep=mass.E1+mass.E2,err=mass.R1+mass.R2;const direct=flow.get(E[7])||0;
+    let num=0,den=0;for(const t of order){const tot=inSum(t);if(tot<=0)continue;const errIn=E.filter(e=>e[1]===t&&(e[0]==='R1'||e[0]==='R2')).reduce((s,e)=>s+e[2],0);num+=mass[t]*(1-errIn/tot);den+=mass[t];}
+    return {E,flow,rep,err,direct,comp:num/den,s1,s2,d};
+  }
+  function draw(){
+    const r=compute();
+    $('#scE1o').textContent=r.s1.toFixed(2);$('#scE2o').textContent=r.s2.toFixed(2);$('#scDo').textContent=r.d.toFixed(2);
+    let h=ARROW_DEFS;
+    for(const e of r.E){const A=N[e[0]],B=N[e[1]],f=r.flow.get(e)||0;const cls=A[3]==='err'?'e-err':A[3]==='emb'?'e-emb':'e-feat';const w=(0.6+f*14).toFixed(1);
+      if(e[0]==='E1'&&e[1]==='L')h+=`<path d="M${A[0]-30},${A[1]-12} C10,250 10,80 ${B[0]-40},${B[1]+6}" class="${cls}" stroke-width="${w}" opacity=".75"/>`;
+      else{const x1=A[0],y1=A[1]-14,x2=B[0],y2=B[1]+15,my=(y1+y2)/2;h+=`<path d="M${x1},${y1} C${x1},${my} ${x2},${my} ${x2},${y2}" class="${cls}" stroke-width="${w}" opacity=".75"/>`;}}
+    for(const k in N){const n=N[k];h+=pill(n[0],n[1],n[2],{emb:'box-emb',feat:'box-feat',err:'box-err',logit:'box-logit'}[n[3]]);}
+    h+=`<text x="40" y="190" font-size="10.5" class="t-dim">direct path</text>`;
+    $('#scSvg').innerHTML=h;
+    const med=r.rep-r.direct;
+    $('#scBarM').style.width=(med*100)+'%';$('#scBarD').style.width=(r.direct*100)+'%';$('#scBarE').style.width=(r.err*100)+'%';
+    $('#scRep').textContent=f3(r.rep);$('#scDir').textContent=f3(r.direct);$('#scComp').textContent=f3(r.comp);
+  }
+  Object.values(ids).forEach(i=>i.addEventListener('input',draw));draw();
+})();
+})();
+</script>
+</body>
+</html>

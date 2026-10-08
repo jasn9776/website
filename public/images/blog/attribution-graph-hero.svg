@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 480">
+  <defs>
+    <radialGradient id="ag-g1" cx="20%" cy="70%" r="55%">
+      <stop offset="0%" stop-color="#1E47E6" stop-opacity="0.75"/>
+      <stop offset="100%" stop-color="transparent"/>
+    </radialGradient>
+    <radialGradient id="ag-g2" cx="82%" cy="30%" r="50%">
+      <stop offset="0%" stop-color="#A8BDF5" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="transparent"/>
+    </radialGradient>
+    <pattern id="ag-grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M 24 0 L 0 0 0 24" fill="none" stroke="rgba(233,238,246,0.1)" stroke-width="1"/>
+    </pattern>
+    <filter id="ag-glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="480" fill="#0B1730"/>
+  <rect width="1200" height="480" fill="url(#ag-grid)"/>
+  <rect width="1200" height="480" fill="url(#ag-g1)"/>
+  <rect width="1200" height="480" fill="url(#ag-g2)"/>
+
+  <!-- layer guides -->
+  <g stroke="rgba(233,238,246,0.12)" stroke-width="1" stroke-dasharray="4 8">
+    <line x1="80" y1="400" x2="1120" y2="400"/>
+    <line x1="80" y1="295" x2="1120" y2="295"/>
+    <line x1="80" y1="190" x2="1120" y2="190"/>
+    <line x1="80" y1="85"  x2="1120" y2="85"/>
+  </g>
+
+  <!-- edges: strong (feature paths) -->
+  <g stroke="#E9EEF6" stroke-linecap="round" fill="none" filter="url(#ag-glow)">
+    <path d="M 260 400 C 260 350, 420 330, 440 295" stroke-width="5"/>
+    <path d="M 560 400 C 560 350, 640 330, 660 295" stroke-width="4"/>
+    <path d="M 440 295 C 440 240, 560 220, 580 190" stroke-width="5"/>
+    <path d="M 660 295 C 660 240, 600 220, 580 190" stroke-width="3.5"/>
+    <path d="M 580 190 C 580 140, 760 110, 800 85" stroke-width="6"/>
+  </g>
+  <!-- edges: weaker -->
+  <g stroke="#A8BDF5" stroke-linecap="round" fill="none" opacity="0.7">
+    <path d="M 260 400 C 300 340, 760 340, 820 295" stroke-width="2"/>
+    <path d="M 820 295 C 820 230, 800 160, 800 85" stroke-width="2"/>
+    <path d="M 760 400 C 760 340, 680 320, 660 295" stroke-width="2"/>
+    <path d="M 440 295 C 500 250, 840 220, 880 190" stroke-width="1.5"/>
+    <path d="M 880 190 C 880 140, 820 110, 800 85" stroke-width="1.5"/>
+  </g>
+  <!-- edges: error-node paths (dashed, the part the graph cannot explain) -->
+  <g stroke="#A8BDF5" stroke-width="2.5" stroke-dasharray="6 7" fill="none" opacity="0.8">
+    <path d="M 1000 190 C 1000 140, 860 110, 800 85"/>
+    <path d="M 1000 295 L 1000 190"/>
+  </g>
+
+  <!-- feature nodes -->
+  <g fill="#1E47E6" stroke="#E9EEF6" stroke-width="2.5">
+    <rect x="420" y="281" width="40" height="28" rx="6"/>
+    <rect x="640" y="281" width="40" height="28" rx="6"/>
+    <rect x="800" y="281" width="40" height="28" rx="6" fill="#2C3E5E" stroke="#A8BDF5"/>
+    <rect x="560" y="176" width="40" height="28" rx="6"/>
+    <rect x="860" y="176" width="40" height="28" rx="6" fill="#2C3E5E" stroke="#A8BDF5"/>
+  </g>
+  <!-- error nodes (diamonds) -->
+  <g fill="#0B1730" stroke="#A8BDF5" stroke-width="2.5">
+    <path d="M 1000 175 L 1015 190 L 1000 205 L 985 190 Z"/>
+    <path d="M 1000 280 L 1015 295 L 1000 310 L 985 295 Z"/>
+  </g>
+
+  <!-- token nodes -->
+  <g font-family="'JetBrains Mono', monospace" font-size="18" fill="#E9EEF6" text-anchor="middle">
+    <rect x="205" y="384" width="110" height="34" rx="17" fill="#0B1730" stroke="#E9EEF6" stroke-width="2"/>
+    <text x="260" y="407">Dallas</text>
+    <rect x="505" y="384" width="110" height="34" rx="17" fill="#0B1730" stroke="#E9EEF6" stroke-width="2"/>
+    <text x="560" y="407">capital</text>
+    <rect x="725" y="384" width="70" height="34" rx="17" fill="#0B1730" stroke="#A8BDF5" stroke-width="2"/>
+    <text x="760" y="407">of</text>
+  </g>
+
+  <!-- output -->
+  <rect x="740" y="64" width="120" height="42" rx="8" fill="#E9EEF6" filter="url(#ag-glow)"/>
+  <text x="800" y="92" font-family="'JetBrains Mono', monospace" font-size="20" font-weight="600" fill="#0B1730" text-anchor="middle">Austin</text>
+
+  <!-- labels -->
+  <g font-family="'JetBrains Mono', monospace" font-size="14" fill="#DDE5F0">
+    <text x="372" y="276">Texas</text>
+    <text x="604" y="172">say a capital</text>
+    <text x="1024" y="200" fill="#A8BDF5">error</text>
+    <text x="1024" y="305" fill="#A8BDF5">error</text>
+  </g>
+  <g font-family="'JetBrains Mono', monospace" font-size="12" fill="#6B7A94" letter-spacing="2">
+    <text x="88" y="392">TOKENS</text>
+    <text x="88" y="287">L4</text>
+    <text x="88" y="182">L14</text>
+    <text x="88" y="77">LOGIT</text>
+  </g>
+</svg>
