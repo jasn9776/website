@@ -1,0 +1,2201 @@
+<meta charset="utf-8">
+<title>Layerforge</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --bg: #F1F3F6; --surface: #FFFFFF; --surface2: #F6F7FA; --ink: #141820; --muted: #626B7A;
+    --line: #D3D8E1; --line2: #E5E8EE; --accent: #2E5BE7; --accent-soft: #E4EAFD; --accent-ink: #FFFFFF;
+    --danger: #C62828; --danger-soft: #FCE8E8; --warn: #9A5B00; --warn-soft: #FFF1DC;
+    --code-bg: #12151C; --code-ink: #DCE2EC; --code-muted: #7C8798; --code-kw: #8FB2FF; --code-str: #9CD59A; --code-num: #F1C27A; --code-cmt: #6C7686;
+    --c-io: #7A5AF8; --c-dense: #2E5BE7; --c-conv: #0E8A6B; --c-pool: #0B7FA5; --c-norm: #C26A00; --c-act: #B8377A; --c-reshape: #5E6B85; --c-group: #3A4256;
+    --grip: #A5ADBB; --shadow: 0 1px 2px rgba(20,24,32,.06), 0 4px 14px rgba(20,24,32,.05);
+    --font: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+    --mono: "IBM Plex Mono", "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0E1117; --surface: #171B23; --surface2: #1C2130; --ink: #E7EAF0; --muted: #8F98A8;
+      --line: #2B3242; --line2: #222836; --accent: #7A97FF; --accent-soft: #233052; --accent-ink: #0E1117;
+      --danger: #FF7A7A; --danger-soft: #3A1E1E; --warn: #F0B35C; --warn-soft: #3A2C16;
+      --c-io: #A78BFF; --c-dense: #7A97FF; --c-conv: #3FC49E; --c-pool: #4FB9DD; --c-norm: #F0A24F; --c-act: #F07AB6; --c-reshape: #9AA6BF; --c-group: #B7BFD0;
+      --grip: #5A6375; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.25);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0E1117; --surface: #171B23; --surface2: #1C2130; --ink: #E7EAF0; --muted: #8F98A8;
+    --line: #2B3242; --line2: #222836; --accent: #7A97FF; --accent-soft: #233052; --accent-ink: #0E1117;
+    --danger: #FF7A7A; --danger-soft: #3A1E1E; --warn: #F0B35C; --warn-soft: #3A2C16;
+    --c-io: #A78BFF; --c-dense: #7A97FF; --c-conv: #3FC49E; --c-pool: #4FB9DD; --c-norm: #F0A24F; --c-act: #F07AB6; --c-reshape: #9AA6BF; --c-group: #B7BFD0;
+    --grip: #5A6375; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.25);
+  }
+
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 13px/1.45 var(--font); display: flex; flex-direction: column; }
+  * { box-sizing: border-box; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+  /* ---------- top bar ---------- */
+  .top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--line); }
+  .brand { display: flex; align-items: baseline; gap: 8px; margin-right: 6px; }
+  .brand h1 { font-size: 16px; font-weight: 600; margin: 0; letter-spacing: -.01em; }
+  .brand small { color: var(--muted); font-family: var(--mono); font-size: 11px; }
+  .top label.ctl { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
+  .top select, .top input[type="text"] { background: var(--surface2); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; color: var(--ink); }
+  .top .desc { color: var(--muted); font-size: 12px; max-width: 34ch; line-height: 1.3; }
+  .spacer { flex: 1; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; background: var(--surface2); }
+  .seg button { border: 0; background: transparent; padding: 5px 12px; color: var(--muted); font-weight: 500; }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+  .btn { border: 1px solid var(--line); background: var(--surface2); border-radius: 6px; padding: 5px 10px; color: var(--ink); font-weight: 500; }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+  /* ---------- workspace ---------- */
+  .work { flex: 1; min-height: 0; display: grid; grid-template-columns: 200px minmax(360px, 1fr) minmax(380px, 42%); }
+  .pane { min-height: 0; overflow: auto; }
+  .palette { border-right: 1px solid var(--line); background: var(--surface); padding: 12px 12px 20px; }
+  .canvas { padding: 16px 18px 40px; }
+  .codepane { background: var(--code-bg); color: var(--code-ink); display: flex; flex-direction: column; min-height: 0; }
+
+  .eyebrow { font-size: 10.5px; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); font-weight: 600; margin: 12px 0 6px; }
+  .eyebrow:first-child { margin-top: 0; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--surface2); border-radius: 6px; padding: 4px 8px 4px 6px; cursor: grab; user-select: none; font-weight: 500; }
+  .chip:hover { border-color: var(--accent); }
+  .chip:active { cursor: grabbing; }
+  .chip .dot { width: 8px; height: 8px; border-radius: 2px; background: var(--cat); }
+  .palette details { margin-top: 18px; color: var(--muted); font-size: 12px; }
+  .palette summary { cursor: pointer; font-weight: 600; color: var(--ink); }
+  .palette dl { margin: 8px 0 0; }
+  .palette dt { font-weight: 600; color: var(--ink); margin-top: 6px; }
+  .palette dd { margin: 0; }
+
+  .canvas-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  .canvas-head input { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; font-weight: 600; width: 18ch; }
+  .canvas-head .hint { color: var(--muted); font-size: 12px; }
+  .stats { display: flex; gap: 14px; flex-wrap: wrap; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .stats b { color: var(--ink); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+  /* ---------- blocks ---------- */
+  .list { display: flex; flex-direction: column; gap: 6px; min-height: 8px; }
+  .blk { position: relative; border-radius: 8px; background: var(--surface); border: 1px solid var(--line2); box-shadow: var(--shadow); }
+  .blk.drop-before::before, .blk.drop-after::after { content: ""; position: absolute; left: 0; right: 0; height: 3px; background: var(--accent); border-radius: 2px; }
+  .blk.drop-before::before { top: -5px; }
+  .blk.drop-after::after { bottom: -5px; }
+  .blk.dragging { opacity: .4; }
+  .row { display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 4px; flex-wrap: wrap; }
+  .layer .row { border-left: 4px solid var(--cat); border-radius: 8px 0 0 8px; }
+  .grip { color: var(--grip); cursor: grab; padding: 0 4px; font-size: 14px; letter-spacing: -2px; user-select: none; }
+  .grip:active { cursor: grabbing; }
+  .type { font-weight: 600; min-width: 78px; }
+  .fields { display: flex; align-items: center; gap: 6px 8px; flex-wrap: wrap; flex: 1; }
+  .f { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 12px; }
+  .f input, .f select { background: var(--surface2); border: 1px solid var(--line); border-radius: 5px; padding: 3px 5px; color: var(--ink); font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .f input[type="number"] { width: 4.4em; }
+  .f input[type="text"] { width: 9em; }
+  .f input[type="checkbox"] { width: auto; margin: 0; accent-color: var(--accent); }
+  .shape { font-family: var(--mono); font-size: 12px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .shape::before { content: "→ "; }
+  .shape.none { visibility: hidden; }
+  .err { display: none; font-size: 11.5px; color: var(--danger); background: var(--danger-soft); padding: 2px 7px; border-radius: 4px; max-width: 100%; }
+  .err.on { display: inline-block; }
+  .err.warn { color: var(--warn); background: var(--warn-soft); }
+  .acts { display: inline-flex; gap: 2px; margin-left: auto; }
+  .acts button { border: 0; background: transparent; color: var(--muted); border-radius: 4px; width: 24px; height: 24px; font-size: 13px; }
+  .acts button:hover { background: var(--surface2); color: var(--ink); }
+  .acts button.del:hover { color: var(--danger); }
+
+  .group > .row { background: var(--surface2); border-radius: 8px 8px 0 0; border-left: 4px solid var(--c-group); }
+  .group.residual > .row { border-left-color: var(--c-conv); }
+  .group .gname { width: 12ch; font-family: var(--font) !important; font-weight: 600; }
+  .group .repeat { font-family: var(--mono); font-weight: 500; }
+  .group .repeat input { width: 4.6em; }
+  .group .badge { font-family: var(--mono); font-size: 11px; padding: 1px 6px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); font-weight: 500; }
+  .gbody { padding: 8px 8px 8px 22px; position: relative; }
+  .gbody::before { content: ""; position: absolute; left: 11px; top: 4px; bottom: 4px; border-left: 2px solid var(--line); }
+  .group.residual > .gbody::before { border-left: 2px dashed var(--c-conv); }
+  .group.residual > .gbody::after { content: "skip"; position: absolute; left: 2px; top: 50%; transform: translateY(-50%) rotate(-90deg); transform-origin: center; font-family: var(--mono); font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--c-conv); background: var(--surface); padding: 0 3px; }
+  .gfoot, .rootfoot { margin-top: 6px; display: flex; gap: 8px; align-items: center; }
+  .addsel { background: transparent; border: 1px dashed var(--line); border-radius: 6px; padding: 4px 8px; color: var(--muted); }
+  .addsel:hover { border-color: var(--accent); color: var(--accent); }
+  .dropzone { border: 1px dashed var(--line); border-radius: 6px; color: var(--muted); font-size: 12px; padding: 8px; text-align: center; }
+  .list.over { outline: 2px dashed var(--accent); outline-offset: 2px; border-radius: 6px; }
+  .dropzone.over { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .rootfoot { margin-top: 10px; }
+
+  /* ---------- code pane ---------- */
+  .codehead { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid #262B36; flex-wrap: wrap; }
+  .codehead .seg { border-color: #303747; background: #1A1F29; }
+  .codehead .seg button { color: #9AA5B8; }
+  .codehead .seg button[aria-pressed="true"] { background: #E7EAF0; color: #12151C; }
+  .codehead .btn { background: #1A1F29; border-color: #303747; color: #DCE2EC; }
+  .codehead .btn:hover { border-color: #8FB2FF; }
+  .codehead .file { font-family: var(--mono); font-size: 12px; color: var(--code-muted); margin-left: auto; }
+  .problems { padding: 8px 14px; font-size: 12px; background: #2A1B1B; color: #FFB4B4; border-bottom: 1px solid #3A2626; display: none; }
+  .problems.on { display: block; }
+  .problems.warn { background: #2C2416; color: #F0C784; border-color: #3E3320; }
+  .problems div + div { margin-top: 2px; }
+  pre.code { margin: 0; padding: 14px 16px 40px; overflow: auto; flex: 1; font-family: var(--mono); font-size: 12px; line-height: 1.55; tab-size: 4; }
+  pre.code .kw { color: var(--code-kw); }
+  pre.code .str { color: var(--code-str); }
+  pre.code .num { color: var(--code-num); }
+  pre.code .cmt { color: var(--code-cmt); font-style: italic; }
+  .diagram { flex: 1; overflow: auto; padding: 14px 16px 40px; }
+  .codepane { --dg-node-bg: #1C2130; --dg-node-line: #2B3242; --dg-ink: #E7EAF0; --dg-muted: #8F98A8; --dg-edge: #6B7588; --dg-group-bg: rgba(255,255,255,.03); --dg-group-line: #3A4256; --dg-io: #A78BFF; --dg-dense: #7A97FF; --dg-conv: #3FC49E; --dg-pool: #4FB9DD; --dg-norm: #F0A24F; --dg-act: #F07AB6; --dg-reshape: #9AA6BF; }
+  [hidden] { display: none !important; }
+  /* model diagram (shared with the experiments viewer) */
+  .dg-node rect { fill: var(--dg-node-bg); stroke: var(--dg-node-line); stroke-width: 1; }
+  .dg-node .dg-stripe { stroke: none; }
+  .dg-label { font: 500 12px var(--font); fill: var(--dg-ink); }
+  .dg-shape { font: 11px var(--mono); fill: var(--dg-muted); }
+  .dg-edge { stroke: var(--dg-edge); stroke-width: 1.5; fill: none; }
+  #dg-arrow path { fill: var(--dg-edge); }
+  .dg-skip { stroke: var(--dg-conv); stroke-width: 1.5; stroke-dasharray: 4 3; fill: none; }
+  .dg-group rect { fill: var(--dg-group-bg); stroke: var(--dg-group-line); stroke-width: 1; }
+  .dg-group.dg-res rect { stroke: var(--dg-conv); stroke-dasharray: 5 3; }
+  .dg-group text { font: 600 10.5px var(--font); fill: var(--dg-muted); letter-spacing: .06em; text-transform: uppercase; }
+  .dg-add circle { fill: var(--dg-node-bg); stroke: var(--dg-conv); stroke-width: 1.5; }
+  .dg-add text { font: 600 14px var(--mono); fill: var(--dg-conv); }
+  .dg-io .dg-stripe { fill: var(--dg-io); } .dg-dense .dg-stripe { fill: var(--dg-dense); } .dg-conv .dg-stripe { fill: var(--dg-conv); }
+  .dg-pool .dg-stripe { fill: var(--dg-pool); } .dg-norm .dg-stripe { fill: var(--dg-norm); } .dg-act .dg-stripe { fill: var(--dg-act); } .dg-reshape .dg-stripe { fill: var(--dg-reshape); }
+  .view3d { flex: 1; overflow: auto; padding: 10px 16px 40px; display: flex; flex-direction: column; gap: 10px; }
+  .v3bar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: 12px; color: #9AA5B8; }
+  .v3bar label { display: inline-flex; align-items: center; gap: 6px; }
+  .v3bar input[type="range"] { width: 110px; accent-color: #7A97FF; }
+  .v3bar select { background: #1A1F29; border: 1px solid #303747; border-radius: 5px; color: #DCE2EC; padding: 3px 6px; font-size: 12px; }
+  .v3bar strong { color: #DCE2EC; font-weight: 600; }
+  .v3bar .btn { background: #1A1F29; border-color: #303747; color: #DCE2EC; padding: 3px 9px; }
+  .v3bar .btn:hover { border-color: #8FB2FF; }
+  .v3legend { font-family: var(--mono); font-size: 11px; margin-left: auto; }
+  .v3scroll { flex: none; overflow: auto; position: relative; border: 1px solid #262B36; border-radius: 6px; background: #12151C; }
+  .v3scroll canvas { display: block; }
+  .view3d .tip { position: absolute; pointer-events: none; display: none; background: #1A1F29; border: 1px solid #303747; border-radius: 6px; padding: 6px 9px; font-size: 12px; color: #DCE2EC; z-index: 2; white-space: nowrap; }
+  .view3d .tip b { font-family: var(--mono); font-weight: 500; }
+  .v3anim { border-top: 1px solid #262B36; padding-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+  .v3note { font-size: 12px; color: #9AA5B8; line-height: 1.5; max-width: 80ch; }
+  .trainview { flex: 1; overflow: auto; padding: 12px 16px 40px; display: flex; flex-direction: column; gap: 12px; color: #DCE2EC; font-size: 12.5px; }
+  .trainview .hint { color: #9AA5B8; font-size: 12px; }
+  .trainview .offline { background: #1A1F29; border: 1px solid #303747; border-radius: 8px; padding: 14px 16px; line-height: 1.5; max-width: 72ch; }
+  .trainview .offline pre { background: #12151C; border: 1px solid #303747; border-radius: 6px; padding: 8px 10px; font-family: var(--mono); margin: 6px 0 10px; }
+  .trainview .offline p { margin: 6px 0; color: #9AA5B8; }
+  .trainview .mono { font-family: var(--mono); }
+  .tform { display: flex; flex-wrap: wrap; gap: 10px 16px; }
+  .tform label { display: inline-flex; align-items: center; gap: 6px; color: #9AA5B8; }
+  .tform input, .tform select { background: #1A1F29; border: 1px solid #303747; border-radius: 5px; color: #DCE2EC; padding: 4px 6px; font-family: var(--mono); font-size: 12px; }
+  .tform input[type="number"] { width: 6.5em; } .tform input[type="text"] { width: 16em; }
+  .tdesc { color: #9AA5B8; }
+  .actview { gap: 14px; }
+  .acpick { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: flex-start; }
+  .acthumbs { display: grid; grid-template-columns: repeat(6, auto); gap: 6px; }
+  .acthumbs button { background: #12151C; border: 1px solid #303747; border-radius: 6px; padding: 3px 3px 1px; color: #9AA5B8; font: 10.5px var(--mono); display: flex; flex-direction: column; align-items: center; gap: 1px; cursor: pointer; }
+  .acthumbs button[aria-pressed="true"] { border-color: #7A97FF; color: #DCE2EC; box-shadow: 0 0 0 1px #7A97FF; }
+  .acthumbs canvas, .acstep canvas { image-rendering: pixelated; display: block; }
+  .acthumbs .vals { padding: 4px 6px; color: #DCE2EC; }
+  #acDraw { background: #000; border: 1px solid #303747; border-radius: 6px; touch-action: none; cursor: crosshair; }
+  .acpred { min-width: 220px; flex: 1; max-width: 360px; display: grid; grid-template-columns: auto 1fr auto; gap: 3px 8px; align-items: center; font-size: 11.5px; }
+  .acpred .k { grid-column: 1 / -1; }
+  .acpred .name { color: #9AA5B8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 9em; }
+  .acpred .name.best { color: #DCE2EC; font-weight: 600; }
+  .acpred .bar { height: 8px; background: #262B36; border-radius: 4px; overflow: hidden; }
+  .acpred .bar i { display: block; height: 100%; background: #6B7588; border-radius: 0 4px 4px 0; }
+  .acpred .bar i.best { background: #7A97FF; }
+  .acpred .pct { font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; color: #DCE2EC; }
+  .acpred .verdict { grid-column: 1 / -1; margin-top: 4px; color: #9AA5B8; }
+  .acintro { margin: 0; max-width: 80ch; line-height: 1.5; }
+  .acstep { border-top: 1px solid #262B36; padding-top: 10px; }
+  .acstep + .acstep { margin-top: 10px; }
+  .achead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-bottom: 6px; }
+  .achead b { font-weight: 600; color: #DCE2EC; }
+  .achead .mono { color: #9AA5B8; font-size: 11.5px; }
+  .acscale { display: inline-flex; align-items: center; gap: 6px; color: #9AA5B8; font: 10.5px var(--mono); margin-left: auto; }
+  .acscale span.bar { width: 90px; height: 8px; border-radius: 4px; }
+  .acbtns { display: inline-flex; gap: 6px; }
+  .trainview .acbtns .btn { padding: 2px 8px; font-size: 11.5px; }
+  .trainview .acbtns .btn[aria-pressed="true"] { border-color: #7A97FF; color: #FFFFFF; }
+  .acdetail { margin-top: 10px; padding: 9px 11px; background: #161A22; border: 1px solid #262B36; border-radius: 6px; }
+  .acdetail .achead { margin-bottom: 4px; }
+  .acdetail p { margin: 0 0 8px; color: #9AA5B8; line-height: 1.5; max-width: 90ch; }
+  .actip { position: fixed; z-index: 30; pointer-events: none; background: #0E1117; color: #DCE2EC; border: 1px solid #303747; border-radius: 5px; padding: 4px 7px; font: 11px var(--mono); white-space: nowrap; }
+  .tfolder { background: #1A1F29; border: 1px solid #303747; border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+  .tfolder p { margin: 0; line-height: 1.5; max-width: 80ch; }
+  .tfolder .tform input, .tfolder .tform select { background: #12151C; }
+  .tform input.wide { width: 32em; max-width: 60vw; }
+  .tfolder .trecent:empty { display: none; }
+  .tfolder .trecent table { width: auto; min-width: 280px; }
+  .preflight { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+  .preflight:empty { display: none; }
+  .preflight li { padding: 5px 9px; border-radius: 5px; background: #1A1F29; border-left: 3px solid #4FB9DD; }
+  .preflight li.pf-warn { border-left-color: #F0A24F; } .preflight li.pf-err { border-left-color: #FF7A7A; }
+  .tactions { display: flex; align-items: center; gap: 10px; }
+  .trainview .btn { background: #1A1F29; border-color: #303747; color: #DCE2EC; }
+  .trainview .btn.primary { background: #7A97FF; border-color: #7A97FF; color: #0E1117; }
+  .trainview .btn.primary:disabled { opacity: .45; cursor: not-allowed; }
+  .tlog { margin: 0; background: #12151C; border: 1px solid #262B36; border-radius: 6px; padding: 10px 12px; font-family: var(--mono); font-size: 11.5px; line-height: 1.5; max-height: 260px; overflow: auto; white-space: pre-wrap; color: #C3C8D4; }
+  .tresult { background: #1A1F29; border: 1px solid #303747; border-radius: 8px; padding: 12px 14px; display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+  .tresult .big { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .tresult .k { font-size: 10.5px; text-transform: uppercase; letter-spacing: .09em; color: #9AA5B8; font-weight: 600; }
+  .trainview a { color: #8FB2FF; }
+  .eyebrow-dark { font-size: 10.5px; text-transform: uppercase; letter-spacing: .09em; color: #9AA5B8; font-weight: 600; margin-bottom: 6px; display: flex; gap: 12px; }
+  .eyebrow-dark a { text-transform: none; letter-spacing: 0; font-weight: 500; }
+  .trecent table { border-collapse: collapse; width: 100%; font-size: 12px; }
+  .trecent th, .trecent td { text-align: left; padding: 4px 8px; border-bottom: 1px solid #262B36; white-space: nowrap; color: #DCE2EC; }
+  .trecent th { color: #9AA5B8; font-weight: 600; font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; }
+  .trecent td.num, .trecent th.num { font-family: var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+  .toast { position: fixed; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 6px; font-weight: 500; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  .toast.on { opacity: 1; }
+
+  /* ---------- dialog ---------- */
+  dialog { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); padding: 16px; width: min(640px, 92vw); }
+  dialog::backdrop { background: rgba(10,12,18,.5); }
+  dialog h2 { margin: 0 0 8px; font-size: 15px; }
+  dialog textarea { width: 100%; height: 260px; font-family: var(--mono); font-size: 12px; background: var(--surface2); border: 1px solid var(--line); border-radius: 6px; padding: 8px; resize: vertical; }
+  dialog .dactions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
+
+  @media (max-width: 980px) {
+    /* stacked: the page scrolls, palette and canvas take their full height, and the code/train pane is a
+       fixed-height row that scrolls inside (auto rows in a fixed-height grid shrink to fit and overlap) */
+    .work { grid-template-columns: 1fr; grid-template-rows: max-content max-content 85vh; overflow: auto; }
+    .pane { overflow: visible; }
+    .palette { border-right: 0; border-bottom: 1px solid var(--line); }
+    .codepane { min-height: 0; border-top: 1px solid var(--line); }
+    pre.code { overflow: auto; }
+  }
+</style>
+
+<header class="top">
+  <div class="brand"><h1>Layerforge</h1><small>model builder</small></div>
+  <label class="ctl">Preset
+    <select id="preset"></select>
+  </label>
+  <span class="desc" id="presetDesc"></span>
+  <span class="spacer"></span>
+  <div class="seg" role="group" aria-label="Framework">
+    <button id="fwTorch" aria-pressed="true">PyTorch</button>
+    <button id="fwKeras" aria-pressed="false">TensorFlow / Keras</button>
+  </div>
+  <button class="btn" id="btnSave">Save design</button>
+  <button class="btn" id="btnLoad">Load design</button>
+</header>
+
+<main class="work">
+  <aside class="pane palette" id="palette"></aside>
+
+  <section class="pane canvas">
+    <div class="canvas-head">
+      <input id="modelName" type="text" value="Model" aria-label="Model name" spellcheck="false">
+      <div class="stats"><span>params <b id="statParams">0</b></span><span>output <b id="statOut">–</b></span></div>
+      <span class="hint">Shapes are C × H × W, batch omitted. Drag the ⋮⋮ grip to reorder or nest.</span>
+    </div>
+    <div class="list" id="root" data-container="root"></div>
+    <div class="rootfoot"><select class="addsel" data-add-to="root"></select></div>
+  </section>
+
+  <section class="pane codepane">
+    <div class="codehead">
+      <div class="seg">
+        <button id="tabTorch" aria-pressed="true">model_torch.py</button>
+        <button id="tabKeras" aria-pressed="false">model_keras.py</button>
+        <button id="tabDiagram" aria-pressed="false">diagram</button>
+        <button id="tab3d" aria-pressed="false">3D</button>
+        <button id="tabTrain" aria-pressed="false">train</button>
+        <button id="tabActs" aria-pressed="false">activations</button>
+      </div>
+      <button class="btn" id="btnCopy">Copy code</button>
+      <button class="btn" id="btnDownload">Download .py</button>
+      <span class="file" id="codeMeta"></span>
+    </div>
+    <div class="problems" id="problems"></div>
+    <pre class="code" id="code"></pre>
+    <div class="diagram" id="diagram" hidden></div>
+    <div class="view3d" id="view3d" hidden>
+      <div class="v3bar">
+        <label>Zoom <input type="range" id="v3zoom" min="0.3" max="2" step="0.05" value="1"></label>
+        <label>Channels <select id="v3ch"><option value="linear">to scale</option><option value="sqrt">square-root (compressed)</option></select></label>
+        <span class="v3legend" id="v3legend"></span>
+      </div>
+      <div class="v3scroll"><canvas id="v3canvas"></canvas><div class="tip" id="v3tip"></div></div>
+      <div class="v3anim">
+        <div class="v3bar">
+          <strong>Convolution, step by step</strong>
+          <label>Layer <select id="animLayer"></select></label>
+          <button class="btn" id="animPlay">Play</button>
+          <button class="btn" id="animStep">Step</button>
+          <button class="btn" id="animReset">Reset</button>
+          <label>Speed <input type="range" id="animSpeed" min="1" max="30" step="1" value="6"></label>
+        </div>
+        <div class="v3scroll"><canvas id="animCanvas"></canvas></div>
+        <div class="v3note" id="animNote"></div>
+      </div>
+    </div>
+    <div class="trainview" id="trainview" hidden>
+      <div class="offline demo-note" hidden>
+        <strong>Training is not available in the online version.</strong>
+        <p>This tab trains the model you designed on MNIST digits, Fashion-MNIST, CIFAR-10 or your own image folders, and logs each run. It needs Layerforge's local server (Python and PyTorch on your own computer), so it is switched off in this online version.</p>
+        <p>Everything else runs right here in your browser: build a model from the palette or a preset, copy its PyTorch or Keras code, and explore it in the diagram and 3D tabs, where any convolution or pooling layer can be animated.<span class="demo-log" hidden> You can also browse <a href="experiments.html">the author's experiment log</a>: models built here, trained, and compared.</span></p>
+      </div>
+      <div class="offline" id="trainOffline">
+        <strong>Training runs on your own machine through a small local server, and it is not running.</strong>
+        <p>In a terminal, from this project folder, using the Python that has torch installed:</p>
+        <pre>python serve.py</pre>
+        <p>It opens the builder at <span class="mono">http://localhost:8765</span>. This tab then trains the model directly and keeps checking for the server in the meantime.</p>
+        <p id="trainFileNote" hidden>This page was opened as a file. For safety the server only talks to the copy it serves itself, so open <a href="http://localhost:8765/">http://localhost:8765</a> once it is running.</p>
+        <button class="btn" id="trainRetry">Check again</button> <span class="hint" id="trainOfflineNote"></span>
+      </div>
+      <div id="trainOnline" hidden>
+        <div class="tform">
+          <label>Dataset <select id="trDataset"></select></label>
+          <button class="btn" id="trAddFolder" title="Use your own images: one subfolder per class">Add image folder…</button>
+          <label>Epochs <input id="trEpochs" type="number" min="1" step="1" value="3"></label>
+          <label>Batch <input id="trBatch" type="number" min="1" step="1" value="128"></label>
+          <label>Learning rate <input id="trLr" type="number" min="0" step="0.0001" value="0.001"></label>
+          <label title="Leave empty for the whole training set; 0 also means all">Train examples <input id="trLimit" type="number" min="0" step="500" placeholder="all"></label>
+          <label>Tag <input id="trTag" type="text" placeholder="what changed?"></label>
+        </div>
+        <div class="tdesc"><span id="trDatasetDesc"></span> <a href="#" id="trForget" hidden>forget this folder</a></div>
+        <div class="tfolder" id="trFolder" hidden>
+          <div class="eyebrow-dark">Add an image folder</div>
+          <p class="hint">One subfolder per class, e.g. <span class="mono">pets/cat/*.jpg</span> and <span class="mono">pets/dog/*.jpg</span>, or <span class="mono">train/</span> and <span class="mono">test/</span> folders that each hold the class subfolders. The images are read where they are; nothing is copied. On a Mac, select the folder in Finder and press ⌥⌘C to copy its path.</p>
+          <div class="tform">
+            <label>Folder <input id="fdPath" type="text" class="wide" placeholder="/Users/you/Pictures/pets" spellcheck="false"></label>
+            <button class="btn" id="fdScan">Scan</button>
+          </div>
+          <div class="trecent" id="fdScanOut"></div>
+          <div class="tform" id="fdOptions" hidden>
+            <label>Name <input id="fdName" type="text" maxlength="40" spellcheck="false"></label>
+            <label title="Images are resized to this many pixels square">Image size <input id="fdSize" type="number" min="4" max="512" step="1"></label>
+            <label>Colour <select id="fdColor"><option value="gray">grayscale</option><option value="rgb">RGB</option></select></label>
+            <label title="Share of each class held out for testing, when the folder has no test/ subfolder">Test split <input id="fdSplit" type="number" min="0" max="0.9" step="0.05" value="0.2"></label>
+          </div>
+          <div class="tactions">
+            <button class="btn primary" id="fdAdd" disabled>Add dataset</button>
+            <button class="btn" id="fdCancel">Cancel</button>
+            <span class="hint" id="fdStatus"></span>
+          </div>
+        </div>
+        <ul class="preflight" id="trPreflight"></ul>
+        <div class="tactions">
+          <button class="btn primary" id="trRun">Train this model</button>
+          <button class="btn" id="trCancel" hidden>Cancel</button>
+          <span class="hint" id="trStatus"></span>
+        </div>
+        <pre class="tlog" id="trLog" hidden></pre>
+        <div class="tresult" id="trResult" hidden></div>
+        <div class="trecent"><div class="eyebrow-dark">Recent runs <a href="#" id="trDashLink" target="_blank" rel="noopener">open dashboard</a></div><div id="trRecent"></div></div>
+      </div>
+    </div>
+    <div class="trainview actview" id="actview" hidden>
+      <div class="offline demo-note" hidden>
+        <strong>Looking inside a trained model is not available in the online version.</strong>
+        <p>This tab runs a digit (or one you draw) through a trained model and shows what every layer responds to, from edge detectors to whole digits. It needs Layerforge's local server (Python and PyTorch on your own computer), so it is switched off in this online version.</p>
+        <p>Everything else runs right here in your browser: build a model from the palette or a preset, copy its PyTorch or Keras code, and explore it in the diagram and 3D tabs, where any convolution or pooling layer can be animated.<span class="demo-log" hidden> You can also browse <a href="experiments.html">the author's experiment log</a>: models built here, trained, and compared.</span></p>
+      </div>
+      <div class="offline" id="acOffline" hidden>
+        <strong>Looking inside a model needs the local server.</strong>
+        <p>Start it with <span class="mono">python serve.py</span> and use the builder at <a href="http://localhost:8765/">http://localhost:8765</a>. Then train a model on the train tab: its weights are kept so this tab can run examples through it.</p>
+      </div>
+      <div class="offline" id="acEmpty" hidden>
+        <strong>No trained model to look inside yet.</strong>
+        <p>Train one on the train tab (LeNet-5 on MNIST digits is a good first look). The server keeps the weights of its 10 most recent runs, and they show up here.</p>
+      </div>
+      <div id="acOnline" hidden>
+        <div class="tform">
+          <label>Run <select id="acRun"></select></label>
+          <label title="Each map on its own scale shows every map's pattern; a shared scale shows which maps respond most strongly">Colour scale <select id="acScale"><option value="map">each map on its own</option><option value="layer">shared across the layer</option></select></label>
+        </div>
+        <div class="acpick">
+          <div>
+            <div class="eyebrow-dark">Test examples <a href="#" id="acMore">show others</a></div>
+            <div class="acthumbs" id="acThumbs"></div>
+          </div>
+          <div id="acDrawWrap" hidden>
+            <div class="eyebrow-dark">Or draw one <a href="#" id="acClear">clear</a></div>
+            <canvas id="acDraw" width="168" height="168" aria-label="Drawing pad: draw with the mouse or a finger"></canvas>
+          </div>
+          <div class="acpred" id="acPred"></div>
+        </div>
+        <p class="hint acintro">Each row is one layer's output for the input above, from the first layer to the last. Early convolution layers respond to strokes and edges in particular directions; later ones combine them into larger parts, and the final layers into the answer. <span id="acStatus"></span></p>
+        <div id="acSteps"></div>
+      </div>
+      <div class="actip" id="acTip" hidden></div>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<dialog id="dlg">
+  <h2 id="dlgTitle">Design JSON</h2>
+  <textarea id="dlgText" spellcheck="false"></textarea>
+  <div class="dactions">
+    <button class="btn" id="dlgCancel">Close</button>
+    <button class="btn primary" id="dlgOk">Load</button>
+  </div>
+</dialog>
+
+<script>
+/* =====================================================================
+   Layer catalogue
+   ===================================================================== */
+const ACTS = ['none','relu','sigmoid','tanh','softmax','gelu','leaky_relu','silu','elu'];
+const LAYERS = {
+  input:      { label: 'Input',        cat: 'io',      params: [ {k:'shape', t:'text', label:'shape', def:'3,32,32', title:'C,H,W for images, F for vectors'} ] },
+  dense:      { label: 'Dense',        cat: 'dense',   params: [ {k:'units', t:'int', label:'units', def:64}, {k:'activation', t:'act', label:'act', def:'relu'}, {k:'bias', t:'bool', label:'bias', def:true} ] },
+  conv2d:     { label: 'Conv2D',       cat: 'conv',    params: [ {k:'filters', t:'int', label:'filters', def:32}, {k:'kernel', t:'int', label:'k', def:3}, {k:'stride', t:'int', label:'s', def:1}, {k:'padding', t:'sel', label:'pad', def:'same', opts:['same','valid']}, {k:'activation', t:'act', label:'act', def:'relu'}, {k:'bias', t:'bool', label:'bias', def:true} ] },
+  batchnorm:  { label: 'BatchNorm',    cat: 'norm',    params: [] },
+  maxpool:    { label: 'MaxPool2D',    cat: 'pool',    params: [ {k:'pool', t:'int', label:'pool', def:2}, {k:'stride', t:'int', label:'s', def:2}, {k:'padding', t:'sel', label:'pad', def:'valid', opts:['valid','same']} ] },
+  avgpool:    { label: 'AvgPool2D',    cat: 'pool',    params: [ {k:'pool', t:'int', label:'pool', def:2}, {k:'stride', t:'int', label:'s', def:2}, {k:'padding', t:'sel', label:'pad', def:'valid', opts:['valid','same']} ] },
+  gap:        { label: 'GlobalAvgPool', cat: 'pool',   params: [] },
+  flatten:    { label: 'Flatten',      cat: 'reshape', params: [] },
+  dropout:    { label: 'Dropout',      cat: 'norm',    params: [ {k:'rate', t:'float', label:'rate', def:0.5} ] },
+  activation: { label: 'Activation',   cat: 'act',     params: [ {k:'fn', t:'act', label:'fn', def:'relu', noNone:true} ] },
+};
+const PALETTE = [
+  ['Input & output', ['input']],
+  ['Core layers', ['dense','conv2d']],
+  ['Pooling & reshape', ['maxpool','avgpool','gap','flatten']],
+  ['Normalization & regularization', ['batchnorm','dropout']],
+  ['Activation', ['activation']],
+  ['Structure', ['group','residual']],
+];
+const CAT_COLOR = { io:'var(--c-io)', dense:'var(--c-dense)', conv:'var(--c-conv)', pool:'var(--c-pool)', norm:'var(--c-norm)', act:'var(--c-act)', reshape:'var(--c-reshape)', group:'var(--c-group)' };
+
+let _uid = 1;
+const uid = () => 'b' + (_uid++);
+function L(type, params = {}) {
+  const def = LAYERS[type]; const p = {};
+  for (const d of def.params) p[d.k] = (params[d.k] !== undefined) ? params[d.k] : d.def;
+  return { id: uid(), type, params: p };
+}
+function G(name, repeat, children, opts = {}) {
+  return { id: uid(), type: 'group', name, repeat, residual: !!opts.residual, shortcut: opts.shortcut || 'auto', postAct: opts.postAct || 'none', children };
+}
+function reId(blocks) { for (const b of blocks) { b.id = uid(); if (b.children) reId(b.children); } return blocks; }
+
+/* =====================================================================
+   Presets
+   ===================================================================== */
+const PRESETS = {
+  blank: { label: 'Blank', desc: 'Start from an empty canvas.', build: () => [] },
+  xor: { label: 'XOR MLP (2-2-1)', desc: 'The minimal multilayer perceptron that solves XOR. Train with binary cross-entropy.',
+    build: () => [ L('input',{shape:'2'}), L('dense',{units:2, activation:'tanh'}), L('dense',{units:1, activation:'sigmoid'}) ] },
+  mnist_mlp: { label: 'MNIST MLP', desc: 'Two hidden layers with dropout on flattened 28×28 digits.',
+    build: () => [ L('input',{shape:'784'}), L('dense',{units:256}), L('dropout',{rate:0.2}), L('dense',{units:128}), L('dropout',{rate:0.2}), L('dense',{units:10, activation:'softmax'}) ] },
+  lenet: { label: 'LeNet-5', desc: 'LeCun 1998. Conv-pool-conv-pool then three dense layers.',
+    build: () => [ L('input',{shape:'1,32,32'}), L('conv2d',{filters:6, kernel:5, padding:'valid', activation:'tanh'}), L('avgpool'), L('conv2d',{filters:16, kernel:5, padding:'valid', activation:'tanh'}), L('avgpool'), L('flatten'), L('dense',{units:120, activation:'tanh'}), L('dense',{units:84, activation:'tanh'}), L('dense',{units:10, activation:'softmax'}) ] },
+  mnist_cnn: { label: 'MNIST CNN', desc: 'Two conv + ReLU + max-pool stages on 28×28 digits. Train it, then open the activations tab to watch the filters find strokes and edges.',
+    build: () => [ L('input',{shape:'1,28,28'}), L('conv2d',{filters:16, kernel:5, activation:'relu'}), L('maxpool'), L('conv2d',{filters:32, kernel:3, activation:'relu'}), L('maxpool'), L('flatten'), L('dense',{units:64, activation:'relu'}), L('dense',{units:10, activation:'softmax'}) ] },
+  cifar_cnn: { label: 'Simple CIFAR-10 CNN', desc: 'Three conv stages with batch norm, then a dense head.',
+    build: () => [ L('input',{shape:'3,32,32'}),
+      G('Stage 32', 1, [ L('conv2d',{filters:32, activation:'none'}), L('batchnorm'), L('activation'), L('maxpool') ]),
+      G('Stage 64', 1, [ L('conv2d',{filters:64, activation:'none'}), L('batchnorm'), L('activation'), L('maxpool') ]),
+      G('Stage 128', 1, [ L('conv2d',{filters:128, activation:'none'}), L('batchnorm'), L('activation'), L('maxpool') ]),
+      L('flatten'), L('dropout',{rate:0.3}), L('dense',{units:256}), L('dense',{units:10, activation:'softmax'}) ] },
+  alexnet: { label: 'AlexNet', desc: 'Krizhevsky 2012. Five conv layers, three pools, two 4096-wide dense layers.',
+    build: () => [ L('input',{shape:'3,227,227'}),
+      L('conv2d',{filters:96, kernel:11, stride:4, padding:'valid'}), L('maxpool',{pool:3, stride:2}),
+      L('conv2d',{filters:256, kernel:5}), L('maxpool',{pool:3, stride:2}),
+      L('conv2d',{filters:384}), L('conv2d',{filters:384}), L('conv2d',{filters:256}), L('maxpool',{pool:3, stride:2}),
+      L('flatten'), L('dropout'), L('dense',{units:4096}), L('dropout'), L('dense',{units:4096}), L('dense',{units:1000, activation:'softmax'}) ] },
+  vgg16: { label: 'VGG-16', desc: 'Simonyan & Zisserman 2014. 3×3 convs in repeated blocks, 13 conv + 3 dense.',
+    build: () => [ L('input',{shape:'3,224,224'}),
+      G('Block 1', 2, [ L('conv2d',{filters:64}) ]), L('maxpool'),
+      G('Block 2', 2, [ L('conv2d',{filters:128}) ]), L('maxpool'),
+      G('Block 3', 3, [ L('conv2d',{filters:256}) ]), L('maxpool'),
+      G('Block 4', 3, [ L('conv2d',{filters:512}) ]), L('maxpool'),
+      G('Block 5', 3, [ L('conv2d',{filters:512}) ]), L('maxpool'),
+      L('flatten'), L('dense',{units:4096}), L('dropout'), L('dense',{units:4096}), L('dropout'), L('dense',{units:1000, activation:'softmax'}) ] },
+  resnet18: { label: 'ResNet-18', desc: 'He et al. 2015. Basic residual blocks; the first block of each later stage downsamples with a projection shortcut.',
+    build: () => {
+      const basic = (c, s) => [ L('conv2d',{filters:c, stride:s, activation:'none', bias:false}), L('batchnorm'), L('activation'), L('conv2d',{filters:c, activation:'none', bias:false}), L('batchnorm') ];
+      const R = (name, n, c, s) => G(name, n, basic(c, s), {residual:true, postAct:'relu'});
+      return [ L('input',{shape:'3,224,224'}),
+        L('conv2d',{filters:64, kernel:7, stride:2, activation:'none', bias:false}), L('batchnorm'), L('activation'), L('maxpool',{pool:3, stride:2, padding:'same'}),
+        R('Stage 1', 2, 64, 1),
+        R('Stage 2 down', 1, 128, 2), R('Stage 2', 1, 128, 1),
+        R('Stage 3 down', 1, 256, 2), R('Stage 3', 1, 256, 1),
+        R('Stage 4 down', 1, 512, 2), R('Stage 4', 1, 512, 1),
+        L('gap'), L('dense',{units:1000, activation:'softmax'}) ];
+    } },
+  resnet50: { label: 'ResNet-50', desc: 'Bottleneck residual blocks (1×1 → 3×3 → 1×1, 4× expansion). Stages repeat 3, 4, 6, 3 times.',
+    build: () => {
+      const bott = (c, s) => [ L('conv2d',{filters:c, kernel:1, activation:'none', bias:false}), L('batchnorm'), L('activation'), L('conv2d',{filters:c, stride:s, activation:'none', bias:false}), L('batchnorm'), L('activation'), L('conv2d',{filters:4*c, kernel:1, activation:'none', bias:false}), L('batchnorm') ];
+      const R = (name, n, c, s) => G(name, n, bott(c, s), {residual:true, postAct:'relu'});
+      return [ L('input',{shape:'3,224,224'}),
+        L('conv2d',{filters:64, kernel:7, stride:2, activation:'none', bias:false}), L('batchnorm'), L('activation'), L('maxpool',{pool:3, stride:2, padding:'same'}),
+        R('Stage 1', 3, 64, 1),
+        R('Stage 2 down', 1, 128, 2), R('Stage 2', 3, 128, 1),
+        R('Stage 3 down', 1, 256, 2), R('Stage 3', 5, 256, 1),
+        R('Stage 4 down', 1, 512, 2), R('Stage 4', 2, 512, 1),
+        L('gap'), L('dense',{units:1000, activation:'softmax'}) ];
+    } },
+  autoenc: { label: 'MLP Autoencoder', desc: 'Symmetric encoder / decoder squeezing 784 features through a 32-wide bottleneck.',
+    build: () => [ L('input',{shape:'784'}),
+      G('Encoder', 1, [ L('dense',{units:128}), L('dense',{units:32}) ]),
+      G('Decoder', 1, [ L('dense',{units:128}), L('dense',{units:784, activation:'sigmoid'}) ]) ] },
+  deepmlp: { label: 'Residual MLP ×100', desc: 'One hundred stacked residual dense blocks. Shows how ×N repeats collapse into a loop in the code.',
+    build: () => [ L('input',{shape:'64'}),
+      G('Res block', 100, [ L('dense',{units:64}), L('dense',{units:64, activation:'none'}) ], {residual:true, postAct:'relu'}),
+      L('dense',{units:10, activation:'softmax'}) ] },
+};
+
+/* =====================================================================
+   State
+   ===================================================================== */
+let model = { name: 'Model', blocks: [] };
+let framework = 'torch';
+let showDiagram = false;
+let show3D = false;
+let showTrain = false;
+let showActs = false;
+let compiled = null;
+
+/* =====================================================================
+   Shape inference + compile to an intermediate representation (IR)
+   ===================================================================== */
+const sameShape = (a, b) => !!a && !!b && a.length === b.length && a.every((v, i) => v === b[i]);
+const fmtShape = s => s ? s.join('×') : '–';
+const fmtInt = n => n.toLocaleString('en-US');
+
+function compile(m) {
+  const ctx = { info: {}, problems: [], params: 0, usesResidual: false, usesSoftmax: false, inputShape: null, hasInput: false };
+  const seq = compileSeq(m.blocks, null, ctx, true);
+  ctx.out = seq.out;
+  if (!ctx.hasInput) ctx.problems.push({ msg: 'Add an Input layer first (drag it from the palette).', kind: 'err' });
+  return Object.assign(ctx, { nodes: seq.nodes });
+}
+function note(ctx, b, msg, kind = 'err') {
+  const cur = ctx.info[b.id] || (ctx.info[b.id] = {});
+  if (!cur.err || kind === 'err') { cur.err = msg; cur.kind = kind; }
+  const label = b.type === 'group' ? b.name : LAYERS[b.type].label;
+  if (!ctx.problems.some(p => p.id === b.id && p.msg === msg)) ctx.problems.push({ id: b.id, msg: `${label}: ${msg}`, kind });
+}
+function compileSeq(blocks, shape, ctx, root = false) {
+  const nodes = [];
+  for (const b of blocks) {
+    const r = b.type === 'group' ? compileGroup(b, shape, ctx) : compileLayer(b, shape, ctx, root);
+    nodes.push(...r.nodes); shape = r.out;
+  }
+  return { nodes, out: shape };
+}
+function pInt(v, min = 1) { const n = Number(v); return Number.isInteger(n) && n >= min ? n : null; }
+function outDim(H, k, s, pad) { return pad === 'same' ? Math.ceil(H / s) : Math.floor((H - k) / s) + 1; }
+
+function compileLayer(b, shape, ctx, root) {
+  const p = b.params, info = ctx.info[b.id] = {};
+  const fail = (msg) => { note(ctx, b, msg); info.shape = shape; return { nodes: [], out: shape }; };
+  const done = (nodes, out, params = 0) => { info.shape = out; info.params = params; ctx.params += params; for (const n of nodes) n.out = out; if (nodes.length) nodes[0].params = params; return { nodes, out }; };
+
+  if (b.type === 'input') {
+    if (shape !== null || !root) return fail('Input must be the first layer at the top level.');
+    const dims = String(p.shape).split(/[,x×\s]+/).filter(Boolean).map(v => pInt(v));
+    if (!dims.length || dims.some(d => d === null) || (dims.length !== 1 && dims.length !== 3)) return fail('Shape must be C,H,W (image) or F (vector), e.g. 3,32,32 or 784.');
+    ctx.hasInput = true; ctx.inputShape = dims;
+    return done([{ kind: 'input', shape: dims }], dims);
+  }
+  if (shape === null) return fail('No input shape reaches this layer. Put an Input layer first.');
+  const is3 = shape.length === 3;
+  const act = p.activation && p.activation !== 'none' ? p.activation : null;
+  if (act === 'softmax') ctx.usesSoftmax = true;
+
+  switch (b.type) {
+    case 'dense': {
+      const u = pInt(p.units); if (!u) return fail('units must be a whole number ≥ 1.');
+      if (is3) return fail('Dense needs a vector. Add Flatten or GlobalAvgPool before it.');
+      return done([{ kind: 'linear', inF: shape[0], outF: u, bias: !!p.bias, act }], [u], shape[0] * u + (p.bias ? u : 0));
+    }
+    case 'conv2d': {
+      const f = pInt(p.filters), k = pInt(p.kernel), s = pInt(p.stride);
+      if (!f || !k || !s) return fail('filters, k and s must be whole numbers ≥ 1.');
+      if (!is3) return fail('Conv2D needs an image (C,H,W) input.');
+      const [C, H, W] = shape;
+      if (p.padding === 'valid' && (H < k || W < k)) return fail(`kernel ${k} is larger than the ${H}×${W} input.`);
+      const out = [f, outDim(H, k, s, p.padding), outDim(W, k, s, p.padding)];
+      if (p.padding === 'same' && s > 1 && k % 2 === 0) note(ctx, b, 'even kernel with stride > 1: PyTorch padding=k//2 differs from Keras "same" by one pixel.', 'warn');
+      return done([{ kind: 'conv', inC: C, outC: f, k, s, pad: p.padding, bias: !!p.bias, act }], out, k * k * C * f + (p.bias ? f : 0));
+    }
+    case 'batchnorm':
+      return done([{ kind: 'bn', dim: is3 ? 2 : 1, c: shape[0] }], shape, 2 * shape[0]);
+    case 'maxpool': case 'avgpool': {
+      const k = pInt(p.pool), s = pInt(p.stride);
+      if (!k || !s) return fail('pool and s must be whole numbers ≥ 1.');
+      if (!is3) return fail('Pooling needs an image (C,H,W) input.');
+      const [C, H, W] = shape;
+      if (p.padding === 'valid' && (H < k || W < k)) return fail(`pool ${k} is larger than the ${H}×${W} input.`);
+      return done([{ kind: b.type, k, s, pad: p.padding }], [C, outDim(H, k, s, p.padding), outDim(W, k, s, p.padding)]);
+    }
+    case 'gap':
+      if (!is3) return fail('GlobalAvgPool needs an image (C,H,W) input.');
+      return done([{ kind: 'gap' }], [shape[0]]);
+    case 'flatten':
+      if (!is3) { note(ctx, b, 'input is already a vector; Flatten does nothing.', 'warn'); return done([{ kind: 'flatten' }], shape); }
+      return done([{ kind: 'flatten' }], [shape[0] * shape[1] * shape[2]]);
+    case 'dropout': {
+      const r = Number(p.rate); if (!(r >= 0 && r < 1)) return fail('rate must be between 0 and 1.');
+      return done([{ kind: 'dropout', p: r }], shape);
+    }
+    case 'activation':
+      if (p.fn === 'softmax') ctx.usesSoftmax = true;
+      return done([{ kind: 'act', fn: p.fn }], shape);
+  }
+  return fail('unknown layer type');
+}
+
+function compileGroup(b, shape, ctx) {
+  const info = ctx.info[b.id] = {};
+  const N = pInt(b.repeat);
+  if (!N) { note(ctx, b, 'repeat count must be a whole number ≥ 1.'); info.shape = shape; return { nodes: [], out: shape }; }
+  if (shape === null) { note(ctx, b, 'No input shape reaches this block. Put an Input layer first.'); return { nodes: [], out: shape }; }
+  if (!b.children.length) note(ctx, b, 'empty block: drop layers inside it.', 'warn');
+  const iters = []; let s = shape, i = 0;
+  while (i < N) {
+    const before = ctx.params;
+    const it = compileIter(b, s, ctx);
+    const perIter = ctx.params - before;
+    if (sameShape(it.out, s)) {           // shape is stable: every remaining repetition is identical
+      const count = N - i;
+      iters.push({ node: it.node, count, from: i + 1, to: N });
+      ctx.params += perIter * (count - 1);
+      s = it.out; break;
+    }
+    iters.push({ node: it.node, count: 1, from: i + 1, to: i + 1 }); s = it.out; i++;
+    if (i < N && i >= 64) { note(ctx, b, 'the shape changes on every repetition, so the block cannot be looped; only 64 repetitions were unrolled.'); break; }
+  }
+  info.shape = s;
+  const nodes = iters.map(it => ({ kind: 'repeat', name: b.name, count: it.count, total: N, from: it.from, to: it.to, body: it.node }));
+  return { nodes, out: s };
+}
+function compileIter(b, shape, ctx) {
+  const body = compileSeq(b.children, shape, ctx);
+  if (!b.residual) return { node: { kind: 'seq', children: body.nodes, out: body.out }, out: body.out };
+  ctx.usesResidual = true;
+  const inS = shape, outS = body.out;
+  let sc = { kind: 'identity' };
+  const needProj = !sameShape(inS, outS);
+  if (needProj && b.shortcut === 'identity') {
+    note(ctx, b, `identity shortcut needs matching shapes, but the block maps ${fmtShape(inS)} → ${fmtShape(outS)}. Use an auto or projection shortcut.`);
+  } else if (needProj || b.shortcut === 'projection') {
+    if (inS.length === 1 && outS.length === 1) { sc = { kind: 'linear', inF: inS[0], outF: outS[0] }; ctx.params += inS[0] * outS[0] + outS[0]; }
+    else if (inS.length === 3 && outS.length === 3) {
+      const st = inS[1] / outS[1];
+      if (!Number.isInteger(st) || inS[2] / outS[2] !== st) note(ctx, b, `shortcut cannot map ${fmtShape(inS)} → ${fmtShape(outS)} with a strided 1×1 conv (spatial sizes must divide evenly).`);
+      sc = { kind: 'conv', inC: inS[0], outC: outS[0], s: Number.isInteger(st) ? st : 1 };
+      ctx.params += inS[0] * outS[0] + 2 * outS[0];
+    } else note(ctx, b, `a skip connection cannot join ${fmtShape(inS)} with ${fmtShape(outS)}; keep the block all-image or all-vector.`);
+  }
+  if (b.postAct === 'softmax') ctx.usesSoftmax = true;
+  return { node: { kind: 'residual', body: { kind: 'seq', children: body.nodes }, shortcut: sc, act: b.postAct !== 'none' ? b.postAct : null, out: outS }, out: outS };
+}
+
+/* =====================================================================
+   Code generation: PyTorch
+   ===================================================================== */
+const TORCH_ACT = { relu: 'nn.ReLU(inplace=True)', sigmoid: 'nn.Sigmoid()', tanh: 'nn.Tanh()', softmax: 'nn.Softmax(dim=1)', gelu: 'nn.GELU()', leaky_relu: 'nn.LeakyReLU(0.01)', silu: 'nn.SiLU()', elu: 'nn.ELU()' };
+function torchLayerExprs(n) {
+  switch (n.kind) {
+    case 'input': return [];
+    case 'linear': return [`nn.Linear(${n.inF}, ${n.outF}${n.bias ? '' : ', bias=False'})`, ...(n.act ? [TORCH_ACT[n.act]] : [])];
+    case 'conv': {
+      const pad = n.pad === 'valid' ? '0' : (n.s === 1 ? '"same"' : String(n.k >> 1));
+      return [`nn.Conv2d(${n.inC}, ${n.outC}, kernel_size=${n.k}, stride=${n.s}, padding=${pad}${n.bias ? '' : ', bias=False'})`, ...(n.act ? [TORCH_ACT[n.act]] : [])];
+    }
+    case 'bn': return [n.dim === 2 ? `nn.BatchNorm2d(${n.c})` : `nn.BatchNorm1d(${n.c})`];
+    case 'maxpool': case 'avgpool': {
+      const cls = n.kind === 'maxpool' ? 'MaxPool2d' : 'AvgPool2d';
+      let extra = '';
+      if (n.pad === 'same') extra = n.k % 2 ? `, padding=${n.k >> 1}` : ', ceil_mode=True';
+      return [`nn.${cls}(kernel_size=${n.k}, stride=${n.s}${extra})`];
+    }
+    case 'gap': return ['nn.AdaptiveAvgPool2d(1)', 'nn.Flatten()'];
+    case 'flatten': return ['nn.Flatten()'];
+    case 'dropout': return [`nn.Dropout(p=${n.p})`];
+    case 'act': return [TORCH_ACT[n.fn]];
+  }
+  return [`# unknown node ${n.kind}`];
+}
+function torchItems(nodes, ind) {           // lines inside an nn.Sequential( ... ), each ending with a comma
+  const out = [];
+  for (const n of nodes) {
+    if (n.kind === 'repeat') {
+      const range = n.count === n.total ? '' : ` (reps ${n.from}–${n.to} of ${n.total})`;
+      out.push(`${ind}# ${n.name}${n.count > 1 ? ` ×${n.count}` : ''}${range}`);
+      if (n.count === 1) {
+        if (n.body.kind === 'seq') out.push(...torchItems(n.body.children, ind));
+        else out.push(...torchExpr(n.body, ind, ','));
+      } else {
+        const inner = torchExpr(n.body.kind === 'seq' ? { kind: 'seq', children: n.body.children } : n.body, ind, '');
+        // splice the comprehension around the expression
+        inner[0] = inner[0].replace(ind, ind + '*[');
+        inner[inner.length - 1] += ` for _ in range(${n.count})],`;
+        out.push(...inner);
+      }
+    } else if (n.kind === 'residual') {
+      out.push(...torchExpr(n, ind, ','));
+    } else {
+      for (const e of torchLayerExprs(n)) out.push(`${ind}${e},`);
+    }
+  }
+  return out;
+}
+function torchExpr(n, ind, tail) {          // a single module expression, possibly multi-line
+  if (n.kind === 'seq') {
+    if (n.children.length === 0) return [`${ind}nn.Identity()${tail}`];
+    return [`${ind}nn.Sequential(`, ...torchItems(n.children, ind + '    '), `${ind})${tail}`];
+  }
+  if (n.kind === 'residual') {
+    const lines = [`${ind}Residual(`];
+    lines.push(...torchExpr(n.body, ind + '    ', ','));
+    const sc = n.shortcut;
+    if (sc.kind === 'linear') lines.push(`${ind}    shortcut=nn.Linear(${sc.inF}, ${sc.outF}),`);
+    else if (sc.kind === 'conv') lines.push(`${ind}    shortcut=nn.Sequential(nn.Conv2d(${sc.inC}, ${sc.outC}, kernel_size=1, stride=${sc.s}, bias=False), nn.BatchNorm2d(${sc.outC})),`);
+    if (n.act) lines.push(`${ind}    act=${TORCH_ACT[n.act]},`);
+    lines.push(`${ind})${tail}`);
+    return lines;
+  }
+  const ex = torchLayerExprs(n);
+  if (ex.length === 1) return [`${ind}${ex[0]}${tail}`];
+  return [`${ind}nn.Sequential(${ex.join(', ')})${tail}`];
+}
+function className(name) {
+  const s = String(name).replace(/[^A-Za-z0-9_ ]/g, ' ').trim().split(/\s+/).filter(Boolean).map(w => w[0].toUpperCase() + w.slice(1)).join('');
+  return /^[A-Za-z_]/.test(s) ? s : 'Model';
+}
+function genTorch(c) {
+  const cls = className(model.name);
+  const lines = [];
+  lines.push(`"""${model.name} — generated by Layerforge`, `input: ${c.inputShape ? '(N, ' + c.inputShape.join(', ') + ')' : 'missing'}   output: ${c.out ? '(N, ' + c.out.join(', ') + ')' : '?'}   parameters: ${fmtInt(c.params)}`, `"""`);
+  lines.push('import torch', 'import torch.nn as nn', '');
+  if (c.usesResidual) {
+    lines.push('class Residual(nn.Module):', '    """y = act(body(x) + shortcut(x)) — a skip connection around `body`."""', '',
+      '    def __init__(self, body, shortcut=None, act=None):', '        super().__init__()', '        self.body = body',
+      '        self.shortcut = shortcut if shortcut is not None else nn.Identity()', '        self.act = act if act is not None else nn.Identity()', '',
+      '    def forward(self, x):', '        return self.act(self.body(x) + self.shortcut(x))', '', '');
+  }
+  lines.push(`class ${cls}(nn.Module):`, '    def __init__(self):', '        super().__init__()', '        self.net = nn.Sequential(');
+  lines.push(...torchItems(c.nodes, '            '));
+  lines.push('        )', '', '    def forward(self, x):', '        return self.net(x)', '');
+  if (c.usesSoftmax) lines.push('# Note: nn.CrossEntropyLoss expects raw logits. If you train with it, drop the final Softmax', '# (keep it only for inference), or use nn.NLLLoss with a LogSoftmax instead.', '');
+  lines.push('', 'if __name__ == "__main__":', `    model = ${cls}()`);
+  if (c.inputShape) lines.push(`    x = torch.randn(1, ${c.inputShape.join(', ')})  # one example, batch dimension first`, '    print(model(x).shape)');
+  lines.push('    print(f"parameters: {sum(p.numel() for p in model.parameters()):,}")');
+  lines.push('', '# Layerforge keeps the design below so "Load design" can reopen this file in the builder.', designComment());
+  return lines.join('\n');
+}
+
+/* =====================================================================
+   Code generation: TensorFlow / Keras (functional API)
+   ===================================================================== */
+function kerasArgs(n) {
+  let a = '';
+  if (n.act) a += `, activation="${n.act}"`;
+  if (n.bias === false) a += ', use_bias=False';
+  return a;
+}
+function kerasLayer(n, v) {
+  switch (n.kind) {
+    case 'input': return [];
+    case 'linear': return [`${v} = layers.Dense(${n.outF}${kerasArgs(n)})(${v})`];
+    case 'conv': return [`${v} = layers.Conv2D(${n.outC}, ${n.k}, strides=${n.s}, padding="${n.pad}"${kerasArgs(n)})(${v})`];
+    case 'bn': return [`${v} = layers.BatchNormalization()(${v})`];
+    case 'maxpool': return [`${v} = layers.MaxPooling2D(pool_size=${n.k}, strides=${n.s}, padding="${n.pad}")(${v})`];
+    case 'avgpool': return [`${v} = layers.AveragePooling2D(pool_size=${n.k}, strides=${n.s}, padding="${n.pad}")(${v})`];
+    case 'gap': return [`${v} = layers.GlobalAveragePooling2D()(${v})`];
+    case 'flatten': return [`${v} = layers.Flatten()(${v})`];
+    case 'dropout': return [`${v} = layers.Dropout(${n.p})(${v})`];
+    case 'act': return [`${v} = layers.Activation("${n.fn}")(${v})`];
+  }
+  return [`# unknown node ${n.kind}`];
+}
+function kerasSeq(nodes, ind, depth) {
+  const out = [];
+  for (const n of nodes) {
+    if (n.kind === 'repeat') {
+      const range = n.count === n.total ? '' : ` (reps ${n.from}–${n.to} of ${n.total})`;
+      out.push(`${ind}# ${n.name}${n.count > 1 ? ` ×${n.count}` : ''}${range}`);
+      const body = n.body.kind === 'seq' ? n.body.children : [n.body];
+      if (n.count === 1) out.push(...kerasSeq(body, ind, depth));
+      else { out.push(`${ind}for _ in range(${n.count}):`); out.push(...kerasSeq(body, ind + '    ', depth)); }
+    } else if (n.kind === 'residual') {
+      const skip = depth === 0 ? 'skip' : `skip${depth + 1}`;
+      out.push(`${ind}${skip} = x`);
+      out.push(...kerasSeq(n.body.children, ind, depth + 1));
+      const sc = n.shortcut;
+      if (sc.kind === 'linear') out.push(`${ind}${skip} = layers.Dense(${sc.outF})(${skip})`);
+      else if (sc.kind === 'conv') { out.push(`${ind}${skip} = layers.Conv2D(${sc.outC}, 1, strides=${sc.s}, use_bias=False)(${skip})`); out.push(`${ind}${skip} = layers.BatchNormalization()(${skip})`); }
+      out.push(`${ind}x = layers.Add()([x, ${skip}])`);
+      if (n.act) out.push(`${ind}x = layers.Activation("${n.act}")(x)`);
+    } else out.push(...kerasLayer(n, 'x').map(l => ind + l));
+  }
+  return out;
+}
+function genKeras(c) {
+  const fn = 'build_' + className(model.name).replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase();
+  const lines = [];
+  lines.push(`"""${model.name} — generated by Layerforge (TensorFlow 2.16+ / Keras 3, channels-last)`, `input: ${c.inputShape ? '(N, ' + kShape(c.inputShape).join(', ') + ')' : 'missing'}   output: ${c.out ? '(N, ' + kShape(c.out).join(', ') + ')' : '?'}   parameters: ${fmtInt(c.params)} (BatchNorm moving statistics not counted)`, `"""`);
+  lines.push('import tensorflow as tf', 'from tensorflow import keras', 'from tensorflow.keras import layers', '', '');
+  lines.push(`def ${fn}():`);
+  if (c.inputShape) lines.push(`    inputs = keras.Input(shape=(${kShape(c.inputShape).join(', ')}${c.inputShape.length === 1 ? ',' : ''}))`);
+  else lines.push('    inputs = keras.Input(shape=(None,))  # add an Input layer');
+  lines.push('    x = inputs');
+  lines.push(...kerasSeq(c.nodes, '    ', 0));
+  lines.push(`    return keras.Model(inputs, x, name="${className(model.name)}")`, '');
+  if (c.usesSoftmax) lines.push('# Note: with a final softmax, compile with from_logits=False (the default) in your loss,', '# e.g. keras.losses.CategoricalCrossentropy() or SparseCategoricalCrossentropy().', '');
+  lines.push('', 'if __name__ == "__main__":', `    model = ${fn}()`, '    model.summary()');
+  lines.push('', '# Layerforge keeps the design below so "Load design" can reopen this file in the builder.', designComment());
+  return lines.join('\n');
+}
+const kShape = s => s.length === 3 ? [s[1], s[2], s[0]] : s;   // C,H,W → H,W,C
+function designComment() {
+  const strip = bs => bs.map(b => { const o = { ...b }; delete o.id; if (o.children) o.children = strip(o.children); return o; });
+  return `# layerforge-design: ${JSON.stringify({ name: model.name, blocks: strip(model.blocks) })}`;
+}
+
+/* ---- model diagram renderer (identical copy in index.html and experiments_viewer.html) ----
+   Input: a list of items.
+     layer: { kind:'layer', type, ...fields, out:[C,H,W]|[F], params, repeat }
+       types: input | dense{units,act} | conv{filters,k,s,act} | bn | pool{pool:'max'|'avg',k,s} | gap | flatten | dropout{p} | act{fn} | other{label}
+     group: { kind:'group', name, repeat, residual, body:[items], shortcut:[layer items], act, out, note }
+   Output: an SVG string. Styling comes from .dg-* classes, so each page themes it with its own tokens. */
+const DG = { W: 240, H: 30, GAP: 14, PAD: 12, HEAD: 24, SC_W: 200, SC_GAP: 28 };
+const DG_CAT = { input: 'io', dense: 'dense', conv: 'conv', bn: 'norm', pool: 'pool', gap: 'pool', flatten: 'reshape', dropout: 'norm', act: 'act', other: 'reshape' };
+function dgLabel(n) {
+  const act = n.act && n.act !== 'none' ? ` · ${n.act}` : '';
+  switch (n.type) {
+    case 'input': return 'Input';
+    case 'dense': return `Dense ${n.units}${act}`;
+    case 'conv': return `Conv ${n.k}×${n.k}, ${n.filters}${n.s > 1 ? ` /${n.s}` : ''}${act}`;
+    case 'bn': return 'BatchNorm';
+    case 'pool': return `${n.pool === 'avg' ? 'AvgPool' : 'MaxPool'} ${n.k}${n.s && n.s !== n.k ? ` /${n.s}` : ''}`;
+    case 'gap': return 'Global avg pool';
+    case 'flatten': return 'Flatten';
+    case 'dropout': return `Dropout ${n.p}`;
+    case 'act': return n.fn ? String(n.fn).replace(/_/g, ' ') : 'Activation';
+    default: return n.label || n.type || 'layer';
+  }
+}
+const dgShape = s => Array.isArray(s) && s.length ? s.join('×') : '';
+function renderDiagram(items, opts = {}) {
+  const els = []; let maxX = 0;
+  const E = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const edge = (a, b) => els.push(`<path class="dg-edge" d="M${a.x},${a.y} L${b.x},${b.y}" marker-end="url(#dg-arrow)"/>`);
+  function node(n, x, y, w) {
+    const cat = DG_CAT[n.type] || 'reshape';
+    const rep = n.repeat > 1 ? ` ×${n.repeat}` : '';
+    const tip = dgLabel(n) + (n.params ? ` · ${Number(n.params).toLocaleString('en-US')} params` : '');
+    els.push(`<g class="dg-node dg-${cat}"><title>${E(tip)}</title><rect x="${x}" y="${y}" width="${w}" height="${DG.H}" rx="5"/>` +
+      `<rect class="dg-stripe" x="${x}" y="${y}" width="4" height="${DG.H}" rx="2"/>` +
+      `<text class="dg-label" x="${x + 12}" y="${y + 19}">${E(dgLabel(n) + rep)}</text>` +
+      `<text class="dg-shape" x="${x + w - 8}" y="${y + 19}" text-anchor="end">${E(dgShape(n.out))}</text></g>`);
+    maxX = Math.max(maxX, x + w);
+  }
+  function place(list, x, y, ctx) {
+    let maxW = 0;
+    for (const it of list) {
+      if (it.kind !== 'group') {
+        const cx = x + DG.W / 2;
+        if (ctx.prev) edge(ctx.prev, { x: cx, y });
+        node(it, x, y, DG.W); ctx.prev = { x: cx, y: y + DG.H };
+        y += DG.H + DG.GAP; maxW = Math.max(maxW, DG.W);
+        continue;
+      }
+      const top = y, bx = x + DG.PAD, cx = bx + DG.W / 2;
+      const start = els.length;                                   // container + skip path get inserted here, behind the nodes
+      const skipFrom = { x: cx, y: ctx.prev ? (ctx.prev.y + top) / 2 : top };
+      if (ctx.prev) edge(ctx.prev, { x: cx, y: top });
+      ctx.prev = null;
+      y = top + DG.HEAD;
+      const r = place(it.body || [], bx, y, ctx);
+      y = r.y; let w = DG.PAD + Math.max(r.w, DG.W) + DG.PAD;
+      if (it.residual) {
+        const sc = it.shortcut || [], hasSc = sc.length > 0;
+        const skipX = bx + DG.W + DG.SC_GAP + (hasSc ? DG.SC_W / 2 : 0);
+        const addY = y + 4;
+        if (ctx.prev) edge(ctx.prev, { x: cx, y: addY - 12 });
+        let sy = top + DG.HEAD;
+        for (const s of sc) { node(s, skipX - DG.SC_W / 2, sy, DG.SC_W); sy += DG.H + DG.GAP; }
+        els.splice(start, 0, `<path class="dg-skip" d="M${skipFrom.x},${skipFrom.y} H${skipX} V${addY} H${cx + 12}" marker-end="url(#dg-arrow)"/>`);
+        els.push(`<g class="dg-add"><title>add: body output + skip path</title><circle cx="${cx}" cy="${addY}" r="12"/><text x="${cx}" y="${addY + 5}" text-anchor="middle">+</text></g>`);
+        ctx.prev = { x: cx, y: addY + 12 };
+        y = addY + 12 + DG.GAP;
+        w = Math.max(w, DG.PAD + DG.W + DG.SC_GAP + (hasSc ? DG.SC_W : 0) + DG.PAD);
+        if (it.act && it.act !== 'none') {
+          edge(ctx.prev, { x: cx, y }); node({ type: 'act', fn: it.act, out: it.out }, bx, y, DG.W);
+          ctx.prev = { x: cx, y: y + DG.H }; y += DG.H + DG.GAP;
+        }
+      }
+      const bottom = y - DG.GAP + DG.PAD;
+      const name = `${it.name || 'Block'}${it.repeat > 1 ? ` ×${it.repeat}` : ''}${it.note ? ` ${it.note}` : ''}`;
+      els.splice(start, 0, `<g class="dg-group${it.residual ? ' dg-res' : ''}"><rect x="${x}" y="${top}" width="${w}" height="${bottom - top}" rx="8"/><text x="${x + 10}" y="${top + 16}">${E(name)}</text></g>`);
+      maxX = Math.max(maxX, x + w); maxW = Math.max(maxW, w);
+      y = bottom + DG.GAP;
+    }
+    return { y, w: maxW };
+  }
+  if (!items || !items.length) return '<svg class="dg" xmlns="http://www.w3.org/2000/svg" width="240" height="40"><text class="dg-label" x="8" y="24">Nothing to draw yet.</text></svg>';
+  const r = place(items, 8, 8, { prev: null });
+  const W = maxX + 8, H = r.y - DG.GAP + 8;
+  return `<svg class="dg" xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Model diagram">` +
+    (opts.style ? `<style>${opts.style}</style>` : '') +
+    `<defs><marker id="dg-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>${els.join('')}</svg>`;
+}
+/* CSS for the diagram with literal colours, for a standalone .svg export. v = {nodeBg,nodeLine,ink,muted,edge,groupBg,groupLine,io,dense,conv,pool,norm,act,reshape,font,mono} */
+function dgCss(v) {
+  return `.dg-node rect{fill:${v.nodeBg};stroke:${v.nodeLine};stroke-width:1}.dg-node .dg-stripe{stroke:none}` +
+    `.dg-label{font:500 12px ${v.font};fill:${v.ink}}.dg-shape{font:11px ${v.mono};fill:${v.muted}}` +
+    `.dg-edge{stroke:${v.edge};stroke-width:1.5;fill:none}#dg-arrow path{fill:${v.edge}}` +
+    `.dg-skip{stroke:${v.conv};stroke-width:1.5;stroke-dasharray:4 3;fill:none}` +
+    `.dg-group rect{fill:${v.groupBg};stroke:${v.groupLine};stroke-width:1}.dg-group.dg-res rect{stroke:${v.conv};stroke-dasharray:5 3}` +
+    `.dg-group text{font:600 10.5px ${v.font};fill:${v.muted};letter-spacing:.06em;text-transform:uppercase}` +
+    `.dg-add circle{fill:${v.nodeBg};stroke:${v.conv};stroke-width:1.5}.dg-add text{font:600 14px ${v.mono};fill:${v.conv}}` +
+    `.dg-io .dg-stripe{fill:${v.io}}.dg-dense .dg-stripe{fill:${v.dense}}.dg-conv .dg-stripe{fill:${v.conv}}.dg-pool .dg-stripe{fill:${v.pool}}` +
+    `.dg-norm .dg-stripe{fill:${v.norm}}.dg-act .dg-stripe{fill:${v.act}}.dg-reshape .dg-stripe{fill:${v.reshape}}`;
+}
+/* ---- end model diagram renderer ---- */
+/* ---- 3D model view + convolution animation (index.html only) ----
+   Consumes the same tree that renderDiagram does. Every layer that changes the tensor (or has weights) becomes
+   a cuboid whose width/height follow the image size and depth follows the channel count; BatchNorm, activations
+   and Dropout fold into the previous cuboid's caption. Vectors are thin bars whose height follows the unit count. */
+const V3 = {
+  bg: '#12151C', ink: '#DCE2EC', muted: '#8B95A7', line: '#6B7588', grid: '#2A303C', accent: '#3FC49E',
+  cat: { io: '#A78BFF', dense: '#7A97FF', conv: '#3FC49E', pool: '#4FB9DD', norm: '#F0A24F', act: '#F07AB6', reshape: '#9AA6BF' },
+  font: '"IBM Plex Sans", Helvetica, Arial, sans-serif', mono: '"IBM Plex Mono", Menlo, Consolas, monospace',
+  gap: 30, depthCos: 0.52, depthSin: 0.30, minDim: 4, margin: 24,
+};
+const v3state = { zoom: 1, chMode: 'linear', boxes: [], slabs: [], anim: null };
+
+function shadeHex(hex, f) {          // f > 0 mixes toward white, f < 0 toward black
+  const n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+  const mix = v => Math.round(f > 0 ? v + (255 - v) * f : v * (1 + f));
+  return `rgb(${mix(r)},${mix(g)},${mix(b)})`;
+}
+
+/* tree → slabs (one per drawn tensor), brackets (groups) and skips (residual arcs) */
+function slabsFromTree(items) {
+  const slabs = [], brackets = [], skips = [];
+  const FOLD = new Set(['bn', 'act', 'dropout']);
+  function walk(list, depth) {
+    for (const it of list) {
+      if (it.kind !== 'group') {
+        if (FOLD.has(it.type) && slabs.length) { slabs[slabs.length - 1].notes.push(dgLabel(it)); continue; }
+        slabs.push({ label: dgLabel(it) + (it.repeat > 1 ? ` ×${it.repeat}` : ''), notes: [], out: it.out || null, type: it.type,
+          cat: DG_CAT[it.type] || 'reshape', k: it.k, s: it.s, params: it.params || 0, inShape: slabs.length ? slabs[slabs.length - 1].out : null, repeat: it.repeat || 1 });
+        continue;
+      }
+      const before = slabs.length - 1;
+      const start = slabs.length;
+      walk(it.body || [], depth + 1);
+      if (slabs.length === start) continue;                       // empty block: nothing to bracket
+      const last = slabs[slabs.length - 1];
+      if (it.residual) {
+        const proj = (it.shortcut || []).map(dgLabel).join(' → ');
+        skips.push({ from: before, to: slabs.length - 1, label: proj || 'identity', depth });
+        if (it.act && it.act !== 'none') last.notes.push(it.act);
+      }
+      brackets.push({ from: start, to: slabs.length - 1, depth, label: `${it.name || 'Block'}${it.repeat > 1 ? ` ×${it.repeat}` : ''}${it.note ? ' ' + it.note : ''}` });
+    }
+  }
+  walk(items, 0);
+  const maxDepth = brackets.reduce((m, b) => Math.max(m, b.depth), -1);
+  for (const b of brackets) b.row = maxDepth - b.depth;             // outermost group drawn lowest
+  return { slabs, brackets, skips };
+}
+
+/* geometry for every slab at zoom 1 */
+function layout3D(model3d) {
+  const { slabs, brackets, skips } = model3d;
+  const imgs = slabs.filter(s => s.out && s.out.length === 3), vecs = slabs.filter(s => s.out && s.out.length === 1);
+  const maxSp = imgs.reduce((m, s) => Math.max(m, s.out[1], s.out[2]), 0);
+  const maxC = imgs.reduce((m, s) => Math.max(m, s.out[0]), 0);
+  const maxF = vecs.reduce((m, s) => Math.max(m, s.out[0]), 0);
+  const sp = maxSp ? Math.min(8, Math.max(0.4, 240 / maxSp)) : 1;
+  const chOf = v => v3state.chMode === 'sqrt' ? Math.sqrt(v) : v;
+  const chImg = maxC ? 150 / chOf(maxC) : 1, chVec = maxF ? 170 / chOf(maxF) : 1;
+  const boxes = []; let x = V3.margin;
+  for (const s of slabs) {
+    let w, h, d;
+    if (s.out && s.out.length === 3) { w = Math.max(V3.minDim, s.out[2] * sp); h = Math.max(V3.minDim, s.out[1] * sp); d = Math.max(3, chOf(s.out[0]) * chImg); }
+    else if (s.out && s.out.length === 1) { w = 8; h = Math.max(6, chOf(s.out[0]) * chVec); d = 8; }
+    else { w = 20; h = 20; d = 8; }
+    const dx = d * V3.depthCos, dy = d * V3.depthSin;
+    boxes.push({ slab: s, x, w, h, d, dx, dy });
+    x += w + dx + V3.gap;
+  }
+  const above = boxes.reduce((m, b) => Math.max(m, b.h / 2 + b.dy), 0), below = boxes.reduce((m, b) => Math.max(m, b.h / 2), 0);
+  const skipRoom = skips.length ? 44 + 14 * skips.reduce((m, k) => Math.max(m, k.depth), 0) : 0;
+  const midY = V3.margin + skipRoom + above;
+  for (const b of boxes) b.y = midY - b.h / 2;
+  // caption rows: staircase so narrow cuboids don't get overlapping text
+  const lastRight = [-1e9, -1e9, -1e9, -1e9];
+  for (const b of boxes) {
+    const tw = Math.max(b.slab.label.length, dgShape(b.slab.out).length, ...b.slab.notes.map(n => n.length)) * 6.4 + 8;
+    const cx = b.x + b.w / 2, left = cx - tw / 2;
+    let row = 0; while (row < 3 && left < lastRight[row] + 8) row++;
+    lastRight[row] = cx + tw / 2; b.row = row; b.tw = tw;
+  }
+  const capTop = midY + below + 10, capRows = boxes.reduce((m, b) => Math.max(m, b.row), 0) + 1;
+  const bracketTop = capTop + capRows * 44 + 6;
+  const bracketRows = brackets.length ? brackets.reduce((m, b) => Math.max(m, b.row), 0) + 1 : 0;
+  const width = x - V3.gap + V3.margin, height = bracketTop + bracketRows * 20 + V3.margin;
+  return { boxes, brackets, skips, width, height, midY, capTop, bracketTop, sp, chImg, chVec, maxSp, maxC, maxF };
+}
+
+function draw3D(canvas, model3d) {
+  const L = layout3D(model3d), z = v3state.zoom, dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.ceil(L.width * z * dpr); canvas.height = Math.ceil(L.height * z * dpr);
+  canvas.style.width = `${L.width * z}px`; canvas.style.height = `${L.height * z}px`;
+  const c = canvas.getContext('2d');
+  c.setTransform(dpr * z, 0, 0, dpr * z, 0, 0);
+  c.fillStyle = V3.bg; c.fillRect(0, 0, L.width, L.height);
+  c.lineJoin = 'round';
+  // flow line along the midline, behind everything
+  c.strokeStyle = V3.grid; c.lineWidth = 1; c.setLineDash([]);
+  c.beginPath(); c.moveTo(V3.margin, L.midY); c.lineTo(L.width - V3.margin, L.midY); c.stroke();
+  // cuboids, left to right
+  for (const b of L.boxes) {
+    const base = V3.cat[b.slab.cat] || V3.cat.reshape;
+    const { x, y, w, h, dx, dy } = b;
+    c.fillStyle = shadeHex(base, -0.45);                            // right side face
+    c.beginPath(); c.moveTo(x + w, y); c.lineTo(x + w + dx, y - dy); c.lineTo(x + w + dx, y + h - dy); c.lineTo(x + w, y + h); c.closePath(); c.fill();
+    c.fillStyle = shadeHex(base, 0.25);                             // top face
+    c.beginPath(); c.moveTo(x, y); c.lineTo(x + dx, y - dy); c.lineTo(x + w + dx, y - dy); c.lineTo(x + w, y); c.closePath(); c.fill();
+    c.fillStyle = shadeHex(base, -0.12);                            // front face
+    c.fillRect(x, y, w, h);
+    c.strokeStyle = shadeHex(base, 0.45); c.lineWidth = 0.8;
+    c.strokeRect(x, y, w, h);
+    c.beginPath(); c.moveTo(x, y); c.lineTo(x + dx, y - dy); c.lineTo(x + w + dx, y - dy); c.lineTo(x + w + dx, y + h - dy); c.lineTo(x + w, y + h); c.stroke();
+    c.beginPath(); c.moveTo(x + w, y); c.lineTo(x + w + dx, y - dy); c.stroke();
+    if (b.slab.repeat > 1) {                                        // ×N badge on the top face
+      c.fillStyle = V3.ink; c.font = `600 10px ${V3.mono}`; c.textAlign = 'center'; c.fillText(`×${b.slab.repeat}`, x + w / 2 + dx / 2, y - dy - 4);
+    }
+    // caption (staircase rows)
+    const cx = x + w / 2, ty = L.capTop + b.row * 44;
+    if (b.row > 0) { c.strokeStyle = V3.grid; c.beginPath(); c.moveTo(cx, y + h + 2); c.lineTo(cx, ty - 2); c.stroke(); }
+    c.textAlign = 'center';
+    c.fillStyle = V3.ink; c.font = `500 11px ${V3.mono}`; c.fillText(dgShape(b.slab.out) || '?', cx, ty + 11);
+    c.fillStyle = V3.ink; c.font = `500 11px ${V3.font}`; c.fillText(b.slab.label, cx, ty + 24);
+    if (b.slab.notes.length) { c.fillStyle = V3.muted; c.font = `10px ${V3.font}`; c.fillText(b.slab.notes.join(' · '), cx, ty + 36); }
+  }
+  // group brackets
+  c.textAlign = 'center';
+  for (const br of L.brackets) {
+    const a = L.boxes[br.from], bb = L.boxes[br.to];
+    const x1 = a.x, x2 = bb.x + bb.w + bb.dx, y = L.bracketTop + br.row * 20 + 6;
+    c.strokeStyle = V3.line; c.lineWidth = 1; c.setLineDash([]);
+    c.beginPath(); c.moveTo(x1, y - 4); c.lineTo(x1, y); c.lineTo(x2, y); c.lineTo(x2, y - 4); c.stroke();
+    c.fillStyle = V3.muted; c.font = `600 9.5px ${V3.font}`;
+    const label = br.label.toUpperCase(); const lw = c.measureText(label).width + 10;
+    c.fillStyle = V3.bg; c.fillRect((x1 + x2) / 2 - lw / 2, y - 6, lw, 12);
+    c.fillStyle = V3.muted; c.fillText(label, (x1 + x2) / 2, y + 3.5);
+  }
+  // skip arcs
+  for (const k of L.skips) {
+    const a = k.from >= 0 ? L.boxes[k.from] : null, bb = L.boxes[k.to];
+    const x1 = a ? a.x + a.w / 2 + a.dx / 2 : bb.x - 10, y1 = a ? a.y - a.dy : L.midY;
+    const x2 = bb.x + bb.w / 2 + bb.dx / 2, y2 = bb.y - bb.dy;
+    const peak = Math.min(y1, y2) - 34 - 14 * k.depth;
+    c.strokeStyle = V3.accent; c.lineWidth = 1.5; c.setLineDash([5, 4]);
+    c.beginPath(); c.moveTo(x1, y1); c.quadraticCurveTo((x1 + x2) / 2, peak - 10, x2, y2 - 12); c.stroke(); c.setLineDash([]);
+    c.fillStyle = V3.bg; c.beginPath(); c.arc(x2, y2 - 12, 7, 0, Math.PI * 2); c.fill(); c.stroke();
+    c.fillStyle = V3.accent; c.font = `600 11px ${V3.mono}`; c.textAlign = 'center'; c.fillText('+', x2, y2 - 8);
+    c.fillStyle = V3.muted; c.font = `10px ${V3.font}`; c.fillText(`skip · ${k.label}`, (x1 + x2) / 2, peak - 4);
+  }
+  v3state.boxes = L.boxes;
+  return L;
+}
+
+/* ---- convolution / pooling animation ---- */
+function animLayers(slabs) {
+  return slabs.map((s, i) => ({ s, i })).filter(({ s }) => (s.type === 'conv' || s.type === 'pool') && s.inShape && s.inShape.length === 3 && s.out);
+}
+function buildAnim(slab) {
+  const [Cin, H, W] = slab.inShape, k = slab.k || 1, s = slab.s || 1;
+  const same = slab.out[1] === Math.ceil(H / s) && slab.out[1] !== Math.floor((H - k) / s) + 1;   // only 'same' padding explains this output size
+  const pad = same ? Math.floor(k / 2) : 0;
+  const V = Math.min(H, Math.max(14, 3 * s + k - 2 * pad));         // window of the input we show: at least 14 cells, and wide enough for a 4×4 output
+  const outN = Math.floor((V + 2 * pad - k) / s) + 1;
+  const input = [];                                                 // synthetic feature map: a soft blob plus a diagonal stroke, values 0..1
+  for (let y = 0; y < V; y++) { const row = []; for (let x = 0; x < V; x++) {
+    const g = Math.exp(-(((x - V * 0.62) ** 2) + ((y - V * 0.4) ** 2)) / (2 * (V / 4.5) ** 2));
+    const stroke = Math.abs((x - 1) - (y - 2) * 0.9) < 1.1 ? 0.55 : 0;
+    row.push(Math.min(1, 0.08 + 0.8 * g + stroke)); } input.push(row); }
+  const weights = [];                                               // a horizontal-edge detector, sized to the kernel
+  if (slab.type === 'conv') { let norm = 0; for (let i = 0; i < k; i++) { const row = []; for (let j = 0; j < k; j++) { const v = k === 1 ? 1 : (j - (k - 1) / 2) / ((k - 1) / 2); row.push(v); norm += Math.abs(v); } weights.push(row); }
+    for (const row of weights) for (let j = 0; j < k; j++) row[j] = +(row[j] / (norm / k)).toFixed(2); }
+  const at = (y, x) => (y < 0 || x < 0 || y >= V || x >= V) ? 0 : input[y][x];
+  const output = [];
+  for (let oy = 0; oy < outN; oy++) { const row = []; for (let ox = 0; ox < outN; ox++) {
+    let v = slab.type === 'conv' ? 0 : -Infinity;
+    for (let i = 0; i < k; i++) for (let j = 0; j < k; j++) { const p = at(oy * s - pad + i, ox * s - pad + j); v = slab.type === 'conv' ? v + p * weights[i][j] : Math.max(v, p); }
+    row.push(v); } output.push(row); }
+  const maxAbs = output.flat().reduce((m, v) => Math.max(m, Math.abs(v)), 0) || 1;
+  return { slab, Cin, H, W, k, s, pad, V, outN, input, weights, output, maxAbs, pos: 0, total: outN * outN, playing: false, speed: 6, last: 0, raf: 0 };
+}
+function drawAnim(canvas, A) {
+  const dpr = window.devicePixelRatio || 1;
+  const cell = Math.max(9, Math.min(22, Math.floor(300 / (A.V + 2 * A.pad))));
+  const kc = A.k <= 3 ? 34 : A.k <= 5 ? 24 : 14;
+  const inW = (A.V + 2 * A.pad) * cell, kW = A.k * kc, outC = Math.max(9, Math.min(22, Math.floor(220 / A.outN))), outW = A.outN * outC;
+  const gapX = 46, top = 34;
+  const W = 16 + inW + gapX + kW + gapX + outW + 16, H = top + Math.max(inW, kW, outW) + 58;
+  canvas.width = W * dpr; canvas.height = H * dpr; canvas.style.width = `${W}px`; canvas.style.height = `${H}px`;
+  const c = canvas.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  c.fillStyle = V3.bg; c.fillRect(0, 0, W, H);
+  const gray = v => { const g = Math.round(40 + 200 * Math.max(0, Math.min(1, v))); return `rgb(${g},${g},${g})`; };
+  const div = v => { const t = Math.max(-1, Math.min(1, v / A.maxAbs)); return t >= 0 ? `rgba(240,110,90,${0.15 + 0.85 * t})` : `rgba(90,150,255,${0.15 - 0.85 * t})`; };
+  const oy = Math.floor(A.pos / A.outN), ox = A.pos % A.outN;
+  const iy0 = oy * A.s - A.pad, ix0 = ox * A.s - A.pad;             // window origin in input coordinates
+  // input grid (with the padding ring)
+  const ix = 16, iyTop = top;
+  c.font = `600 10px ${V3.font}`; c.fillStyle = V3.muted; c.textAlign = 'left';
+  c.fillText(`INPUT  ${A.V === A.H ? `${A.H}×${A.W}` : `${A.V}×${A.V} window of ${A.H}×${A.W}`} · 1 of ${A.Cin} channel${A.Cin === 1 ? '' : 's'}`, ix, iyTop - 10);
+  for (let y = -A.pad; y < A.V + A.pad; y++) for (let x = -A.pad; x < A.V + A.pad; x++) {
+    const px = ix + (x + A.pad) * cell, py = iyTop + (y + A.pad) * cell, inside = y >= 0 && x >= 0 && y < A.V && x < A.V;
+    if (inside) { c.fillStyle = gray(A.input[y][x]); c.fillRect(px, py, cell - 1, cell - 1); }
+    else { c.strokeStyle = V3.grid; c.setLineDash([2, 2]); c.strokeRect(px + 0.5, py + 0.5, cell - 2, cell - 2); c.setLineDash([]); }
+  }
+  // the kernel window over the input
+  c.strokeStyle = V3.accent; c.lineWidth = 2; c.fillStyle = 'rgba(63,196,158,0.18)';
+  const wx = ix + (ix0 + A.pad) * cell - 1, wy = iyTop + (iy0 + A.pad) * cell - 1, ws = A.k * cell;
+  c.fillRect(wx, wy, ws, ws); c.strokeRect(wx, wy, ws, ws);
+  // kernel panel
+  const kx = ix + inW + gapX, kyTop = top + Math.max(0, (inW - kW) / 2);
+  c.fillStyle = V3.muted; c.font = `600 10px ${V3.font}`; c.textAlign = 'left';
+  c.fillText(A.slab.type === 'conv' ? `KERNEL ${A.k}×${A.k}  (filter 1 of ${A.slab.out[0]})` : `WINDOW ${A.k}×${A.k}  ${A.slab.label.startsWith('Avg') ? 'mean' : 'max'}`, kx, kyTop - 10);
+  for (let i = 0; i < A.k; i++) for (let j = 0; j < A.k; j++) {
+    const px = kx + j * kc, py = kyTop + i * kc;
+    c.fillStyle = A.slab.type === 'conv' ? div(A.weights[i][j] * A.maxAbs) : 'rgba(63,196,158,0.25)'; c.fillRect(px, py, kc - 1, kc - 1);
+    if (A.slab.type === 'conv' && kc >= 24) { c.fillStyle = V3.ink; c.font = `10px ${V3.mono}`; c.textAlign = 'center'; c.fillText(A.weights[i][j].toFixed(1), px + kc / 2, py + kc / 2 + 3); }
+  }
+  const midY = top + Math.max(inW, kW, outW) / 2;
+  c.fillStyle = V3.ink; c.font = `600 16px ${V3.mono}`; c.textAlign = 'center';
+  c.fillText(A.slab.type === 'conv' ? '∗' : '↦', ix + inW + gapX / 2, midY + 6);
+  c.fillText('=', kx + kW + gapX / 2, midY + 6);
+  // output grid
+  const oxL = kx + kW + gapX, oyTop = top + Math.max(0, (inW - outW) / 2);
+  c.fillStyle = V3.muted; c.font = `600 10px ${V3.font}`; c.textAlign = 'left';
+  c.fillText(`OUTPUT  ${A.outN}×${A.outN}${A.V < A.H ? ` (of ${A.slab.out[1]}×${A.slab.out[2]})` : ''} · 1 of ${A.slab.out[0]}`, oxL, oyTop - 10);
+  for (let y = 0; y < A.outN; y++) for (let x = 0; x < A.outN; x++) {
+    const px = oxL + x * outC, py = oyTop + y * outC, idx = y * A.outN + x;
+    if (idx <= A.pos) { c.fillStyle = A.slab.type === 'conv' ? div(A.output[y][x]) : gray(A.output[y][x]); c.fillRect(px, py, outC - 1, outC - 1); }
+    else { c.strokeStyle = V3.grid; c.strokeRect(px + 0.5, py + 0.5, outC - 2, outC - 2); }
+  }
+  c.strokeStyle = V3.accent; c.lineWidth = 2; c.strokeRect(oxL + ox * outC - 1, oyTop + oy * outC - 1, outC + 1, outC + 1);
+  // caption
+  const v = A.output[oy][ox];
+  c.fillStyle = V3.ink; c.font = `11px ${V3.font}`; c.textAlign = 'left';
+  const what = A.slab.type === 'conv' ? `output[${oy},${ox}] = Σ window × kernel = ${v.toFixed(2)}` : `output[${oy},${ox}] = ${A.slab.label.startsWith('Avg') ? 'mean' : 'max'} of window = ${v.toFixed(2)}`;
+  c.fillText(`step ${A.pos + 1} of ${A.total} · window at (${iy0}, ${ix0}) · stride ${A.s}${A.pad ? ` · padding ${A.pad} (dashed cells are zeros)` : ' · no padding'}`, 16, H - 34);
+  c.fillStyle = V3.muted;
+  c.fillText(what + (A.slab.type === 'conv' && A.Cin > 1 ? ` — the real layer also sums over all ${A.Cin} input channels` : ''), 16, H - 18);
+}
+/* ---- end 3D view ---- */
+
+function irToTree(nodes) {
+  const out = [];
+  for (const n of nodes) {
+    switch (n.kind) {
+      case 'input': out.push({ kind: 'layer', type: 'input', out: n.shape }); break;
+      case 'linear': out.push({ kind: 'layer', type: 'dense', units: n.outF, act: n.act, out: n.out, params: n.params }); break;
+      case 'conv': out.push({ kind: 'layer', type: 'conv', filters: n.outC, k: n.k, s: n.s, act: n.act, out: n.out, params: n.params }); break;
+      case 'bn': out.push({ kind: 'layer', type: 'bn', out: n.out, params: n.params }); break;
+      case 'maxpool': case 'avgpool': out.push({ kind: 'layer', type: 'pool', pool: n.kind === 'avgpool' ? 'avg' : 'max', k: n.k, s: n.s, out: n.out }); break;
+      case 'gap': out.push({ kind: 'layer', type: 'gap', out: n.out }); break;
+      case 'flatten': out.push({ kind: 'layer', type: 'flatten', out: n.out }); break;
+      case 'dropout': out.push({ kind: 'layer', type: 'dropout', p: n.p, out: n.out }); break;
+      case 'act': out.push({ kind: 'layer', type: 'act', fn: n.fn, out: n.out }); break;
+      case 'repeat': {
+        const b = n.body, res = b.kind === 'residual', sc = res ? b.shortcut : null;
+        out.push({ kind: 'group', name: n.name, repeat: n.count, residual: res, note: n.count === n.total ? '' : n.count === 1 ? `(rep ${n.from} of ${n.total})` : `(reps ${n.from}–${n.to} of ${n.total})`,
+          body: irToTree(res ? b.body.children : b.children),
+          shortcut: !sc || sc.kind === 'identity' ? [] : sc.kind === 'linear' ? [{ kind: 'layer', type: 'dense', units: sc.outF, out: b.out }]
+            : [{ kind: 'layer', type: 'conv', filters: sc.outC, k: 1, s: sc.s, out: b.out }, { kind: 'layer', type: 'bn', out: b.out }],
+          act: res ? b.act : null, out: b.out });
+        break;
+      }
+    }
+  }
+  return out;
+}
+const DG_EXPORT_CSS = dgCss({ nodeBg: '#1A1F29', nodeLine: '#303747', ink: '#DCE2EC', muted: '#8B95A7', edge: '#6B7588', groupBg: '#151920', groupLine: '#3A4256',
+  io: '#A78BFF', dense: '#7A97FF', conv: '#3FC49E', pool: '#4FB9DD', norm: '#F0A24F', act: '#F07AB6', reshape: '#9AA6BF',
+  font: '"IBM Plex Sans", Helvetica, Arial, sans-serif', mono: '"IBM Plex Mono", Menlo, Consolas, monospace' }) + '.dg{background:#12151C}';
+
+/* =====================================================================
+   Rendering
+   ===================================================================== */
+const $ = sel => document.querySelector(sel);
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+function renderPalette() {
+  const el = $('#palette'); let h = '';
+  for (const [title, types] of PALETTE) {
+    h += `<div class="eyebrow">${title}</div><div class="chips">`;
+    for (const t of types) {
+      const def = t === 'group' ? { label: 'Block ×N', cat: 'group' } : t === 'residual' ? { label: 'Residual block', cat: 'conv' } : LAYERS[t];
+      h += `<div class="chip" draggable="true" data-new="${t}" style="--cat:${CAT_COLOR[def.cat]}" title="Click to add at the end, or drag into the model"><span class="dot"></span>${def.label}</div>`;
+    }
+    h += '</div>';
+  }
+  h += `<details><summary>Terminology</summary><dl>
+    <dt>Layer</dt><dd>One operation with learnable weights or a fixed transform (Dense, Conv2D, Dropout…).</dd>
+    <dt>Activation function</dt><dd>The nonlinearity applied after a layer. The last one is the <em>output activation</em>: softmax for multi-class, sigmoid for binary or multi-label, none for regression.</dd>
+    <dt>Block</dt><dd>A named group of layers, optionally repeated ×N. Papers call a run of blocks at one resolution a <em>stage</em>.</dd>
+    <dt>Skip (residual) connection</dt><dd>Adds the block's input to its output: y = act(f(x) + x). When shapes differ, a <em>projection shortcut</em> (1×1 conv or Dense) resizes x.</dd>
+    <dt>Output shape</dt><dd>The tensor a layer emits, shown as channels × height × width (or features for vectors), batch omitted.</dd>
+    <dt>Loss & optimizer</dt><dd>Training choices, not part of the architecture, so they are left to your training script.</dd>
+  </dl></details>`;
+  el.innerHTML = h;
+}
+function addSelectHtml(container) {
+  let h = `<select class="addsel" data-add-to="${container}" aria-label="Add layer"><option value="">+ Add layer…</option>`;
+  for (const [title, types] of PALETTE) {
+    h += `<optgroup label="${title}">`;
+    for (const t of types) h += `<option value="${t}">${t === 'group' ? 'Block ×N' : t === 'residual' ? 'Residual block' : LAYERS[t].label}</option>`;
+    h += '</optgroup>';
+  }
+  return h + '</select>';
+}
+function fieldHtml(b, d) {
+  const v = b.params[d.k];
+  const id = `f-${b.id}-${d.k}`;
+  let ctl;
+  if (d.t === 'int') ctl = `<input id="${id}" type="number" min="1" step="1" value="${esc(v)}" data-key="${d.k}">`;
+  else if (d.t === 'float') ctl = `<input id="${id}" type="number" min="0" max="0.99" step="0.05" value="${esc(v)}" data-key="${d.k}">`;
+  else if (d.t === 'text') ctl = `<input id="${id}" type="text" value="${esc(v)}" data-key="${d.k}" spellcheck="false">`;
+  else if (d.t === 'bool') ctl = `<input id="${id}" type="checkbox" ${v ? 'checked' : ''} data-key="${d.k}">`;
+  else if (d.t === 'sel') ctl = `<select id="${id}" data-key="${d.k}">${d.opts.map(o => `<option ${o === v ? 'selected' : ''}>${o}</option>`).join('')}</select>`;
+  else if (d.t === 'act') ctl = `<select id="${id}" data-key="${d.k}">${ACTS.filter(a => !(d.noNone && a === 'none')).map(o => `<option ${o === v ? 'selected' : ''}>${o}</option>`).join('')}</select>`;
+  return `<label class="f" title="${esc(d.title || d.label)}"><span>${d.label}</span>${ctl}</label>`;
+}
+const actsHtml = `<span class="acts"><button data-act="up" title="Move up">↑</button><button data-act="down" title="Move down">↓</button><button data-act="dup" title="Duplicate">⧉</button><button class="del" data-act="del" title="Remove">✕</button></span>`;
+function blockHtml(b) {
+  if (b.type === 'group') {
+    const id = b.id;
+    return `<div class="blk group${b.residual ? ' residual' : ''}" data-id="${id}">
+      <div class="row">
+        <span class="grip" draggable="true" title="Drag to move">⋮⋮</span>
+        <div class="fields">
+          <label class="f"><input class="gname" id="g-${id}-name" type="text" value="${esc(b.name)}" data-gkey="name" aria-label="Block name" spellcheck="false"></label>
+          <label class="f repeat" title="Repeat this block N times"><span>×</span><input id="g-${id}-repeat" type="number" min="1" step="1" value="${esc(b.repeat)}" data-gkey="repeat"></label>
+          <label class="f" title="Add a skip connection around this block"><input id="g-${id}-res" type="checkbox" ${b.residual ? 'checked' : ''} data-gkey="residual"><span>skip connection</span></label>
+          ${b.residual ? `<label class="f" title="How the skip path matches shapes"><span>shortcut</span><select id="g-${id}-sc" data-gkey="shortcut">${['auto', 'identity', 'projection'].map(o => `<option ${o === b.shortcut ? 'selected' : ''}>${o}</option>`).join('')}</select></label>
+          <label class="f" title="Activation applied after the add"><span>after add</span><select id="g-${id}-pa" data-gkey="postAct">${ACTS.map(o => `<option ${o === b.postAct ? 'selected' : ''}>${o}</option>`).join('')}</select></label>` : ''}
+        </div>
+        <span class="shape" data-shape-for="${id}"></span><span class="err" data-err-for="${id}"></span>${actsHtml}
+      </div>
+      <div class="gbody"><div class="list" data-container="${id}">${b.children.map(blockHtml).join('')}${b.children.length ? '' : '<div class="dropzone">Drop layers here</div>'}</div>
+      <div class="gfoot">${addSelectHtml(id)}</div></div>
+    </div>`;
+  }
+  const def = LAYERS[b.type];
+  return `<div class="blk layer" data-id="${b.id}" style="--cat:${CAT_COLOR[def.cat]}">
+    <div class="row">
+      <span class="grip" draggable="true" title="Drag to move">⋮⋮</span>
+      <span class="type">${def.label}</span>
+      <div class="fields">${def.params.map(d => fieldHtml(b, d)).join('')}</div>
+      <span class="shape" data-shape-for="${b.id}"></span><span class="err" data-err-for="${b.id}"></span>${actsHtml}
+    </div>
+  </div>`;
+}
+function render() {
+  $('#root').innerHTML = model.blocks.map(blockHtml).join('') + (model.blocks.length ? '' : '<div class="dropzone">Drop an Input layer here, or pick a preset above</div>');
+  $('#modelName').value = model.name;
+  recompute();
+}
+function recompute() {
+  compiled = compile(model);
+  for (const el of document.querySelectorAll('[data-shape-for]')) {
+    const i = compiled.info[el.dataset.shapeFor];
+    el.textContent = i && i.shape ? fmtShape(i.shape) : '';
+    el.classList.toggle('none', !(i && i.shape));
+  }
+  for (const el of document.querySelectorAll('[data-err-for]')) {
+    const i = compiled.info[el.dataset.errFor];
+    el.textContent = i && i.err ? i.err : '';
+    el.className = 'err' + (i && i.err ? ' on' : '') + (i && i.kind === 'warn' ? ' warn' : '');
+  }
+  $('#statParams').textContent = fmtInt(compiled.params);
+  $('#statOut').textContent = compiled.out ? fmtShape(compiled.out) : '–';
+  renderCode();
+  persist();
+}
+function renderCode() {
+  $('#code').hidden = showDiagram || show3D || showTrain || showActs; $('#diagram').hidden = !showDiagram; $('#view3d').hidden = !show3D; $('#trainview').hidden = !showTrain;
+  $('#actview').hidden = !showActs;
+  if (showActs) {
+    $('#codeMeta').textContent = '';                  // the tab shows a trained run, not the builder, so edits do not re-render it
+  } else if (showTrain) {
+    renderTrain();
+  } else if (show3D) {
+    render3D(irToTree(compiled.nodes));
+  } else if (showDiagram) {
+    const tree = irToTree(compiled.nodes);
+    $('#diagram').innerHTML = renderDiagram(tree);
+    const count = (list) => list.reduce((n, it) => n + (it.kind === 'group' ? count(it.body) * (it.repeat || 1) + (it.shortcut || []).length + (it.act ? 1 : 0) : 1), 0);
+    $('#codeMeta').textContent = `${count(tree)} layers`;
+  } else {
+    const src = framework === 'torch' ? genTorch(compiled) : genKeras(compiled);
+    $('#code').innerHTML = highlight(src);
+    $('#codeMeta').textContent = `${src.split('\n').length} lines`;
+  }
+  const probs = $('#problems');
+  const errs = compiled.problems.filter(p => p.kind === 'err'), warns = compiled.problems.filter(p => p.kind !== 'err');
+  probs.className = 'problems' + (compiled.problems.length ? ' on' : '') + (errs.length ? '' : ' warn');
+  probs.innerHTML = compiled.problems.slice(0, 8).map(p => `<div>${p.kind === 'err' ? '✕' : '△'} ${esc(p.msg)}</div>`).join('') + (compiled.problems.length > 8 ? `<div>… ${compiled.problems.length - 8} more</div>` : '');
+}
+function highlight(src) {
+  const s = src.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const re = /(#[^\n]*)|("""[\s\S]*?"""|"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*')|\b(\d+(?:\.\d+)?)\b|\b(class|def|return|import|from|for|in|range|if|else|None|True|False|super|self|lambda|not|and|or|print)\b/g;
+  return s.replace(re, (m, c, str, num, kw) => c ? `<span class="cmt">${c}</span>` : str ? `<span class="str">${str}</span>` : num ? `<span class="num">${num}</span>` : `<span class="kw">${kw}</span>`);
+}
+
+/* =====================================================================
+   Model manipulation
+   ===================================================================== */
+function locate(id, list = model.blocks) {
+  for (let i = 0; i < list.length; i++) {
+    const b = list[i];
+    if (b.id === id) return { list, index: i, block: b };
+    if (b.children) { const r = locate(id, b.children); if (r) return r; }
+  }
+  return null;
+}
+function containerList(cid) { return cid === 'root' ? model.blocks : locate(cid).block.children; }
+function isInside(id, ancestorId) {           // is block `id` a descendant of `ancestorId`?
+  const anc = locate(ancestorId); if (!anc || !anc.block.children) return false;
+  return !!locate(id, anc.block.children);
+}
+function makeNew(type) {
+  if (type === 'group') return G('Block', 2, []);
+  if (type === 'residual') return G('Res block', 1, [], { residual: true, postAct: 'relu' });
+  return L(type);
+}
+function insertAt(block, cid, index) {
+  const list = containerList(cid);
+  if (index === undefined || index > list.length) index = list.length;
+  list.splice(index, 0, block);
+}
+function moveBlock(id, cid, index) {
+  if (id === cid || isInside(cid, id)) return;      // cannot drop a block into itself
+  const src = locate(id); if (!src) return;
+  const target = containerList(cid);
+  src.list.splice(src.index, 1);
+  if (src.list === target && src.index < index) index--;
+  if (index === undefined || index > target.length) index = target.length;
+  target.splice(index, 0, src.block);
+}
+function loadPreset(key) {
+  _uid = 1;
+  model = { name: PRESETS[key].label.replace(/\s*\(.*\)$/, '').replace(/[^A-Za-z0-9 ]/g, ' ').trim() || 'Model', blocks: PRESETS[key].build() };
+  if (key === 'blank') model.name = 'Model';
+  $('#presetDesc').textContent = PRESETS[key].desc;
+  trainState.userPickedDataset = false;
+  render();
+}
+
+/* =====================================================================
+   Events
+   ===================================================================== */
+const root = $('#root');
+root.addEventListener('input', onField);
+root.addEventListener('change', onField);
+function onField(e) {
+  const t = e.target;
+  if (t.dataset.key !== undefined) {
+    const blk = locate(t.closest('.blk').dataset.id).block;
+    blk.params[t.dataset.key] = t.type === 'checkbox' ? t.checked : t.type === 'number' ? (t.value === '' ? NaN : Number(t.value)) : t.value;
+    recompute();
+  } else if (t.dataset.gkey !== undefined) {
+    const blk = locate(t.closest('.blk').dataset.id).block;
+    const k = t.dataset.gkey;
+    if (k === 'residual') { blk.residual = t.checked; if (t.checked && blk.postAct === 'none') blk.postAct = 'relu'; render(); return; }
+    blk[k] = t.type === 'number' ? (t.value === '' ? NaN : Number(t.value)) : t.value;
+    recompute();
+  } else if (t.classList.contains('addsel') && t.value) {
+    insertAt(makeNew(t.value), t.dataset.addTo); render();
+  }
+}
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (t.classList.contains('addsel') && t.dataset.addTo === 'root' && !root.contains(t) && t.value) { insertAt(makeNew(t.value), 'root'); t.value = ''; render(); }
+});
+root.addEventListener('click', e => {
+  const btn = e.target.closest('button[data-act]'); if (!btn) return;
+  const id = btn.closest('.blk').dataset.id; const loc = locate(id);
+  const a = btn.dataset.act;
+  if (a === 'del') loc.list.splice(loc.index, 1);
+  else if (a === 'dup') { const copy = JSON.parse(JSON.stringify(loc.block)); reId([copy]); loc.list.splice(loc.index + 1, 0, copy); }
+  else if (a === 'up' && loc.index > 0) { loc.list.splice(loc.index, 1); loc.list.splice(loc.index - 1, 0, loc.block); }
+  else if (a === 'down' && loc.index < loc.list.length - 1) { loc.list.splice(loc.index, 1); loc.list.splice(loc.index + 1, 0, loc.block); }
+  render();
+});
+$('#palette').addEventListener('click', e => {
+  const chip = e.target.closest('.chip'); if (!chip) return;
+  insertAt(makeNew(chip.dataset.new), 'root'); render();
+  root.lastElementChild && root.lastElementChild.scrollIntoView({ block: 'nearest' });
+});
+
+/* ---- drag and drop ---- */
+let drag = null, marked = null;
+function clearMark() { if (marked) { marked.classList.remove('drop-before', 'drop-after', 'over'); marked = null; } }
+document.addEventListener('dragstart', e => {
+  const chip = e.target.closest && e.target.closest('.chip');
+  const grip = e.target.closest && e.target.closest('.grip');
+  if (chip) drag = { kind: 'new', type: chip.dataset.new };
+  else if (grip) { const blk = grip.closest('.blk'); drag = { kind: 'move', id: blk.dataset.id }; blk.classList.add('dragging'); }
+  else return;
+  e.dataTransfer.effectAllowed = 'move';
+  try { e.dataTransfer.setData('text/plain', 'layerforge'); } catch (_) {}
+});
+document.addEventListener('dragend', () => { drag = null; clearMark(); document.querySelectorAll('.blk.dragging').forEach(b => b.classList.remove('dragging')); });
+root.addEventListener('dragover', e => {
+  if (!drag) return;
+  e.preventDefault(); e.dataTransfer.dropEffect = 'move';
+  const blk = e.target.closest('.blk');
+  clearMark();
+  if (blk) {
+    if (drag.kind === 'move' && (blk.dataset.id === drag.id || isInside(blk.dataset.id, drag.id))) return;
+    const r = blk.firstElementChild.getBoundingClientRect();       // the header row decides before/after
+    const inHeader = e.clientY <= r.bottom;
+    const before = e.clientY < r.top + r.height / 2;
+    if (!inHeader && blk.classList.contains('group')) {            // hovering inside a group's body but not on a child: append to that group
+      const zone = blk.querySelector(':scope > .gbody > .list');
+      marked = zone; zone.classList.add('over'); return;
+    }
+    marked = blk; blk.classList.add(before ? 'drop-before' : 'drop-after');
+  } else {
+    const list = e.target.closest('.list') || root;
+    marked = list; list.classList.add('over');
+  }
+});
+root.addEventListener('dragleave', e => { if (!root.contains(e.relatedTarget)) clearMark(); });
+root.addEventListener('drop', e => {
+  if (!drag) return;
+  e.preventDefault();
+  let cid, index;
+  if (marked && marked.classList.contains('blk')) {
+    const loc = locate(marked.dataset.id);
+    const parentList = marked.parentElement.closest('[data-container]');
+    cid = parentList ? parentList.dataset.container : 'root';
+    index = loc.index + (marked.classList.contains('drop-after') ? 1 : 0);
+  } else {
+    const list = marked && marked.dataset.container ? marked : root;
+    cid = list.dataset.container; index = undefined;
+  }
+  clearMark();
+  if (drag.kind === 'new') insertAt(makeNew(drag.type), cid, index);
+  else moveBlock(drag.id, cid, index);
+  drag = null; render();
+});
+// allow dropping onto the empty root list
+root.addEventListener('dragenter', e => { if (drag) e.preventDefault(); });
+
+/* ---- top bar ---- */
+$('#modelName').addEventListener('input', e => { model.name = e.target.value || 'Model'; recompute(); });
+function setFramework(fw) {
+  framework = fw;
+  $('#fwTorch').setAttribute('aria-pressed', fw === 'torch'); $('#fwKeras').setAttribute('aria-pressed', fw === 'keras');
+  syncTabs(); renderCode(); persist();
+}
+function syncTabs() {
+  const codeView = !showDiagram && !show3D && !showTrain && !showActs;
+  $('#tabTorch').setAttribute('aria-pressed', codeView && framework === 'torch');
+  $('#tabKeras').setAttribute('aria-pressed', codeView && framework === 'keras');
+  $('#tabDiagram').setAttribute('aria-pressed', showDiagram);
+  $('#tab3d').setAttribute('aria-pressed', show3D);
+  $('#tabTrain').setAttribute('aria-pressed', showTrain);
+  $('#tabActs').setAttribute('aria-pressed', showActs);
+  $('#btnCopy').textContent = show3D ? 'Copy PNG' : showDiagram ? 'Copy SVG' : 'Copy code';
+  $('#btnDownload').textContent = show3D ? 'Download .png' : showDiagram ? 'Download .svg' : 'Download .py';
+  if (!show3D) stopAnim();
+  if (!showTrain) clearTimeout(trainState.retry);
+}
+function setView(v) {
+  const opening = v === 'acts' && !showActs;
+  showDiagram = v === 'diagram'; show3D = v === '3d'; showTrain = v === 'train'; showActs = v === 'acts'; syncTabs(); renderCode();
+  if (opening) openActs();
+}
+$('#tabDiagram').onclick = () => setView('diagram');
+$('#tab3d').onclick = () => setView('3d');
+$('#tabTrain').onclick = () => setView('train');
+$('#tabActs').onclick = () => setView('acts');
+
+/* ---- 3D view wiring ---- */
+function render3D(tree) {
+  const m3 = slabsFromTree(tree);
+  v3state.slabs = m3.slabs;
+  const L = draw3D($('#v3canvas'), m3);
+  const parts = [];
+  if (L.maxSp) parts.push(`1 image px = ${L.sp.toFixed(2)} px`);
+  if (L.maxC) parts.push(`1 channel = ${L.chImg.toFixed(2)} px${v3state.chMode === 'sqrt' ? ' (√)' : ''}`);
+  if (L.maxF) parts.push(`1 unit = ${L.chVec.toFixed(3)} px${v3state.chMode === 'sqrt' ? ' (√)' : ''}`);
+  $('#v3legend').textContent = parts.join(' · ');
+  $('#codeMeta').textContent = `${m3.slabs.length} tensors`;
+  refreshAnimLayers();
+}
+$('#v3zoom').addEventListener('input', e => { v3state.zoom = +e.target.value; if (show3D) render3D(irToTree(compiled.nodes)); });
+$('#v3ch').addEventListener('change', e => { v3state.chMode = e.target.value; if (show3D) render3D(irToTree(compiled.nodes)); });
+$('#v3canvas').addEventListener('mousemove', e => {
+  const r = e.target.getBoundingClientRect(), z = v3state.zoom, mx = (e.clientX - r.left) / z, my = (e.clientY - r.top) / z;
+  const hit = v3state.boxes.find(b => mx >= b.x && mx <= b.x + b.w + b.dx && my >= b.y - b.dy && my <= b.y + b.h);
+  const tip = $('#v3tip');
+  if (!hit) { tip.style.display = 'none'; return; }
+  const s = hit.slab, dims = s.out ? (s.out.length === 3 ? `${s.out[0]} channels × ${s.out[1]} × ${s.out[2]}` : `${s.out[0]} units`) : '';
+  tip.innerHTML = `<b>${esc(s.label)}</b>${s.notes.length ? ' · ' + esc(s.notes.join(' · ')) : ''}<br>${esc(dims)}${s.params ? ` · ${fmtInt(s.params)} params` : ''}`;
+  tip.style.display = 'block';
+  const host = e.target.parentElement;
+  tip.style.left = `${e.clientX - r.left + host.scrollLeft + 14}px`; tip.style.top = `${e.clientY - r.top + host.scrollTop + 10}px`;
+});
+$('#v3canvas').addEventListener('mouseleave', () => { $('#v3tip').style.display = 'none'; });
+
+/* ---- convolution animation wiring ---- */
+function refreshAnimLayers() {
+  const sel = $('#animLayer'), layers = animLayers(v3state.slabs);
+  const keep = sel.value;
+  sel.innerHTML = layers.map(({ s, i }) => `<option value="${i}">#${i + 1} ${esc(s.label)} · ${dgShape(s.inShape)} → ${dgShape(s.out)}</option>`).join('');
+  const note = $('#animNote');
+  if (!layers.length) { sel.innerHTML = '<option value="">none in this model</option>'; note.textContent = 'This model has no convolution or pooling layers. Load the LeNet-5 or Simple CIFAR-10 CNN preset to see one slide across an image.'; stopAnim(); $('#animCanvas').width = 0; return; }
+  if (![...sel.options].some(o => o.value === keep)) sel.value = layers[0].i;
+  else sel.value = keep;
+  const wasPlaying = v3state.anim && v3state.anim.playing;
+  startAnim(v3state.slabs[+sel.value], wasPlaying);
+}
+function startAnim(slab, play) {
+  stopAnim();
+  const A = buildAnim(slab); A.speed = +$('#animSpeed').value; v3state.anim = A;
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  $('#animNote').innerHTML = slab.type === 'conv'
+    ? `The ${A.k}×${A.k} kernel is dropped on every position of the input${A.s > 1 ? `, jumping ${A.s} cells at a time (stride ${A.s})` : ''}; at each stop, the values under it are multiplied by the kernel weights and summed into one output cell. ${A.pad ? `"same" padding adds a ring of ${A.pad} zero cell${A.pad > 1 ? 's' : ''} so the output stays ${A.s > 1 ? 'input ÷ stride' : 'the same size'}.` : 'With no padding the kernel cannot be centred on edge cells, so the output is smaller.'} The kernel shown is a horizontal-edge detector; the real layer learns ${slab.out[0]} different kernels (one per output channel)${A.Cin > 1 ? `, each spanning all ${A.Cin} input channels` : ''}.`
+    : `The ${A.k}×${A.k} window steps across the input ${A.s} cell${A.s > 1 ? 's' : ''} at a time and keeps the ${slab.label.startsWith('Avg') ? 'average' : 'largest'} value it covers, so every ${A.k}×${A.k} patch becomes one cell. Pooling has no weights and works on each channel separately.`;
+  drawAnim($('#animCanvas'), A);
+  if (play && !reduce) playAnim();
+}
+function tickAnim(t) {
+  const A = v3state.anim; if (!A || !A.playing) return;
+  if (t - A.last >= 1000 / A.speed) { A.last = t; A.pos = (A.pos + 1) % A.total; drawAnim($('#animCanvas'), A); }
+  A.raf = requestAnimationFrame(tickAnim);
+}
+function playAnim() { const A = v3state.anim; if (!A) return; A.playing = true; $('#animPlay').textContent = 'Pause'; A.last = 0; A.raf = requestAnimationFrame(tickAnim); }
+function stopAnim() { const A = v3state.anim; if (!A) return; A.playing = false; cancelAnimationFrame(A.raf); $('#animPlay').textContent = 'Play'; }
+$('#animPlay').onclick = () => { const A = v3state.anim; if (!A) return; A.playing ? stopAnim() : playAnim(); };
+$('#animStep').onclick = () => { const A = v3state.anim; if (!A) return; stopAnim(); A.pos = (A.pos + 1) % A.total; drawAnim($('#animCanvas'), A); };
+$('#animReset').onclick = () => { const A = v3state.anim; if (!A) return; stopAnim(); A.pos = 0; drawAnim($('#animCanvas'), A); };
+$('#animSpeed').addEventListener('input', e => { if (v3state.anim) v3state.anim.speed = +e.target.value; });
+$('#animLayer').addEventListener('change', e => { const slab = v3state.slabs[+e.target.value]; if (slab) startAnim(slab, true); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) stopAnim(); });
+$('#fwTorch').onclick = () => setFramework('torch');
+$('#fwKeras').onclick = () => setFramework('keras');
+$('#tabTorch').onclick = () => { showDiagram = show3D = showTrain = showActs = false; setFramework('torch'); };
+$('#tabKeras').onclick = () => { showDiagram = show3D = showTrain = showActs = false; setFramework('keras'); };
+
+/* ---- train tab: talks to serve.py ---- */
+// The server only answers pages it served itself (it runs the code it is sent), so a file:// copy cannot train.
+const SERVER = '';
+// A copy on a public host (GitHub Pages, the claude.ai artifact) has no server: the two server tabs explain that instead.
+const ONLINE_DEMO = location.protocol.startsWith('http') && !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+let demoLogChecked = false;
+function showDemoNotes() {
+  document.querySelectorAll('.demo-note').forEach(n => n.hidden = false);
+  ['#trainOffline', '#trainOnline', '#acOffline', '#acOnline', '#acEmpty'].forEach(sel => $(sel).hidden = true);
+  if (demoLogChecked) return;
+  demoLogChecked = true;                                                // link the experiment log only where one was published alongside
+  fetch('experiments.html', { method: 'HEAD' }).then(r => { if (r.ok) document.querySelectorAll('.demo-log').forEach(n => n.hidden = false); }).catch(() => {});
+}
+const pct = v => (v * 100).toFixed(1) + '%';
+const trainState = { online: null, caps: {}, job: null, poll: 0, retry: 0, userPickedDataset: false, datasets: [], dataset: null, scan: null };
+const dsInfo = key => trainState.datasets.find(d => d.key === key) || null;
+async function api(path, body) {
+  const r = await fetch(SERVER + path, body === undefined ? { cache: 'no-store' } : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const j = await r.json();
+  if (!r.ok || j.error) throw new Error(j.error || r.statusText);
+  return j;
+}
+function suggestDataset(shape) {
+  const ds = trainState.datasets.filter(d => !d.missing), fallback = dsInfo('mnist') || ds[0];
+  if (!shape || !ds.length) return fallback ? fallback.key : '';
+  const same = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
+  const hit = shape.length === 1 ? ds.find(d => d.vec === shape[0])
+    : ds.find(d => d.kind === 'image' && same(d.shape, shape)) || ds.find(d => d.kind === 'image' && d.shape[0] === shape[0]);
+  return (hit || fallback).key;
+}
+function applyDatasetDefaults(ds) {
+  const d = (dsInfo(ds) || {}).defaults || { epochs: 3, batch: 128, lr: 0.001 };
+  $('#trEpochs').value = d.epochs; $('#trBatch').value = d.batch; $('#trLr').value = d.lr;
+}
+async function loadDatasets() {
+  try { trainState.datasets = (await api('/api/datasets')).datasets; } catch (_) { trainState.datasets = []; }
+  const sel = $('#trDataset'), opt = d => `<option value="${esc(d.key)}">${esc(d.label)}${d.missing ? ' (folder missing)' : ''}</option>`;
+  const custom = trainState.datasets.filter(d => d.source === 'custom');
+  sel.innerHTML = `<optgroup label="Built-in">${trainState.datasets.filter(d => d.source !== 'custom').map(opt).join('')}</optgroup>` +
+    `<optgroup label="Your image folders">${custom.map(opt).join('')}<option value="__add">Add an image folder…</option></optgroup>`;
+  if (trainState.dataset && dsInfo(trainState.dataset)) sel.value = trainState.dataset;
+  else { trainState.userPickedDataset = false; trainState.dataset = null; }
+}
+function renderTrain() {
+  if (ONLINE_DEMO) { showDemoNotes(); return; }
+  $('#trainOffline').hidden = trainState.online === true; $('#trainOnline').hidden = trainState.online !== true;
+  if (trainState.online === null) checkServer(); else if (trainState.online) renderTrainForm();
+}
+async function checkServer() {
+  if (ONLINE_DEMO) { showDemoNotes(); return; }                         // nothing to poll on a public host
+  const asFile = location.protocol === 'file:';
+  $('#trainFileNote').hidden = !asFile;
+  const wasOnline = trainState.online;
+  if (asFile) trainState.online = false;
+  else {
+    try { trainState.caps = await api('/api/ping'); trainState.online = true; }
+    catch (_) { trainState.online = false; }
+  }
+  $('#trainOffline').hidden = trainState.online; $('#trainOnline').hidden = !trainState.online;
+  if (trainState.online) { if (!wasOnline) await loadDatasets(); renderTrainForm(); if (!wasOnline) loadRecentRuns(); }
+  else $('#trainOfflineNote').textContent = `Last checked ${new Date().toLocaleTimeString()}.`;
+  clearTimeout(trainState.retry);
+  if (showTrain && !asFile) trainState.retry = setTimeout(checkServer, trainState.online ? 30000 : 4000);
+}
+function renderTrainForm() {
+  const sel = $('#trDataset');
+  if (!trainState.userPickedDataset) {
+    const want = suggestDataset(compiled.inputShape);
+    if (want && trainState.dataset !== want) { trainState.dataset = want; applyDatasetDefaults(want); }
+  }
+  if (trainState.dataset) sel.value = trainState.dataset;
+  $('#trTag').placeholder = model.name;
+  $('#trDashLink').href = SERVER + '/dashboard';
+  preflight();
+}
+function preflight() {
+  const ds = trainState.dataset, info = dsInfo(ds), notes = [];
+  const inS = compiled.inputShape, out = compiled.out;
+  const errs = compiled.problems.filter(p => p.kind === 'err').length;
+  if (errs) notes.push({ kind: 'err', msg: `Fix the ${errs} error${errs > 1 ? 's' : ''} flagged on the model first.` });
+  if (!info) notes.push({ kind: 'err', msg: 'Pick a dataset.' });
+  else if (info.missing) notes.push({ kind: 'err', msg: `The folder ${info.path} is missing or no longer has class subfolders. Move it back, or forget this dataset and add it again.` });
+  if (!info) { /* nothing to check the model against */ }
+  else if (!inS) notes.push({ kind: 'err', msg: 'The model needs an Input layer.' });
+  else if (info.kind === 'vector') { if (!(inS.length === 1 && inS[0] === info.vec)) notes.push({ kind: 'err', msg: `${info.label} has ${info.vec} input features; this model's Input is ${fmtShape(inS)}. Set it to ${info.vec}.` }); }
+  else if (inS.length === 1) {
+    if (inS[0] !== info.vec) notes.push({ kind: 'err', msg: `${info.label} images flatten to ${fmtInt(info.vec)} features but this model's Input is ${fmtInt(inS[0])}. Set the Input layer to ${info.vec}.` });
+    else notes.push({ kind: 'ok', msg: `Each image is flattened to ${fmtInt(info.vec)} features for the Dense layers.` });
+  } else {
+    const [c, h, w] = inS, [ic, ih, iw] = info.shape, parts = [];
+    if (c !== ic) parts.push(c === 3 ? 'grayscale images are repeated to 3 channels' : 'RGB images are averaged to 1 channel');
+    if (h !== ih || w !== iw) parts.push(h >= ih && h - ih <= 8 && w >= iw && w - iw <= 8 ? `${ih}×${iw} images are zero-padded to ${h}×${w}` : `${ih}×${iw} images are resized to ${h}×${w}`);
+    if (parts.length) notes.push({ kind: 'ok', msg: parts.join('; ') + '.' });
+    if (Math.max(h, w) >= 128) notes.push({ kind: 'warn', msg: `${h}×${w} inputs are slow on a laptop, so only 5,000 training examples are used unless you set Train examples to 0 (all).` });
+  }
+  if (out && info) {
+    const units = out.length === 1 ? out[0] : null, binary = info.classes === 2;
+    if (units === null) notes.push({ kind: 'err', msg: `The model ends with a ${fmtShape(out)} tensor. Add Flatten or GlobalAvgPool and a Dense output layer.` });
+    else if (!(units === info.classes || (binary && units === 1)))
+      notes.push({ kind: 'err', msg: `${info.label} has ${info.classes} classes but the model outputs ${units} unit${units === 1 ? '' : 's'}. Set the last Dense layer to ${info.classes} units${binary ? ' (or 1 unit with sigmoid)' : ''}.` });
+  }
+  if (info && info.source === 'custom' && !info.missing) notes.push({ kind: 'ok', msg: `Classes, in output order: ${info.class_names.join(', ')}.` });
+  if (framework === 'keras' && trainState.caps.tensorflow === false)
+    notes.push(trainState.caps.keras ? { kind: 'warn', msg: "TensorFlow is not installed in the server's Python, so Keras will run on its torch backend." } : { kind: 'err', msg: "TensorFlow is not installed in the server's Python. Run pip install tensorflow, or switch to PyTorch in the top bar." });
+  if (framework === 'torch' && trainState.caps.torch === false) notes.push({ kind: 'err', msg: "torch is not installed in the server's Python. Run pip install torch." });
+  notes.push({ kind: 'ok', msg: `Trains the ${framework === 'torch' ? 'PyTorch' : 'Keras'} version of the model, as shown on the code tab.` });
+  $('#trPreflight').innerHTML = notes.map(n => `<li class="pf-${n.kind}">${esc(n.msg)}</li>`).join('');
+  $('#trDatasetDesc').textContent = info ? info.desc : '';
+  $('#trForget').hidden = !(info && info.source === 'custom');
+  const blocked = notes.some(n => n.kind === 'err') || !!(trainState.job && trainState.job.running);
+  $('#trRun').disabled = blocked;
+  return !blocked;
+}
+async function startTraining() {
+  if (!preflight()) return;
+  const ds = trainState.dataset;
+  const spec = { code: framework === 'torch' ? genTorch(compiled) : genKeras(compiled), framework, name: className(model.name), dataset: ds,
+    epochs: +$('#trEpochs').value || undefined, batch: +$('#trBatch').value || undefined, lr: +$('#trLr').value || undefined,
+    limit: $('#trLimit').value === '' ? undefined : +$('#trLimit').value, tag: $('#trTag').value.trim() || model.name };
+  let j;
+  try { const r = await fetch(SERVER + '/api/train', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(spec) }); j = await r.json(); }
+  catch (_) { toast('The server did not answer'); trainState.online = null; renderTrain(); return; }
+  if (j.error) { toast(j.error); return; }
+  trainState.job = { id: j.id, from: 0, running: true, file: j.file };
+  const log = $('#trLog'); log.hidden = false; log.textContent = `saved ${j.file}\n`;
+  $('#trResult').hidden = true; $('#trCancel').hidden = false; $('#trRun').disabled = true; $('#trStatus').textContent = 'starting…';
+  pollJob();
+}
+async function pollJob() {
+  const job = trainState.job; if (!job) return;
+  try {
+    const r = await fetch(`${SERVER}/api/jobs/${job.id}?from=${job.from}`, { cache: 'no-store' }); const j = await r.json();
+    if (j.lines.length) { const log = $('#trLog'); log.textContent += j.lines.join('\n') + '\n'; log.scrollTop = log.scrollHeight; job.from = j.total; }
+    $('#trStatus').textContent = j.status === 'running' ? `training… ${j.seconds}s` : j.status;
+    if (j.status === 'running' || j.status === 'starting') { trainState.poll = setTimeout(pollJob, 700); return; }
+    job.running = false; $('#trCancel').hidden = true; preflight();
+    if (j.status === 'done') showResult(j); else toast(j.status === 'cancelled' ? 'Training cancelled' : 'Training failed: see the log');
+    loadRecentRuns();
+  } catch (_) { $('#trStatus').textContent = 'lost contact with the server'; job.running = false; $('#trCancel').hidden = true; preflight(); }
+}
+function showResult(j) {
+  const r = j.result, e = r.last_epoch || {};
+  $('#trResult').hidden = false;
+  $('#trResult').innerHTML = `<div><div class="k">Test accuracy</div><div class="big">${r.test_acc != null ? pct(r.test_acc) : '–'}</div></div>` +
+    (e.train_acc != null ? `<div><div class="k">Train accuracy</div><div class="big">${pct(e.train_acc)}</div></div>` : '') +
+    `<div><div class="k">Time</div><div class="big">${j.seconds}s</div></div>` +
+    (r.run ? `<div><div class="k">Logged as</div><div>run #${r.run} · <a href="${SERVER}/dashboard#run=${r.run}" target="_blank" rel="noopener">open in dashboard</a> · <a href="#" data-inspect="${r.run}">look inside →</a></div></div>` : '');
+}
+async function loadRecentRuns() {
+  try {
+    const r = await fetch(SERVER + '/api/runs?limit=6', { cache: 'no-store' }); const j = await r.json();
+    $('#trRecent').innerHTML = j.runs.length ? `<table><thead><tr><th class="num">#</th><th>Tag</th><th>Model</th><th>Dataset</th><th class="num">Test acc</th><th class="num">Epochs</th><th></th></tr></thead><tbody>` +
+      j.runs.map(x => `<tr><td class="num">${x.run}</td><td>${esc(x.tag || '')}</td><td>${esc(x.model_name || '')}</td><td>${esc(x.dataset || '')}</td><td class="num">${x.test_acc != null ? pct(x.test_acc) : '–'}</td><td class="num">${x.epochs ?? ''}</td><td><a href="${SERVER}/dashboard#run=${x.run}" target="_blank" rel="noopener">dashboard</a>${x.has_weights ? ` · <a href="#" data-inspect="${x.run}">inside</a>` : ''}</td></tr>`).join('') + '</tbody></table>'
+      : '<span class="hint">No runs logged yet. Train something.</span>';
+  } catch (_) {}
+}
+$('#trRun').onclick = startTraining;
+$('#trCancel').onclick = async () => {
+  const job = trainState.job; if (!job || !job.running) return;
+  $('#trStatus').textContent = 'cancelling…';
+  try { await api(`/api/jobs/${job.id}/cancel`, {}); }              // through api(): the server only accepts JSON POSTs
+  catch (err) { toast(`Could not cancel: ${err.message}`); }
+};
+$('#trainRetry').onclick = () => { trainState.online = null; renderTrain(); };
+$('#trDataset').addEventListener('change', e => {
+  if (e.target.value === '__add') { e.target.value = trainState.dataset || ''; openFolderPanel(); return; }
+  trainState.userPickedDataset = true; trainState.dataset = e.target.value; applyDatasetDefaults(e.target.value); preflight();
+});
+/* ---- adding an image folder as a dataset (registered in place; the server copies nothing) ---- */
+function openFolderPanel() { $('#trFolder').hidden = false; $('#fdPath').focus(); }
+function closeFolderPanel() {
+  $('#trFolder').hidden = true; $('#fdScanOut').innerHTML = ''; $('#fdOptions').hidden = true; $('#fdAdd').disabled = true; $('#fdStatus').textContent = ''; trainState.scan = null;
+}
+function folderSlug(path) {
+  const base = path.replace(/[\/\\]+$/, '').split(/[\/\\]/).pop() || '';
+  return base.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^[-_]+|-+$/g, '').slice(0, 40) || 'images';
+}
+async function scanFolder() {
+  const path = $('#fdPath').value.trim();
+  if (!path) { $('#fdStatus').textContent = 'Paste the path of a folder first.'; return; }
+  $('#fdStatus').textContent = 'scanning…'; $('#fdAdd').disabled = true;
+  let j;
+  try { j = await api('/api/datasets/scan', { path }); }
+  catch (e) { $('#fdStatus').textContent = e.message; $('#fdScanOut').innerHTML = ''; $('#fdOptions').hidden = true; trainState.scan = null; return; }
+  trainState.scan = j;
+  const split = j.split === 'folders', sug = j.suggested, top = sug.sizes[0];
+  $('#fdScanOut').innerHTML = `<table><thead><tr><th>Class</th>${split ? '<th class="num">Train</th><th class="num">Test</th>' : '<th class="num">Images</th>'}</tr></thead><tbody>` +
+    j.classes.map(c => `<tr><td>${esc(c.name)}</td><td class="num">${fmtInt(c.train)}</td>${split ? `<td class="num">${fmtInt(c.test)}</td>` : ''}</tr>`).join('') + '</tbody></table>' +
+    `<div class="hint">${fmtInt(j.total)} images in ${j.classes.length} classes${split ? ', split by its train/ and test/ folders' : ''}.` +
+    (top ? ` Most common size ${top.w}×${top.h} (${top.count} of ${sug.sampled} sampled).` : '') + '</div>';
+  $('#fdName').value = folderSlug(j.path); $('#fdSize').value = sug.image_size; $('#fdColor').value = sug.color;
+  $('#fdSplit').disabled = split; $('#fdOptions').hidden = false; $('#fdAdd').disabled = false;
+  $('#fdStatus').textContent = '';
+}
+async function addFolder() {
+  const scan = trainState.scan; if (!scan) return;
+  $('#fdAdd').disabled = true; $('#fdStatus').textContent = 'adding…';
+  let j;
+  try { j = await api('/api/datasets', { name: $('#fdName').value.trim(), path: scan.path, image_size: +$('#fdSize').value || null, color: $('#fdColor').value, test_split: +$('#fdSplit').value }); }
+  catch (e) { $('#fdStatus').textContent = e.message; $('#fdAdd').disabled = false; return; }
+  closeFolderPanel();
+  trainState.dataset = j.dataset.key; trainState.userPickedDataset = true;
+  await loadDatasets(); applyDatasetDefaults(j.dataset.key); renderTrainForm();
+  toast(`Added ${j.dataset.label}`);
+}
+$('#trAddFolder').onclick = openFolderPanel;
+$('#fdScan').onclick = scanFolder;
+$('#fdPath').addEventListener('keydown', e => { if (e.key === 'Enter') scanFolder(); });
+$('#fdAdd').onclick = addFolder;
+$('#fdCancel').onclick = closeFolderPanel;
+$('#trForget').onclick = async e => {
+  e.preventDefault();
+  const info = dsInfo(trainState.dataset); if (!info || info.source !== 'custom') return;
+  if (!confirm(`Forget the dataset "${info.label}"? The images in ${info.path} are not touched.`)) return;
+  try { await api(`/api/datasets/${encodeURIComponent(info.key)}/remove`, {}); } catch (err) { toast(err.message); return; }
+  trainState.dataset = null; await loadDatasets(); renderTrainForm();
+};
+const presetSel = $('#preset');
+presetSel.innerHTML = Object.entries(PRESETS).map(([k, p]) => `<option value="${k}">${p.label}</option>`).join('');
+presetSel.addEventListener('change', () => loadPreset(presetSel.value));
+
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('on'), 1600); }
+function currentSource() { return showDiagram ? renderDiagram(irToTree(compiled.nodes), { style: DG_EXPORT_CSS }) : framework === 'torch' ? genTorch(compiled) : genKeras(compiled); }
+async function copyText(txt, what) {
+  try { await navigator.clipboard.writeText(txt); toast(`${what} copied`); }
+  catch (_) { $('#dlgTitle').textContent = 'Copy from here'; $('#dlgText').value = txt; $('#dlgOk').hidden = true; $('#dlg').showModal(); }
+}
+$('#btnCopy').onclick = () => {
+  if (!show3D) return copyText(currentSource(), showDiagram ? 'SVG' : 'Code');
+  $('#v3canvas').toBlob(blob => {
+    if (navigator.clipboard && window.ClipboardItem) navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]).then(() => toast('PNG copied'), () => toast('Copy failed: use Download .png'));
+    else toast('This browser cannot copy images: use Download .png');
+  });
+};
+$('#btnDownload').onclick = () => {
+  const name = show3D ? 'model_3d.png' : showDiagram ? 'model.svg' : framework === 'torch' ? 'model_torch.py' : 'model_keras.py';
+  try {
+    const a = document.createElement('a');
+    a.href = show3D ? $('#v3canvas').toDataURL('image/png') : URL.createObjectURL(new Blob([currentSource()], { type: showDiagram ? 'image/svg+xml' : 'text/x-python' })); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove(); toast(`Saved ${name}`);
+  } catch (_) { copyText(currentSource(), 'Code'); }
+};
+$('#btnSave').onclick = () => {
+  $('#dlgTitle').textContent = 'Design JSON — copy and keep this to reload the design later';
+  $('#dlgText').value = JSON.stringify({ name: model.name, framework, blocks: model.blocks }, null, 2);
+  $('#dlgOk').hidden = true; $('#dlg').showModal();
+};
+$('#btnLoad').onclick = () => {
+  $('#dlgTitle').textContent = 'Paste a design JSON, or the whole text of a generated model file'; $('#dlgText').value = ''; $('#dlgOk').hidden = false; $('#dlg').showModal();
+};
+$('#dlgCancel').onclick = () => $('#dlg').close();
+$('#dlgOk').onclick = () => {
+  try {
+    let txt = $('#dlgText').value.trim();
+    const marker = txt.match(/^# layerforge-design: (.*)$/m); if (marker) txt = marker[1];
+    const d = JSON.parse(txt);
+    if (!Array.isArray(d.blocks)) throw new Error('no blocks');
+    model = { name: d.name || 'Model', blocks: reId(d.blocks) };
+    if (d.framework) setFramework(d.framework);
+    $('#presetDesc').textContent = 'Loaded from JSON.'; $('#dlg').close(); render(); toast('Design loaded');
+  } catch (err) { toast('That JSON could not be read: ' + err.message); }
+};
+
+/* ---- activations tab: one input through a trained model, layer by layer (serve.py keeps the weights) ----
+   Colour follows the dataviz palette: magnitude uses the one-hue blue ramp, dark near zero so quiet units
+   recede into the dark pane; signed values (tanh, weights) use the blue <-> red diverging pair around a grey 0. */
+const AC_SEQ = ['#161C27', '#104281', '#1c5cab', '#3987e5', '#86b6ef', '#cde2fb'];
+const AC_NEG = ['#383835', '#1c5cab', '#3987e5', '#86b6ef'];
+const AC_POS = ['#383835', '#9b3a3a', '#e66767', '#f4b0ae'];
+function rampLUT(stops) {
+  const rgb = stops.map(h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16))), lut = [];
+  for (let i = 0; i < 256; i++) {
+    const t = i / 255 * (rgb.length - 1), k = Math.min(rgb.length - 2, Math.floor(t)), f = t - k;
+    lut.push(rgb[k].map((v, j) => Math.round(v + (rgb[k + 1][j] - v) * f)));
+  }
+  return lut;
+}
+const LUT_SEQ = rampLUT(AC_SEQ), LUT_NEG = rampLUT(AC_NEG), LUT_POS = rampLUT(AC_POS);
+const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
+const acColor = (v, signed) => signed ? (v < 0 ? LUT_NEG[Math.round(clamp01(-v) * 255)] : LUT_POS[Math.round(clamp01(v) * 255)]) : LUT_SEQ[Math.round(clamp01(v) * 255)];
+const acGradient = signed => `linear-gradient(90deg, ${signed ? [...AC_NEG].reverse().concat(AC_POS.slice(1)).join(', ') : AC_SEQ.join(', ')})`;
+const fmtV = v => Math.abs(v) >= 100 || (v !== 0 && Math.abs(v) < 0.01) ? v.toExponential(1) : +v.toFixed(2) + '';
+const b64bytes = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+const acState = { runs: [], run: null, offset: 0, samples: null, pick: null, result: null, busy: false, pending: null, draw: null, drawTimer: 0,
+  open: new Set(), details: new Map() };                                 // open per-layer panels ("step:what"), and their cached data
+
+async function openActs(wantRun) {
+  if (ONLINE_DEMO) { showDemoNotes(); return; }
+  let runs;
+  try { runs = (await api('/api/runs?limit=60')).runs; }
+  catch (_) { $('#acOffline').hidden = false; $('#acOnline').hidden = $('#acEmpty').hidden = true; return; }
+  $('#acOffline').hidden = true;
+  acState.runs = runs.filter(r => r.has_weights);
+  $('#acEmpty').hidden = acState.runs.length > 0; $('#acOnline').hidden = !acState.runs.length;
+  if (!acState.runs.length) return;
+  $('#acRun').innerHTML = acState.runs.map(r => `<option value="${r.run}">#${r.run} · ${esc(r.model_name)} on ${esc(r.dataset)} · ${r.test_acc != null ? pct(r.test_acc) : '–'}${r.tag && r.tag !== r.model_name ? ' · ' + esc(r.tag) : ''}</option>`).join('');
+  const has = n => acState.runs.some(r => r.run === n);
+  const run = has(wantRun) ? wantRun : has(acState.run) ? acState.run : acState.runs[0].run;
+  $('#acRun').value = run;
+  if (run !== acState.run || !acState.result) { if (run !== acState.run) acState.open.clear(); acState.run = run; acState.offset = 0; await loadSamples(); }
+}
+async function loadSamples() {
+  let j;
+  try { j = await api(`/api/inspect/samples?run=${acState.run}&offset=${acState.offset}`); }
+  catch (e) { $('#acStatus').textContent = e.message; return; }
+  const sameData = acState.samples && acState.samples.dataset === j.dataset;
+  acState.samples = j;
+  const box = $('#acThumbs');
+  box.style.gridTemplateColumns = `repeat(${Math.min(6, j.items.length)}, auto)`;
+  box.innerHTML = j.items.map((it, n) => `<button data-n="${n}" aria-pressed="false" title="test example ${it.index} (${esc(it.name)})">${it.pixels ? '<canvas></canvas>' : `<span class="vals">${it.values.join(', ')}</span>`}<span>${esc(it.name)}</span></button>`).join('');
+  j.items.forEach((it, n) => { if (it.pixels) drawThumb(box.children[n].querySelector('canvas'), it); });
+  $('#acDrawWrap').hidden = !j.drawable;
+  if (j.drawable) setupDraw(j.shape[1], j.shape[2]);
+  const n = sameData && acState.pick != null && acState.pick < j.items.length ? acState.pick : 0;
+  pickSample(n);
+}
+function drawThumb(cv, it) {
+  const px = b64bytes(it.pixels), cell = Math.max(1, Math.floor(40 / Math.max(it.h, it.w)));
+  cv.width = it.w * cell; cv.height = it.h * cell;
+  const ctx = cv.getContext('2d'), img = ctx.createImageData(it.w, it.h);
+  for (let p = 0; p < it.h * it.w; p++) {
+    const r = px[p * it.c], g = px[p * it.c + (it.c > 1 ? 1 : 0)], b = px[p * it.c + (it.c > 2 ? 2 : 0)];
+    img.data.set([r, g, b, 255], p * 4);
+  }
+  const off = document.createElement('canvas'); off.width = it.w; off.height = it.h; off.getContext('2d').putImageData(img, 0, 0);
+  ctx.imageSmoothingEnabled = false; ctx.drawImage(off, 0, 0, cv.width, cv.height);
+}
+function pickSample(n) {
+  acState.pick = n;
+  [...$('#acThumbs').children].forEach((b, i) => b.setAttribute('aria-pressed', i === n));
+  const it = acState.samples.items[n]; if (!it) return;
+  inspectInput({ index: it.index });
+}
+async function inspectInput(input) {
+  if (acState.busy) { acState.pending = input; return; }
+  acState.busy = true; $('#acStatus').textContent = 'running…';
+  try {
+    acState.result = await api('/api/inspect', { run: acState.run, ...input });
+    $('#acStatus').textContent = '';
+    renderActs();
+  } catch (e) { $('#acStatus').textContent = e.message; }
+  acState.busy = false;
+  if (acState.pending) { const p = acState.pending; acState.pending = null; inspectInput(p); }
+}
+function renderActs() {
+  const r = acState.result; if (!r || $('#actview').hidden) return;
+  renderPrediction(r.prediction, r.drawn);
+  const box = $('#acSteps'); box.innerHTML = '';
+  r.steps.forEach((st, i) => {                                         // input, then the first layer's weights, then each layer's output
+    box.appendChild(stepCard(st, i === 0, i === r.steps.length - 1, i));
+    if (i === 0 && r.filters) box.appendChild(filterCard(r.filters));
+  });
+}
+function renderPrediction(p, drawn) {
+  const order = p.probs.map((v, i) => i).sort((a, b) => p.probs[b] - p.probs[a]).slice(0, 10);
+  const top = p.predicted, name = i => p.class_names[i] ?? String(i);
+  $('#acPred').innerHTML = `<div class="eyebrow-dark k">Prediction${p.note ? ` <span class="hint" style="text-transform:none;letter-spacing:0;font-weight:400">(${esc(p.note)})</span>` : ''}</div>` +
+    order.map(i => `<span class="name${i === top ? ' best' : ''}">${esc(name(i))}</span><span class="bar"><i class="${i === top ? 'best' : ''}" style="width:${(p.probs[i] * 100).toFixed(1)}%"></i></span><span class="pct">${pct(p.probs[i])}</span>`).join('') +
+    `<div class="verdict">${drawn ? `Your drawing looks like <b>${esc(name(top))}</b> to this model.` : p.actual == null ? '' : p.actual === top ? `✓ correct: it is a ${esc(name(p.actual))}.` : `✗ wrong: it is really a ${esc(name(p.actual))}.`}</div>`;
+}
+function decodeStep(st) {
+  const q = b64bytes(st.data), n = st.h * st.w, vals = new Float32Array(q.length);
+  for (let c = 0; c < st.c; c++) { const lo = st.lo[c], span = st.hi[c] - lo; for (let k = 0; k < n; k++) vals[c * n + k] = lo + q[c * n + k] / 255 * span; }
+  return vals;
+}
+function tileLayout(count, tw, th, gap, avail) {
+  const cols = Math.max(1, Math.min(count, Math.floor((avail + gap) / (tw + gap))));
+  return { cols, rows: Math.ceil(count / cols), W: cols * (tw + gap) - gap, H: Math.ceil(count / cols) * (th + gap) - gap };
+}
+function paintTiles(cv, count, h, w, cell, gap, colorAt) {           // colorAt(tile, row, col) -> [r,g,b]
+  const avail = Math.max(120, $('#acSteps').clientWidth || 480);
+  const L = tileLayout(count, w * cell, h * cell, gap, avail);
+  cv.width = L.W; cv.height = L.H; cv.style.width = L.W + 'px';
+  const ctx = cv.getContext('2d'), img = ctx.createImageData(L.W, L.H);
+  for (let t = 0; t < count; t++) {
+    const ox = (t % L.cols) * (w * cell + gap), oy = Math.floor(t / L.cols) * (h * cell + gap);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const [r, g, b] = colorAt(t, y, x);
+      for (let dy = 0; dy < cell; dy++) { let o = ((oy + y * cell + dy) * L.W + ox + x * cell) * 4; for (let dx = 0; dx < cell; dx++, o += 4) { img.data[o] = r; img.data[o + 1] = g; img.data[o + 2] = b; img.data[o + 3] = 255; } }
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  cv._hit = (px, py) => {                                               // canvas pixel -> {tile, row, col} or null
+    const tx = Math.floor(px / (w * cell + gap)), ty = Math.floor(py / (h * cell + gap));
+    const col = Math.floor((px - tx * (w * cell + gap)) / cell), row = Math.floor((py - ty * (h * cell + gap)) / cell), tile = ty * L.cols + tx;
+    return tile < count && col < w && row < h && col >= 0 && row >= 0 ? { tile, row, col } : null;
+  };
+}
+function stepCard(st, isInput, isLast, index) {
+  const card = document.createElement('div'); card.className = 'acstep';
+  const vals = decodeStep(st), n = st.h * st.w, shared = $('#acScale').value === 'layer';
+  const absMax = Math.max(Math.abs(st.min), Math.abs(st.max)) || 1;
+  const signed = !isInput && st.min < -0.02 * absMax;
+  const value = (c, k) => vals[c * n + k];
+  const norm = (c, v) => {
+    if (isInput) return (v - st.lo[c]) / ((st.hi[c] - st.lo[c]) || 1);
+    if (signed) return v / (shared ? absMax : (Math.max(Math.abs(st.lo[c]), Math.abs(st.hi[c])) || 1));
+    const lo = shared ? st.min : st.lo[c], hi = shared ? st.max : st.hi[c];
+    return (v - lo) / ((hi - lo) || 1);
+  };
+  const notes = [];
+  if (st.kind === 'map' && st.shape[0] > st.c) notes.push(`first ${st.c} of ${st.shape[0]} maps`);
+  if (st.stride > 1) notes.push(`each map shrunk ${st.stride}× to fit`);
+  if (st.kind === 'vec' && st.shape[0] > st.w) notes.push(`first ${st.w} of ${fmtInt(st.shape[0])} units`);
+  const what = isInput ? '' : st.kind === 'map' ? `${st.shape[0]} map${st.shape[0] > 1 ? 's' : ''}, one per filter` : `${fmtInt(st.shape[0])} units`;
+  const range = shared || isInput || st.kind === 'vec' ? `${fmtV(isInput ? st.min : signed ? -absMax : st.min)} … ${fmtV(isInput ? st.max : signed ? absMax : st.max)}` : 'per map';
+  const unitWord = st.kind === 'map' ? 'filters' : 'units';
+  const buttons = (st.patterns ? `<button class="btn" data-detail="patterns" aria-pressed="false" title="Synthesise the input that excites each ${unitWord.slice(0, -1)} most">what its ${unitWord} look for</button>` : '') +
+    (st.weights ? `<button class="btn" data-detail="weights" aria-pressed="false" title="The layer's kernels themselves">weights</button>` : '');
+  card.dataset.step = index;
+  card.innerHTML = `<div class="achead"><b>${esc(st.label)}</b><span class="mono">${st.shape.join('×')}</span><span class="hint">${esc([what, ...notes].filter(Boolean).join(' · '))}</span>` +
+    (buttons ? `<span class="acbtns">${buttons}</span>` : '') +
+    (isInput ? '' : `<span class="acscale">${signed ? 'neg' : 'low'} <span class="bar" style="background:${acGradient(signed)}"></span> ${signed ? 'pos' : 'high'} <span>${esc(range)}</span></span>`) + '</div>';
+  const cv = document.createElement('canvas'); card.appendChild(cv);
+  if (isInput) {                                                        // the input as an image: grey, or RGB for 3 channels
+    const rgb = st.c === 3;
+    const cell = Math.max(1, Math.floor(96 / Math.max(st.h, st.w)));
+    paintTiles(cv, rgb ? 1 : st.c, st.h, st.w, cell, 4, (t, y, x) => {
+      const k = y * st.w + x, g = c => Math.round(clamp01(norm(c, value(c, k))) * 255);
+      return rgb ? [g(0), g(1), g(2)] : [g(t), g(t), g(t)];
+    });
+    cv._tip = h => `pixel (${h.row}, ${h.col})` + (rgb ? '' : ` · ${fmtV(value(h.tile, h.row * st.w + h.col))}`);
+  } else if (st.kind === 'map') {
+    const cell = Math.max(1, Math.min(14, Math.floor(64 / Math.max(st.h, st.w))));
+    paintTiles(cv, st.c, st.h, st.w, cell, 3, (t, y, x) => acColor(norm(t, value(t, y * st.w + x)), signed));
+    cv._tip = h => `map ${h.tile} · (${h.row}, ${h.col}) · ${fmtV(value(h.tile, h.row * st.w + h.col))}  (map max ${fmtV(st.hi[h.tile])})`;
+  } else {
+    const units = st.w, cell = units <= 16 ? 22 : units <= 128 ? 13 : units <= 512 ? 9 : 6;
+    paintTiles(cv, units, 1, 1, cell, 1, t => acColor(norm(0, value(0, t)), signed));   // each unit is a one-cell tile
+    const names = isLast ? acState.result.prediction.class_names : [];
+    cv._tip = h => `unit ${h.tile}${names[h.tile] != null ? ` (${names[h.tile]})` : ''} · ${fmtV(value(0, h.tile))}`;
+  }
+  for (const what of ['patterns', 'weights']) if (acState.open.has(`${index}:${what}`)) showDetail(card, what, false);
+  return card;
+}
+/* ---- one layer in depth: the input each filter likes most, and its kernels (they do not depend on the input) ---- */
+async function showDetail(card, what, toggle) {
+  const step = +card.dataset.step, key = `${step}:${what}`, btn = card.querySelector(`[data-detail="${what}"]`);
+  const existing = card.querySelector(`.acdetail[data-what="${what}"]`);
+  if (toggle && existing) { existing.remove(); acState.open.delete(key); if (btn) btn.setAttribute('aria-pressed', false); return; }
+  acState.open.add(key); if (btn) btn.setAttribute('aria-pressed', true);
+  const panel = existing || document.createElement('div');
+  panel.className = 'acdetail'; panel.dataset.what = what;
+  if (!existing) card.appendChild(panel);
+  const cacheKey = `${acState.run}:${key}`;
+  let d = acState.details.get(cacheKey);
+  if (!d) {
+    panel.innerHTML = `<p>${what === 'patterns' ? 'Searching for the input each one responds to most… (a few seconds)' : 'Loading…'}</p>`;
+    try { d = await api('/api/inspect/layer', { run: acState.run, step, what }); acState.details.set(cacheKey, d); }
+    catch (e) { panel.innerHTML = `<p>${esc(e.message)}</p>`; return; }
+    if (!panel.isConnected) return;                                     // re-rendered meanwhile; the new card draws from the cache
+  }
+  panel.innerHTML = '';
+  panel.appendChild(what === 'patterns' ? patternsView(d, card) : weightsView(d));
+}
+function patternsView(d, card) {
+  const wrap = document.createElement('div'), conv = !!d.crop, word = conv ? 'filter' : 'unit';
+  const names = acState.result && +card.dataset.step === acState.result.steps.length - 1 ? acState.result.prediction.class_names : [];
+  const shown = d.count > d.n ? ` (first ${d.n} of ${d.count})` : '';
+  wrap.innerHTML = `<div class="achead"><b>What each ${word} looks for${shown}</b></div><p>` + (conv
+    ? `The input pattern that makes each filter's centre unit fire hardest, found by nudging a blank image step by step. Each is shown at the <b>${d.h}×${d.w}-pixel patch</b> of the input that unit can see (its receptive field). The first layer sees a few pixels and finds short edges and stroke ends; each deeper layer sees a bigger patch and combines them into longer strokes, curves and corners.`
+    : `The input that makes each unit fire hardest, found by nudging a blank image step by step. Dense units see the whole image${names.length ? ', so the last layer shows what the model thinks each class looks like' : ''}. They tend to look noisier than conv filters: nothing forces them to be smooth or local.`) +
+    ` Light pixels excite it, dark ones hold it back, grey ones do not matter.${conv && +card.dataset.step === 1 ? ' For the first layer this is exactly the filter\'s own kernel.' : ''}</p>`;
+  const cv = document.createElement('canvas'); wrap.appendChild(cv);
+  const q = b64bytes(d.data), per = d.h * d.w, rgb = d.c === 3;
+  const cell = Math.max(1, Math.min(14, Math.floor(72 / Math.max(d.h, d.w))));
+  paintTiles(cv, d.n, d.h, d.w, cell, 4, (t, y, x) => {
+    const at = c => q[(t * d.c + c) * per + y * d.w + x];
+    return rgb ? [at(0), at(1), at(2)] : [at(0), at(0), at(0)];
+  });
+  cv._tip = h => `${word} ${h.tile}${names[h.tile] != null ? ` (${names[h.tile]})` : ''} · reached ${fmtV(d.reached[h.tile])}`;
+  return wrap;
+}
+function weightsView(d) {
+  const wrap = document.createElement('div');
+  const gc = Math.ceil(Math.sqrt(d.i)), gr = Math.ceil(d.i / gc);
+  const tw = gc * (d.w + 1) - 1, th = gr * (d.h + 1) - 1;
+  const more = [d.count > d.o ? `first ${d.o} of ${d.count} filters` : '', d.in_count > d.i ? `first ${d.i} of ${d.in_count} inputs each` : ''].filter(Boolean).join(', ');
+  wrap.innerHTML = `<div class="achead"><b>Kernels${more ? ` (${more})` : ''}</b><span class="acscale">neg <span class="bar" style="background:${acGradient(true)}"></span> pos <span>±${fmtV(d.scale)}</span></span></div>` +
+    `<p>${d.i === 1 ? `Each tile is one filter: a single ${d.h}×${d.w} kernel, multiplied with each patch of the input and summed.`
+      : `Each tile is one filter: a stack of ${d.i} kernels of ${d.h}×${d.w}, one per map coming in from the layer before (laid out ${gr}×${gc}). The filter multiplies each kernel with its map and adds everything up.`} ${d.i > 3 ? 'Past the first layer these no longer read as pictures, because each kernel looks at a map of features, not at pixels; "what its filters look for" shows what they add up to.' : ''}</p>`;
+  const cv = document.createElement('canvas'); wrap.appendChild(cv);
+  const q = b64bytes(d.data), per = d.i * d.h * d.w;
+  const cell = Math.max(1, Math.min(10, Math.floor(84 / Math.max(tw, th))));
+  const kAt = (t, y, x) => {                                            // tile pixel -> kernel index and position, or null in a gap
+    const ky = Math.floor(y / (d.h + 1)), kx = Math.floor(x / (d.w + 1)), ry = y % (d.h + 1), rx = x % (d.w + 1), k = ky * gc + kx;
+    return ry === d.h || rx === d.w || k >= d.i ? null : { k, ry, rx };
+  };
+  paintTiles(cv, d.o, th, tw, cell, 4, (t, y, x) => {
+    const p = kAt(t, y, x); if (!p) return [14, 17, 23];
+    return acColor((q[t * per + p.k * d.h * d.w + p.ry * d.w + p.rx] - 128) / 127, true);
+  });
+  cv._tip = h => { const p = kAt(h.tile, h.row, h.col); return p ? `filter ${h.tile} · input map ${p.k} · (${p.ry}, ${p.rx}) · ${fmtV((q[h.tile * per + p.k * d.h * d.w + p.ry * d.w + p.rx] - 128) / 127 * d.scale)}` : `filter ${h.tile}`; };
+  return wrap;
+}
+function filterCard(f) {
+  const card = document.createElement('div'); card.className = 'acstep';
+  const rgb = f.i === 3, q = b64bytes(f.data), per = f.i * f.h * f.w;
+  const w = (o, i, y, x) => (q[o * per + i * f.h * f.w + y * f.w + x] - 128) / 127;          // -1..1 of the largest weight
+  const avgIn = (o, y, x) => { let s = 0; for (let i = 0; i < f.i; i++) s += w(o, i, y, x); return s / f.i; };
+  const shownNote = f.count > f.o ? ` (first ${f.o} of ${f.count})` : '';
+  card.innerHTML = `<div class="achead"><b>${f.kind === 'conv' ? `First-layer filters${shownNote}` : `What each first-layer unit looks for${shownNote}`}</b>` +
+    `<span class="hint">${f.kind === 'conv'
+      ? `The ${f.h}×${f.w} patterns the first Conv2D slides across the image${rgb ? ', shown in colour' : ''}. A filter with a light band beside a dark one is an edge or stroke detector; the maps below show where each one fired.`
+      : `Each unit's ${fmtInt(per)} input weights laid out as the image they multiply: red pixels push the unit up, blue ones push it down.`}</span>` +
+    (rgb ? '' : `<span class="acscale">neg <span class="bar" style="background:${acGradient(true)}"></span> pos <span>±${fmtV(f.scale)}</span></span>`) + '</div>';
+  const cv = document.createElement('canvas'); card.appendChild(cv);
+  const cell = Math.max(1, Math.min(12, Math.floor(60 / Math.max(f.h, f.w))));
+  paintTiles(cv, f.o, f.h, f.w, cell, 3, (o, y, x) => rgb
+    ? [0, 1, 2].map(i => Math.round(clamp01(0.5 + 0.5 * w(o, i, y, x)) * 255))
+    : acColor(avgIn(o, y, x), true));
+  cv._tip = h => `${f.kind === 'conv' ? 'filter' : 'unit'} ${h.tile} · (${h.row}, ${h.col}) · weight ${fmtV(avgIn(h.tile, h.row, h.col) * f.scale)}`;
+  return card;
+}
+/* drawing pad: a grayscale image at the dataset's own size, sent after each stroke (and while drawing) */
+function setupDraw(H, W) {
+  const cv = $('#acDraw');
+  if (acState.draw && acState.draw.H === H && acState.draw.W === W) return;
+  acState.draw = { H, W, px: new Float32Array(H * W), down: false, dirty: false };
+  paintDraw();
+}
+function paintDraw() {
+  const d = acState.draw, cv = $('#acDraw'), ctx = cv.getContext('2d'), img = ctx.createImageData(d.W, d.H);
+  for (let k = 0; k < d.H * d.W; k++) { const v = Math.round(d.px[k]); img.data.set([v, v, v, 255], k * 4); }
+  const off = document.createElement('canvas'); off.width = d.W; off.height = d.H; off.getContext('2d').putImageData(img, 0, 0);
+  ctx.imageSmoothingEnabled = false; ctx.clearRect(0, 0, cv.width, cv.height); ctx.drawImage(off, 0, 0, cv.width, cv.height);
+}
+function strokeAt(e) {
+  const d = acState.draw, cv = $('#acDraw'), r = cv.getBoundingClientRect();
+  const cx = (e.clientX - r.left) / r.width * d.W, cy = (e.clientY - r.top) / r.height * d.H, rad = d.W / 17;
+  for (let y = Math.floor(cy - rad - 1); y <= cy + rad + 1; y++) for (let x = Math.floor(cx - rad - 1); x <= cx + rad + 1; x++) {
+    if (x < 0 || y < 0 || x >= d.W || y >= d.H) continue;
+    const dist = Math.hypot(x + 0.5 - cx, y + 0.5 - cy), v = 255 * clamp01(1.25 - dist / rad);
+    if (v > d.px[y * d.W + x]) d.px[y * d.W + x] = v;
+  }
+  d.dirty = true; paintDraw();
+}
+function sendDrawing() {
+  const d = acState.draw; if (!d || !d.dirty) return;
+  d.dirty = false;
+  const bytes = Uint8Array.from(d.px, v => Math.round(v));
+  let bin = ''; bytes.forEach(b => bin += String.fromCharCode(b));
+  acState.pick = null; [...$('#acThumbs').children].forEach(b => b.setAttribute('aria-pressed', false));
+  inspectInput({ pixels: btoa(bin) });
+}
+$('#acDraw').addEventListener('pointerdown', e => { if (!acState.draw) return; acState.draw.down = true; $('#acDraw').setPointerCapture(e.pointerId); strokeAt(e); });
+$('#acDraw').addEventListener('pointermove', e => {
+  if (!acState.draw || !acState.draw.down) return;
+  strokeAt(e);
+  if (!acState.drawTimer) acState.drawTimer = setTimeout(() => { acState.drawTimer = 0; sendDrawing(); }, 250);
+});
+['pointerup', 'pointercancel'].forEach(ev => $('#acDraw').addEventListener(ev, () => { if (acState.draw) { acState.draw.down = false; sendDrawing(); } }));
+$('#acClear').onclick = e => { e.preventDefault(); if (acState.draw) { acState.draw.px.fill(0); paintDraw(); } };
+$('#acThumbs').addEventListener('click', e => { const b = e.target.closest('button[data-n]'); if (b) pickSample(+b.dataset.n); });
+$('#acMore').onclick = e => { e.preventDefault(); acState.offset++; loadSamples(); };
+$('#acRun').onchange = e => { acState.run = +e.target.value; acState.offset = 0; acState.result = null; acState.open.clear(); loadSamples(); };
+$('#acSteps').addEventListener('click', e => { const b = e.target.closest('[data-detail]'); if (b) showDetail(b.closest('.acstep'), b.dataset.detail, true); });
+$('#acScale').onchange = renderActs;
+document.addEventListener('click', e => {
+  const a = e.target.closest('[data-inspect]'); if (!a) return;
+  e.preventDefault(); const run = +a.dataset.inspect;
+  if (showActs) openActs(run); else { acState.run = null; setView('acts'); openActs(run); }
+});
+$('#actview').addEventListener('pointermove', e => {
+  const tip = $('#acTip'), cv = e.target.closest('canvas');
+  if (!cv || !cv._hit || !cv._tip) { tip.hidden = true; return; }
+  const r = cv.getBoundingClientRect(), h = cv._hit((e.clientX - r.left) * cv.width / r.width, (e.clientY - r.top) * cv.height / r.height);
+  if (!h) { tip.hidden = true; return; }
+  tip.textContent = cv._tip(h); tip.hidden = false;
+  tip.style.left = Math.min(e.clientX + 14, innerWidth - tip.offsetWidth - 8) + 'px'; tip.style.top = (e.clientY + 16) + 'px';
+});
+$('#actview').addEventListener('pointerleave', () => { $('#acTip').hidden = true; });
+let acResize = 0;
+addEventListener('resize', () => { clearTimeout(acResize); acResize = setTimeout(renderActs, 150); });
+/* ---- persistence (per browser, best effort) ---- */
+function persist() { try { localStorage.setItem('layerforge.v1', JSON.stringify({ name: model.name, framework, blocks: model.blocks, preset: presetSel.value })); } catch (_) {} }
+function restore() {
+  try {
+    const d = JSON.parse(localStorage.getItem('layerforge.v1'));
+    if (d && Array.isArray(d.blocks) && d.blocks.length) {
+      model = { name: d.name || 'Model', blocks: reId(d.blocks) };
+      if (d.preset && PRESETS[d.preset]) { presetSel.value = d.preset; $('#presetDesc').textContent = PRESETS[d.preset].desc; }
+      setFramework(d.framework === 'keras' ? 'keras' : 'torch');
+      return true;
+    }
+  } catch (_) {}
+  return false;
+}
+
+/* ---- boot ---- */
+renderPalette();
+document.querySelector('.rootfoot').innerHTML = addSelectHtml('root');
+const wantView = new URLSearchParams(location.search).get('view');
+if (wantView === '3d') show3D = true; else if (wantView === 'diagram') showDiagram = true; else if (wantView === 'train') showTrain = true; else if (wantView === 'acts') { showActs = true; setTimeout(() => openActs(+new URLSearchParams(location.search).get('run') || null)); }
+syncTabs();
+let loadedFromLink = false;
+const linked = location.hash.match(/^#design=([A-Za-z0-9_-]+)$/);
+if (linked) {
+  try {
+    const json = decodeURIComponent(escape(atob(linked[1].replace(/-/g, '+').replace(/_/g, '/'))));
+    const d = JSON.parse(json);
+    model = { name: d.name || 'Model', blocks: reId(d.blocks) };
+    $('#presetDesc').textContent = 'Loaded from the dashboard.';
+    history.replaceState(null, '', location.pathname + location.search);
+    render(); loadedFromLink = true;
+  } catch (_) { toast('The design in this link could not be read'); }
+}
+if (loadedFromLink) {} else if (!restore()) { presetSel.value = 'resnet18'; loadPreset('resnet18'); } else render();
+</script>

@@ -1,0 +1,9 @@
+{
+  "order": 8,
+  "title": "Layerforge — drag-and-drop neural networks",
+  "description": "Design a neural network by dragging layers together, from an XOR perceptron to ResNet-50, and get runnable PyTorch and Keras code with live shape checking. Explore any model as a diagram or in 3D, and watch a convolution slide across an image.",
+  "image": "/images/projects/layerforge.svg",
+  "demo_url": "/interactive/layerforge/index.html",
+  "category": "AI Generated",
+  "year": 2026
+}

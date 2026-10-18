@@ -1,0 +1,638 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Layerforge Experiments</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #F1F3F6; --surface: #FFFFFF; --surface2: #F6F7FA; --ink: #141820; --ink2: #3C4453; --muted: #626B7A;
+    --line: #D3D8E1; --line2: #E5E8EE; --accent: #2E5BE7; --accent-soft: #E4EAFD; --accent-ink: #FFFFFF;
+    --grid: #E1E0D9; --axis: #C3C2B7; --tick: #898781;
+    --good: #006300; --critical: #C62828;
+    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300; --s7: #4a3aa7; --s8: #e34948;
+    --shadow: 0 1px 2px rgba(20,24,32,.06), 0 4px 14px rgba(20,24,32,.05);
+    --dg-node-bg: #FFFFFF; --dg-node-line: #D3D8E1; --dg-ink: #141820; --dg-muted: #626B7A; --dg-edge: #8A93A5; --dg-group-bg: #F6F7FA; --dg-group-line: #C9CFD9; --dg-io: #7A5AF8; --dg-dense: #2E5BE7; --dg-conv: #0E8A6B; --dg-pool: #0B7FA5; --dg-norm: #C26A00; --dg-act: #B8377A; --dg-reshape: #5E6B85;
+    --font: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+    --mono: "IBM Plex Mono", "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #0E1117; --surface: #171B23; --surface2: #1C2130; --ink: #E7EAF0; --ink2: #C3C8D4; --muted: #8F98A8;
+      --line: #2B3242; --line2: #222836; --accent: #7A97FF; --accent-soft: #233052; --accent-ink: #0E1117;
+      --grid: #2C2C2A; --axis: #383835; --tick: #898781;
+      --good: #0ca30c; --critical: #FF7A7A;
+      --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.25);
+      --dg-node-bg: #1C2130; --dg-node-line: #2B3242; --dg-ink: #E7EAF0; --dg-muted: #8F98A8; --dg-edge: #6B7588; --dg-group-bg: rgba(255,255,255,.03); --dg-group-line: #3A4256; --dg-io: #A78BFF; --dg-dense: #7A97FF; --dg-conv: #3FC49E; --dg-pool: #4FB9DD; --dg-norm: #F0A24F; --dg-act: #F07AB6; --dg-reshape: #9AA6BF;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0E1117; --surface: #171B23; --surface2: #1C2130; --ink: #E7EAF0; --ink2: #C3C8D4; --muted: #8F98A8;
+    --line: #2B3242; --line2: #222836; --accent: #7A97FF; --accent-soft: #233052; --accent-ink: #0E1117;
+    --grid: #2C2C2A; --axis: #383835; --tick: #898781;
+    --good: #0ca30c; --critical: #FF7A7A;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.25);
+    --dg-node-bg: #1C2130; --dg-node-line: #2B3242; --dg-ink: #E7EAF0; --dg-muted: #8F98A8; --dg-edge: #6B7588; --dg-group-bg: rgba(255,255,255,.03); --dg-group-line: #3A4256; --dg-io: #A78BFF; --dg-dense: #7A97FF; --dg-conv: #3FC49E; --dg-pool: #4FB9DD; --dg-norm: #F0A24F; --dg-act: #F07AB6; --dg-reshape: #9AA6BF;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 13px/1.45 var(--font); }
+  button, input, select { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 16px 20px 60px; }
+  header { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+  h1 { font-size: 17px; font-weight: 600; margin: 0; letter-spacing: -.01em; }
+  header .src { color: var(--muted); font-family: var(--mono); font-size: 11.5px; }
+  .spacer { flex: 1; }
+  .btn { border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 5px 10px; font-weight: 500; }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  a.btn { text-decoration: none; display: inline-flex; align-items: center; color: var(--ink); }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; background: var(--surface); }
+  .seg button { border: 0; background: transparent; padding: 5px 11px; color: var(--muted); font-weight: 500; }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+
+  .filters { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .filters label { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
+  .filters select, .filters input[type="search"] { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; color: var(--ink); }
+  .filters input[type="search"] { width: 22ch; }
+  .filters .count { color: var(--muted); font-size: 12px; margin-left: auto; font-variant-numeric: tabular-nums; }
+
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-bottom: 16px; }
+  .tile { background: var(--surface); border: 1px solid var(--line2); border-radius: 8px; padding: 10px 14px; box-shadow: var(--shadow); }
+  .tile .k { font-size: 10.5px; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); font-weight: 600; }
+  .tile .v { font-size: 22px; font-weight: 600; margin-top: 2px; line-height: 1.2; }
+  .tile .sub { color: var(--muted); font-size: 12px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .panel { background: var(--surface); border: 1px solid var(--line2); border-radius: 8px; box-shadow: var(--shadow); }
+  .panel-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 14px; border-bottom: 1px solid var(--line2); }
+  .panel-head h2 { font-size: 13px; font-weight: 600; margin: 0; }
+  .panel-head .hint { color: var(--muted); font-size: 12px; }
+
+  /* chart */
+  .chart-wrap { padding: 12px 14px 8px; position: relative; }
+  .chart-wrap svg { display: block; width: 100%; height: 320px; overflow: visible; }
+  .chart-wrap text { font-family: var(--mono); font-size: 11px; fill: var(--tick); }
+  .chart-wrap .grid line { stroke: var(--grid); stroke-width: 1; }
+  .chart-wrap .axis line { stroke: var(--axis); stroke-width: 1; }
+  .chart-wrap .series path { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .chart-wrap .series path.dim { opacity: .35; }
+  .chart-wrap .dlabel { font-family: var(--font); font-size: 11.5px; font-weight: 500; fill: var(--ink2); }
+  .chart-wrap .crosshair line { stroke: var(--axis); stroke-width: 1; stroke-dasharray: 3 3; }
+  .chart-wrap .crosshair circle { stroke: var(--surface); stroke-width: 2; }
+  .chart-wrap .ylabel { font-family: var(--font); font-size: 11.5px; fill: var(--muted); }
+  .chart-wrap .empty { color: var(--muted); text-align: center; padding: 60px 20px; font-size: 13px; }
+  .tip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 6px 9px; box-shadow: var(--shadow); font-size: 12px; min-width: 160px; display: none; z-index: 2; }
+  .tip .t { font-family: var(--mono); color: var(--muted); font-size: 11px; margin-bottom: 4px; }
+  .tip .r { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .tip .r i { width: 9px; height: 9px; border-radius: 2px; flex: none; }
+  .tip .r b { margin-left: auto; font-weight: 500; font-family: var(--mono); font-variant-numeric: tabular-nums; padding-left: 12px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 6px 14px 12px; }
+  .legend .chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink2); border: 0; background: transparent; padding: 2px 4px; border-radius: 4px; }
+  .legend .chip:hover { background: var(--surface2); }
+  .legend .chip i { width: 10px; height: 10px; border-radius: 2px; }
+  .legend .chip .x { color: var(--muted); }
+  .legend .none { color: var(--muted); font-size: 12px; }
+
+  /* layout: table + detail */
+  .cols { display: grid; grid-template-columns: minmax(0, 1fr) 350px; gap: 14px; margin-top: 14px; align-items: start; }
+  .tablewrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 12px; }
+  th, td { padding: 5px 7px; text-align: left; white-space: nowrap; border-bottom: 1px solid var(--line2); }
+  th { font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; cursor: pointer; user-select: none; position: sticky; top: 0; background: var(--surface); }
+  th:hover { color: var(--ink); }
+  th.sorted::after { content: " ▾"; } th.sorted.asc::after { content: " ▴"; }
+  td.num, th.num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover { background: var(--surface2); }
+  tbody tr.open { background: var(--accent-soft); }
+  td .tag { color: var(--ink); font-weight: 500; }
+  td .arch { color: var(--muted); max-width: 20ch; overflow: hidden; text-overflow: ellipsis; display: inline-block; vertical-align: bottom; }
+  td input[type="checkbox"] { accent-color: var(--accent); margin: 0; }
+  td .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; margin-right: 4px; }
+  .strip { display: inline-block; width: 56px; height: 10px; position: relative; vertical-align: -1px; margin-right: 8px; }
+  .strip::before { content: ""; position: absolute; left: 0; right: 0; top: 4px; height: 2px; background: var(--line); border-radius: 1px; }
+  .strip i { position: absolute; top: 1px; width: 8px; height: 8px; margin-left: -4px; border-radius: 50%; background: var(--s1); }
+  .gap-hi { color: var(--critical); }
+  .fw { font-family: var(--mono); font-size: 11px; padding: 1px 5px; border-radius: 4px; background: var(--surface2); border: 1px solid var(--line2); }
+
+  .detail { position: sticky; top: 12px; }
+  .detail .body { padding: 12px 14px; }
+  .detail .empty { color: var(--muted); padding: 30px 14px; text-align: center; }
+  .kv { display: grid; grid-template-columns: max-content 1fr; gap: 3px 12px; font-size: 12.5px; }
+  .kv dt { color: var(--muted); } .kv dd { margin: 0; font-family: var(--mono); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .detail h3 { font-size: 10.5px; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); font-weight: 600; margin: 14px 0 6px; }
+  .detail .arch { font-family: var(--mono); font-size: 11.5px; line-height: 1.6; overflow-wrap: anywhere; }
+  .detail table { font-size: 11.5px; }
+  .detail th { position: static; }
+  .detail pre { margin: 0; background: var(--surface2); border: 1px solid var(--line2); border-radius: 6px; padding: 10px; font-family: var(--mono); font-size: 11px; line-height: 1.5; max-height: 360px; overflow: auto; }
+  .detail details summary { cursor: pointer; font-weight: 500; }
+  .detail .actions { display: flex; gap: 8px; margin-top: 10px; }
+
+  /* model diagram (shared with the experiments viewer) */
+  .dg-node rect { fill: var(--dg-node-bg); stroke: var(--dg-node-line); stroke-width: 1; }
+  .dg-node .dg-stripe { stroke: none; }
+  .dg-label { font: 500 12px var(--font); fill: var(--dg-ink); }
+  .dg-shape { font: 11px var(--mono); fill: var(--dg-muted); }
+  .dg-edge { stroke: var(--dg-edge); stroke-width: 1.5; fill: none; }
+  #dg-arrow path { fill: var(--dg-edge); }
+  .dg-skip { stroke: var(--dg-conv); stroke-width: 1.5; stroke-dasharray: 4 3; fill: none; }
+  .dg-group rect { fill: var(--dg-group-bg); stroke: var(--dg-group-line); stroke-width: 1; }
+  .dg-group.dg-res rect { stroke: var(--dg-conv); stroke-dasharray: 5 3; }
+  .dg-group text { font: 600 10.5px var(--font); fill: var(--dg-muted); letter-spacing: .06em; text-transform: uppercase; }
+  .dg-add circle { fill: var(--dg-node-bg); stroke: var(--dg-conv); stroke-width: 1.5; }
+  .dg-add text { font: 600 14px var(--mono); fill: var(--dg-conv); }
+  .dg-io .dg-stripe { fill: var(--dg-io); } .dg-dense .dg-stripe { fill: var(--dg-dense); } .dg-conv .dg-stripe { fill: var(--dg-conv); }
+  .dg-pool .dg-stripe { fill: var(--dg-pool); } .dg-norm .dg-stripe { fill: var(--dg-norm); } .dg-act .dg-stripe { fill: var(--dg-act); } .dg-reshape .dg-stripe { fill: var(--dg-reshape); }
+  .detail .dgwrap { overflow: auto; border: 1px solid var(--line2); border-radius: 6px; background: var(--surface2); padding: 8px; max-height: 520px; }
+  .drop { border: 1px dashed var(--line); border-radius: 8px; padding: 40px 20px; text-align: center; color: var(--muted); background: var(--surface); margin-top: 14px; }
+  .drop.over { border-color: var(--accent); background: var(--accent-soft); }
+  .drop code { font-family: var(--mono); background: var(--surface2); padding: 1px 5px; border-radius: 4px; }
+  .toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 6px; font-weight: 500; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  .toast.on { opacity: 1; }
+  [hidden] { display: none !important; }
+
+  @media (max-width: 1200px) {
+    .cols { grid-template-columns: 1fr; }
+    .detail { position: static; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Layerforge Experiments</h1>
+    <span class="src" id="src">no log loaded</span>
+    <span class="spacer"></span>
+    <button class="btn" id="btnOpen">Load a log file</button>
+    <input type="file" id="file" accept=".jsonl,.csv,.json" hidden>
+  </header>
+
+  <div id="empty" class="drop">
+    <div><strong>Drop <code>results/experiments.jsonl</code> here</strong>, or click "Load a log file".</div>
+    <div style="margin-top:8px">Or run <code>python train_model.py --dashboard</code>, which writes <code>results/dashboard.html</code> with the data built in.</div>
+  </div>
+
+  <div id="app" hidden>
+    <div class="filters">
+      <label>Dataset <select id="fDataset"><option value="">all</option></select></label>
+      <label>Framework <select id="fFw"><option value="">all</option><option value="torch">PyTorch</option><option value="keras">Keras</option></select></label>
+      <label>Search <input type="search" id="fQ" placeholder="tag, model, layer…"></label>
+      <span class="count" id="count"></span>
+    </div>
+
+    <div class="tiles" id="tiles"></div>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Training curves</h2>
+        <div class="seg" role="group" aria-label="Metric">
+          <button data-metric="test_acc" aria-pressed="true">Test accuracy</button>
+          <button data-metric="train_acc" aria-pressed="false">Train accuracy</button>
+          <button data-metric="loss" aria-pressed="false">Loss</button>
+        </div>
+        <span class="hint">Tick runs in the table to compare them, up to 8.</span>
+      </div>
+      <div class="chart-wrap" id="chart"><div class="tip" id="tip"></div></div>
+      <div class="legend" id="legend"></div>
+    </section>
+
+    <div class="cols">
+      <section class="panel">
+        <div class="panel-head"><h2>Runs</h2><span class="hint">Click a row for details. Click a column to sort.</span></div>
+        <div class="tablewrap">
+          <table id="table">
+            <thead><tr>
+              <th title="Compare"></th>
+              <th data-k="_id" class="num">#</th>
+              <th data-k="timestamp">When</th>
+              <th data-k="tag">Tag</th>
+              <th data-k="model_name">Model</th>
+              <th data-k="framework">FW</th>
+              <th data-k="dataset">Dataset</th>
+              <th data-k="params" class="num">Params</th>
+              <th data-k="epochs" class="num">Ep</th>
+              <th data-k="lr" class="num">LR</th>
+              <th data-k="test_acc" class="num">Test acc</th>
+              <th data-k="train_acc" class="num">Train acc</th>
+              <th data-k="gap" class="num">Gap</th>
+              <th data-k="seconds" class="num">Time</th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <aside class="panel detail" id="detail"><div class="empty">Select a run to see its settings, epoch-by-epoch numbers and the model source.</div></aside>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script id="runs-data" type="application/json">[{"timestamp": "2026-09-18T21:32:16", "tag": "", "model_file": "LeNet_5_mod.py", "model_name": "LeNet5", "framework": "torch", "dataset": "mnist", "input_shape": "1x32x32", "params": 44660, "epochs": 3, "batch": 128, "lr": 0.001, "train_examples": 60000, "attempts": 1, "final_loss": 0.09984, "train_acc": 0.9792, "test_acc": 0.9724, "seconds": 29.6, "device": "mps", "architecture": "Conv(1\u21926,k8,s1) Tanh AvgPool(k2,s2) Conv(6\u219216,k5,s1) Tanh AvgPool(k2,s2) Flatten Linear(256\u2192120) Tanh Linear(120\u219284) Tanh Linear(84\u219210) Softmax", "history": [{"epoch": 1, "loss": 0.45507, "train_acc": 0.9482, "test_acc": 0.9438, "seconds": 9.9}, {"epoch": 2, "loss": 0.14822, "train_acc": 0.9734, "test_acc": 0.9668, "seconds": 9.7}, {"epoch": 3, "loss": 0.09984, "train_acc": 0.9792, "test_acc": 0.9724, "seconds": 9.5}], "graph": [{"kind": "layer", "type": "input", "out": [1, 32, 32]}, {"kind": "layer", "out": [6, 25, 25], "params": 390, "type": "conv", "filters": 6, "k": 8, "s": 1, "act": "tanh"}, {"kind": "layer", "out": [6, 12, 12], "params": 0, "type": "pool", "pool": "avg", "k": 2, "s": 2}, {"kind": "layer", "out": [16, 8, 8], "params": 2416, "type": "conv", "filters": 16, "k": 5, "s": 1, "act": "tanh"}, {"kind": "layer", "out": [16, 4, 4], "params": 0, "type": "pool", "pool": "avg", "k": 2, "s": 2}, {"kind": "layer", "out": [256], "params": 0, "type": "flatten"}, {"kind": "layer", "out": [120], "params": 30840, "type": "dense", "units": 120, "act": "tanh"}, {"kind": "layer", "out": [84], "params": 10164, "type": "dense", "units": 84, "act": "tanh"}, {"kind": "layer", "out": [10], "params": 850, "type": "dense", "units": 10, "act": "softmax"}], "model_source": "\"\"\"LeNet 5 \u2014 generated by Layerforge\ninput: (N, 1, 32, 32)   output: (N, 10)   parameters: 61,706\n\"\"\"\nimport torch\nimport torch.nn as nn\n\nclass LeNet5(nn.Module):\n    def __init__(self):\n        super().__init__()\n        self.net = nn.Sequential(\n            nn.Conv2d(1, 6, kernel_size=8, stride=1, padding=0),\n            nn.Tanh(),\n            nn.AvgPool2d(kernel_size=2, stride=2),\n            nn.Conv2d(6, 16, kernel_size=5, stride=1, padding=0),\n            nn.Tanh(),\n            nn.AvgPool2d(kernel_size=2, stride=2),\n            nn.Flatten(),\n            nn.Linear(256, 120),\n            nn.Tanh(),\n            nn.Linear(120, 84),\n            nn.Tanh(),\n            nn.Linear(84, 10),\n            nn.Softmax(dim=1),\n        )\n\n    def forward(self, x):\n        return self.net(x)\n\n# Note: nn.CrossEntropyLoss expects raw logits. If you train with it, drop the final Softmax\n# (keep it only for inference), or use nn.NLLLoss with a LogSoftmax instead.\n\n\nif __name__ == \"__main__\":\n    model = LeNet5()\n    x = torch.randn(1, 1, 32, 32)  # one example, batch dimension first\n    print(model(x).shape)\n    print(f\"parameters: {sum(p.numel() for p in model.parameters()):,}\")\n\n    model = LeNet5()\n    x = torch.randn(1, 1, 32, 32)   # batch of 1, 1 channel, 32x32\n    for layer in model.net:\n        x = layer(x)\n        print(f\"{layer.__class__.__name__:<12} {tuple(x.shape)}\")\n\n"}, {"timestamp": "2026-09-18T21:39:35", "tag": "", "model_file": "CIFAR_10.py", "model_name": "SimpleCIFAR10CNN", "framework": "torch", "dataset": "mnist", "input_shape": "3x32x32", "params": 620810, "epochs": 3, "batch": 128, "lr": 0.001, "train_examples": 60000, "attempts": 1, "final_loss": 0.03866, "train_acc": 0.9932, "test_acc": 0.9907, "seconds": 64.0, "device": "mps", "architecture": "Conv(3\u219232,k3,s1) BN(32) ReLU MaxPool(k2,s2) Conv(32\u219264,k3,s1) BN(64) ReLU MaxPool(k2,s2) Conv(64\u2192128,k3,s1) BN(128) ReLU MaxPool(k2,s2) Flatten Dropout(0.3) Linear(2048\u2192256) ReLU Linear(256\u219210) Softmax", "history": [{"epoch": 1, "loss": 0.15025, "train_acc": 0.9888, "test_acc": 0.987, "seconds": 20.7}, {"epoch": 2, "loss": 0.05025, "train_acc": 0.9916, "test_acc": 0.9883, "seconds": 21.2}, {"epoch": 3, "loss": 0.03866, "train_acc": 0.9932, "test_acc": 0.9907, "seconds": 21.1}], "graph": [{"kind": "layer", "type": "input", "out": [3, 32, 32]}, {"kind": "layer", "out": [32, 32, 32], "params": 896, "type": "conv", "filters": 32, "k": 3, "s": 1}, {"kind": "layer", "out": [32, 32, 32], "params": 64, "type": "bn"}, {"kind": "layer", "out": [32, 32, 32], "params": 0, "type": "act", "fn": "relu"}, {"kind": "layer", "out": [32, 16, 16], "params": 0, "type": "pool", "pool": "max", "k": 2, "s": 2}, {"kind": "layer", "out": [64, 16, 16], "params": 18496, "type": "conv", "filters": 64, "k": 3, "s": 1}, {"kind": "layer", "out": [64, 16, 16], "params": 128, "type": "bn"}, {"kind": "layer", "out": [64, 16, 16], "params": 0, "type": "act", "fn": "relu"}, {"kind": "layer", "out": [64, 8, 8], "params": 0, "type": "pool", "pool": "max", "k": 2, "s": 2}, {"kind": "layer", "out": [128, 8, 8], "params": 73856, "type": "conv", "filters": 128, "k": 3, "s": 1}, {"kind": "layer", "out": [128, 8, 8], "params": 256, "type": "bn"}, {"kind": "layer", "out": [128, 8, 8], "params": 0, "type": "act", "fn": "relu"}, {"kind": "layer", "out": [128, 4, 4], "params": 0, "type": "pool", "pool": "max", "k": 2, "s": 2}, {"kind": "layer", "out": [2048], "params": 0, "type": "flatten"}, {"kind": "layer", "out": [2048], "params": 0, "type": "dropout", "p": 0.3}, {"kind": "layer", "out": [256], "params": 524544, "type": "dense", "units": 256, "act": "relu"}, {"kind": "layer", "out": [10], "params": 2570, "type": "dense", "units": 10, "act": "softmax"}], "model_source": "\"\"\"Simple CIFAR 10 CNN \u2014 generated by Layerforge\ninput: (N, 3, 32, 32)   output: (N, 10)   parameters: 620,810\n\"\"\"\nimport torch\nimport torch.nn as nn\n\nclass SimpleCIFAR10CNN(nn.Module):\n    def __init__(self):\n        super().__init__()\n        self.net = nn.Sequential(\n            # Stage 32\n            nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=\"same\"),\n            nn.BatchNorm2d(32),\n            nn.ReLU(inplace=True),\n            nn.MaxPool2d(kernel_size=2, stride=2),\n            # Stage 64\n            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=\"same\"),\n            nn.BatchNorm2d(64),\n            nn.ReLU(inplace=True),\n            nn.MaxPool2d(kernel_size=2, stride=2),\n            # Stage 128\n            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=\"same\"),\n            nn.BatchNorm2d(128),\n            nn.ReLU(inplace=True),\n            nn.MaxPool2d(kernel_size=2, stride=2),\n            nn.Flatten(),\n            nn.Dropout(p=0.3),\n            nn.Linear(2048, 256),\n            nn.ReLU(inplace=True),\n            nn.Linear(256, 10),\n            nn.Softmax(dim=1),\n        )\n\n    def forward(self, x):\n        return self.net(x)\n\n# Note: nn.CrossEntropyLoss expects raw logits. If you train with it, drop the final Softmax\n# (keep it only for inference), or use nn.NLLLoss with a LogSoftmax instead.\n\n\nif __name__ == \"__main__\":\n    model = SimpleCIFAR10CNN()\n    x = torch.randn(1, 3, 32, 32)  # one example, batch dimension first\n    print(model(x).shape)\n    print(f\"parameters: {sum(p.numel() for p in model.parameters()):,}\")"}, {"timestamp": "2026-09-18T22:26:08", "tag": "MNIST MLP", "model_file": "MNISTMLP_20260918_222602_torch.py", "model_name": "MNISTMLP", "framework": "torch", "dataset": "mnist", "input_shape": "784", "params": 235146, "epochs": 3, "batch": 128, "lr": 0.001, "train_examples": 60000, "attempts": 1, "final_loss": 0.17374, "train_acc": 0.9706, "test_acc": 0.9622, "seconds": 5.1, "device": "mps", "architecture": "Linear(784\u2192256) ReLU Dropout(0.2) Linear(256\u2192128) ReLU Dropout(0.2) Linear(128\u219210) Softmax", "history": [{"epoch": 1, "loss": 0.49465, "train_acc": 0.9364, "test_acc": 0.9305, "seconds": 1.7}, {"epoch": 2, "loss": 0.22866, "train_acc": 0.9656, "test_acc": 0.9568, "seconds": 1.4}, {"epoch": 3, "loss": 0.17374, "train_acc": 0.9706, "test_acc": 0.9622, "seconds": 1.3}], "graph": [{"kind": "layer", "type": "input", "out": [784]}, {"kind": "layer", "out": [256], "params": 200960, "type": "dense", "units": 256, "act": "relu"}, {"kind": "layer", "out": [256], "params": 0, "type": "dropout", "p": 0.2}, {"kind": "layer", "out": [128], "params": 32896, "type": "dense", "units": 128, "act": "relu"}, {"kind": "layer", "out": [128], "params": 0, "type": "dropout", "p": 0.2}, {"kind": "layer", "out": [10], "params": 1290, "type": "dense", "units": 10, "act": "softmax"}], "design": {"name": "MNIST MLP", "blocks": [{"type": "input", "params": {"shape": "784"}}, {"type": "dense", "params": {"units": 256, "activation": "relu", "bias": true}}, {"type": "dropout", "params": {"rate": 0.2}}, {"type": "dense", "params": {"units": 128, "activation": "relu", "bias": true}}, {"type": "dropout", "params": {"rate": 0.2}}, {"type": "dense", "params": {"units": 10, "activation": "softmax", "bias": true}}]}, "model_source": "\"\"\"MNIST MLP \u2014 generated by Layerforge\ninput: (N, 784)   output: (N, 10)   parameters: 235,146\n\"\"\"\nimport torch\nimport torch.nn as nn\n\nclass MNISTMLP(nn.Module):\n    def __init__(self):\n        super().__init__()\n        self.net = nn.Sequential(\n            nn.Linear(784, 256),\n            nn.ReLU(inplace=True),\n            nn.Dropout(p=0.2),\n            nn.Linear(256, 128),\n            nn.ReLU(inplace=True),\n            nn.Dropout(p=0.2),\n            nn.Linear(128, 10),\n            nn.Softmax(dim=1),\n        )\n\n    def forward(self, x):\n        return self.net(x)\n\n# Note: nn.CrossEntropyLoss expects raw logits. If you train with it, drop the final Softmax\n# (keep it only for inference), or use nn.NLLLoss with a LogSoftmax instead.\n\n\nif __name__ == \"__main__\":\n    model = MNISTMLP()\n    x = torch.randn(1, 784)  # one example, batch dimension first\n    print(model(x).shape)\n    print(f\"parameters: {sum(p.numel() for p in model.parameters()):,}\")\n\n# Layerforge keeps the design below so \"Load design\" can reopen this file in the builder.\n# layerforge-design: {\"name\":\"MNIST MLP\",\"blocks\":[{\"type\":\"input\",\"params\":{\"shape\":\"784\"}},{\"type\":\"dense\",\"params\":{\"units\":256,\"activation\":\"relu\",\"bias\":true}},{\"type\":\"dropout\",\"params\":{\"rate\":0.2}},{\"type\":\"dense\",\"params\":{\"units\":128,\"activation\":\"relu\",\"bias\":true}},{\"type\":\"dropout\",\"params\":{\"rate\":0.2}},{\"type\":\"dense\",\"params\":{\"units\":10,\"activation\":\"softmax\",\"bias\":true}}]}"}, {"timestamp": "2026-09-18T22:26:39", "tag": "MNIST MLP", "model_file": "MNISTMLP_20260918_222633_torch.py", "model_name": "MNISTMLP", "framework": "torch", "dataset": "fashion", "input_shape": "784", "params": 235146, "epochs": 3, "batch": 128, "lr": 0.001, "train_examples": 60000, "attempts": 1, "final_loss": 0.37607, "train_acc": 0.8698, "test_acc": 0.8538, "seconds": 5.2, "device": "mps", "architecture": "Linear(784\u2192256) ReLU Dropout(0.2) Linear(256\u2192128) ReLU Dropout(0.2) Linear(128\u219210) Softmax", "history": [{"epoch": 1, "loss": 0.58849, "train_acc": 0.8642, "test_acc": 0.8417, "seconds": 1.4}, {"epoch": 2, "loss": 0.41401, "train_acc": 0.8652, "test_acc": 0.8463, "seconds": 1.6}, {"epoch": 3, "loss": 0.37607, "train_acc": 0.8698, "test_acc": 0.8538, "seconds": 1.7}], "graph": [{"kind": "layer", "type": "input", "out": [784]}, {"kind": "layer", "out": [256], "params": 200960, "type": "dense", "units": 256, "act": "relu"}, {"kind": "layer", "out": [256], "params": 0, "type": "dropout", "p": 0.2}, {"kind": "layer", "out": [128], "params": 32896, "type": "dense", "units": 128, "act": "relu"}, {"kind": "layer", "out": [128], "params": 0, "type": "dropout", "p": 0.2}, {"kind": "layer", "out": [10], "params": 1290, "type": "dense", "units": 10, "act": "softmax"}], "design": {"name": "MNIST MLP", "blocks": [{"type": "input", "params": {"shape": "784"}}, {"type": "dense", "params": {"units": 256, "activation": "relu", "bias": true}}, {"type": "dropout", "params": {"rate": 0.2}}, {"type": "dense", "params": {"units": 128, "activation": "relu", "bias": true}}, {"type": "dropout", "params": {"rate": 0.2}}, {"type": "dense", "params": {"units": 10, "activation": "softmax", "bias": true}}]}, "model_source": "\"\"\"MNIST MLP \u2014 generated by Layerforge\ninput: (N, 784)   output: (N, 10)   parameters: 235,146\n\"\"\"\nimport torch\nimport torch.nn as nn\n\nclass MNISTMLP(nn.Module):\n    def __init__(self):\n        super().__init__()\n        self.net = nn.Sequential(\n            nn.Linear(784, 256),\n            nn.ReLU(inplace=True),\n            nn.Dropout(p=0.2),\n            nn.Linear(256, 128),\n            nn.ReLU(inplace=True),\n            nn.Dropout(p=0.2),\n            nn.Linear(128, 10),\n            nn.Softmax(dim=1),\n        )\n\n    def forward(self, x):\n        return self.net(x)\n\n# Note: nn.CrossEntropyLoss expects raw logits. If you train with it, drop the final Softmax\n# (keep it only for inference), or use nn.NLLLoss with a LogSoftmax instead.\n\n\nif __name__ == \"__main__\":\n    model = MNISTMLP()\n    x = torch.randn(1, 784)  # one example, batch dimension first\n    print(model(x).shape)\n    print(f\"parameters: {sum(p.numel() for p in model.parameters()):,}\")\n\n# Layerforge keeps the design below so \"Load design\" can reopen this file in the builder.\n# layerforge-design: {\"name\":\"MNIST MLP\",\"blocks\":[{\"type\":\"input\",\"params\":{\"shape\":\"784\"}},{\"type\":\"dense\",\"params\":{\"units\":256,\"activation\":\"relu\",\"bias\":true}},{\"type\":\"dropout\",\"params\":{\"rate\":0.2}},{\"type\":\"dense\",\"params\":{\"units\":128,\"activation\":\"relu\",\"bias\":true}},{\"type\":\"dropout\",\"params\":{\"rate\":0.2}},{\"type\":\"dense\",\"params\":{\"units\":10,\"activation\":\"softmax\",\"bias\":true}}]}"}, {"timestamp": "2026-09-18T22:28:09", "tag": "Simple CIFAR 10 CNN", "model_file": "SimpleCIFAR10CNN_20260918_222703_torch.py", "model_name": "SimpleCIFAR10CNN", "framework": "torch", "dataset": "fashion", "input_shape": "3x32x32", "params": 620810, "epochs": 3, "batch": 128, "lr": 0.001, "train_examples": 60000, "attempts": 1, "final_loss": 0.24188, "train_acc": 0.9364, "test_acc": 0.9108, "seconds": 65.5, "device": "mps", "architecture": "Conv(3\u219232,k3,s1) BN(32) ReLU MaxPool(k2,s2) Conv(32\u219264,k3,s1) BN(64) ReLU MaxPool(k2,s2) Conv(64\u2192128,k3,s1) BN(128) ReLU MaxPool(k2,s2) Flatten Dropout(0.3) Linear(2048\u2192256) ReLU Linear(256\u219210) Softmax", "history": [{"epoch": 1, "loss": 0.41503, "train_acc": 0.9022, "test_acc": 0.8827, "seconds": 21.6}, {"epoch": 2, "loss": 0.28283, "train_acc": 0.9146, "test_acc": 0.8948, "seconds": 21.2}, {"epoch": 3, "loss": 0.24188, "train_acc": 0.9364, "test_acc": 0.9108, "seconds": 21.1}], "graph": [{"kind": "layer", "type": "input", "out": [3, 32, 32]}, {"kind": "layer", "out": [32, 32, 32], "params": 896, "type": "conv", "filters": 32, "k": 3, "s": 1}, {"kind": "layer", "out": [32, 32, 32], "params": 64, "type": "bn"}, {"kind": "layer", "out": [32, 32, 32], "params": 0, "type": "act", "fn": "relu"}, {"kind": "layer", "out": [32, 16, 16], "params": 0, "type": "pool", "pool": "max", "k": 2, "s": 2}, {"kind": "layer", "out": [64, 16, 16], "params": 18496, "type": "conv", "filters": 64, "k": 3, "s": 1}, {"kind": "layer", "out": [64, 16, 16], "params": 128, "type": "bn"}, {"kind": "layer", "out": [64, 16, 16], "params": 0, "type": "act", "fn": "relu"}, {"kind": "layer", "out": [64, 8, 8], "params": 0, "type": "pool", "pool": "max", "k": 2, "s": 2}, {"kind": "layer", "out": [128, 8, 8], "params": 73856, "type": "conv", "filters": 128, "k": 3, "s": 1}, {"kind": "layer", "out": [128, 8, 8], "params": 256, "type": "bn"}, {"kind": "layer", "out": [128, 8, 8], "params": 0, "type": "act", "fn": "relu"}, {"kind": "layer", "out": [128, 4, 4], "params": 0, "type": "pool", "pool": "max", "k": 2, "s": 2}, {"kind": "layer", "out": [2048], "params": 0, "type": "flatten"}, {"kind": "layer", "out": [2048], "params": 0, "type": "dropout", "p": 0.3}, {"kind": "layer", "out": [256], "params": 524544, "type": "dense", "units": 256, "act": "relu"}, {"kind": "layer", "out": [10], "params": 2570, "type": "dense", "units": 10, "act": "softmax"}], "design": {"name": "Simple CIFAR 10 CNN", "blocks": [{"type": "input", "params": {"shape": "3,32,32"}}, {"type": "group", "name": "Stage 32", "repeat": 1, "residual": false, "shortcut": "auto", "postAct": "none", "children": [{"type": "conv2d", "params": {"filters": 32, "kernel": 3, "stride": 1, "padding": "same", "activation": "none", "bias": true}}, {"type": "batchnorm", "params": {}}, {"type": "activation", "params": {"fn": "relu"}}, {"type": "maxpool", "params": {"pool": 2, "stride": 2, "padding": "valid"}}]}, {"type": "group", "name": "Stage 64", "repeat": 1, "residual": false, "shortcut": "auto", "postAct": "none", "children": [{"type": "conv2d", "params": {"filters": 64, "kernel": 3, "stride": 1, "padding": "same", "activation": "none", "bias": true}}, {"type": "batchnorm", "params": {}}, {"type": "activation", "params": {"fn": "relu"}}, {"type": "maxpool", "params": {"pool": 2, "stride": 2, "padding": "valid"}}]}, {"type": "group", "name": "Stage 128", "repeat": 1, "residual": false, "shortcut": "auto", "postAct": "none", "children": [{"type": "conv2d", "params": {"filters": 128, "kernel": 3, "stride": 1, "padding": "same", "activation": "none", "bias": true}}, {"type": "batchnorm", "params": {}}, {"type": "activation", "params": {"fn": "relu"}}, {"type": "maxpool", "params": {"pool": 2, "stride": 2, "padding": "valid"}}]}, {"type": "flatten", "params": {}}, {"type": "dropout", "params": {"rate": 0.3}}, {"type": "dense", "params": {"units": 256, "activation": "relu", "bias": true}}, {"type": "dense", "params": {"units": 10, "activation": "softmax", "bias": true}}]}, "model_source": "\"\"\"Simple CIFAR 10 CNN \u2014 generated by Layerforge\ninput: (N, 3, 32, 32)   output: (N, 10)   parameters: 620,810\n\"\"\"\nimport torch\nimport torch.nn as nn\n\nclass SimpleCIFAR10CNN(nn.Module):\n    def __init__(self):\n        super().__init__()\n        self.net = nn.Sequential(\n            # Stage 32\n            nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=\"same\"),\n            nn.BatchNorm2d(32),\n            nn.ReLU(inplace=True),\n            nn.MaxPool2d(kernel_size=2, stride=2),\n            # Stage 64\n            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=\"same\"),\n            nn.BatchNorm2d(64),\n            nn.ReLU(inplace=True),\n            nn.MaxPool2d(kernel_size=2, stride=2),\n            # Stage 128\n            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=\"same\"),\n            nn.BatchNorm2d(128),\n            nn.ReLU(inplace=True),\n            nn.MaxPool2d(kernel_size=2, stride=2),\n            nn.Flatten(),\n            nn.Dropout(p=0.3),\n            nn.Linear(2048, 256),\n            nn.ReLU(inplace=True),\n            nn.Linear(256, 10),\n            nn.Softmax(dim=1),\n        )\n\n    def forward(self, x):\n        return self.net(x)\n\n# Note: nn.CrossEntropyLoss expects raw logits. If you train with it, drop the final Softmax\n# (keep it only for inference), or use nn.NLLLoss with a LogSoftmax instead.\n\n\nif __name__ == \"__main__\":\n    model = SimpleCIFAR10CNN()\n    x = torch.randn(1, 3, 32, 32)  # one example, batch dimension first\n    print(model(x).shape)\n    print(f\"parameters: {sum(p.numel() for p in model.parameters()):,}\")\n\n# Layerforge keeps the design below so \"Load design\" can reopen this file in the builder.\n# layerforge-design: {\"name\":\"Simple CIFAR 10 CNN\",\"blocks\":[{\"type\":\"input\",\"params\":{\"shape\":\"3,32,32\"}},{\"type\":\"group\",\"name\":\"Stage 32\",\"repeat\":1,\"residual\":false,\"shortcut\":\"auto\",\"postAct\":\"none\",\"children\":[{\"type\":\"conv2d\",\"params\":{\"filters\":32,\"kernel\":3,\"stride\":1,\"padding\":\"same\",\"activation\":\"none\",\"bias\":true}},{\"type\":\"batchnorm\",\"params\":{}},{\"type\":\"activation\",\"params\":{\"fn\":\"relu\"}},{\"type\":\"maxpool\",\"params\":{\"pool\":2,\"stride\":2,\"padding\":\"valid\"}}]},{\"type\":\"group\",\"name\":\"Stage 64\",\"repeat\":1,\"residual\":false,\"shortcut\":\"auto\",\"postAct\":\"none\",\"children\":[{\"type\":\"conv2d\",\"params\":{\"filters\":64,\"kernel\":3,\"stride\":1,\"padding\":\"same\",\"activation\":\"none\",\"bias\":true}},{\"type\":\"batchnorm\",\"params\":{}},{\"type\":\"activation\",\"params\":{\"fn\":\"relu\"}},{\"type\":\"maxpool\",\"params\":{\"pool\":2,\"stride\":2,\"padding\":\"valid\"}}]},{\"type\":\"group\",\"name\":\"Stage 128\",\"repeat\":1,\"residual\":false,\"shortcut\":\"auto\",\"postAct\":\"none\",\"children\":[{\"type\":\"conv2d\",\"params\":{\"filters\":128,\"kernel\":3,\"stride\":1,\"padding\":\"same\",\"activation\":\"none\",\"bias\":true}},{\"type\":\"batchnorm\",\"params\":{}},{\"type\":\"activation\",\"params\":{\"fn\":\"relu\"}},{\"type\":\"maxpool\",\"params\":{\"pool\":2,\"stride\":2,\"padding\":\"valid\"}}]},{\"type\":\"flatten\",\"params\":{}},{\"type\":\"dropout\",\"params\":{\"rate\":0.3}},{\"type\":\"dense\",\"params\":{\"units\":256,\"activation\":\"relu\",\"bias\":true}},{\"type\":\"dense\",\"params\":{\"units\":10,\"activation\":\"softmax\",\"bias\":true}}]}"}]</script>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const pct = v => v == null || isNaN(v) ? '–' : (v * 100).toFixed(1) + '%';
+const num = v => v == null || isNaN(v) ? '–' : Number(v).toLocaleString('en-US');
+const secs = v => v == null ? '–' : v < 90 ? `${Number(v).toFixed(1)}s` : v < 5400 ? `${Math.floor(v / 60)}m ${Math.round(v % 60)}s` : `${(v / 3600).toFixed(1)}h`;
+const when = ts => (ts || '').replace('T', ' ').slice(0, 16);
+const MAX_SERIES = 8;
+const METRIC_LABEL = { test_acc: 'Test accuracy', train_acc: 'Train accuracy', loss: 'Training loss' };
+
+let runs = [], sourceName = '', metric = 'test_acc';
+let sort = { key: '_id', dir: -1 };
+const selected = new Map();        // run id → colour slot (1..8); colour stays with the run
+let detailId = null;
+
+/* ---- model diagram renderer (identical copy in index.html and experiments_viewer.html) ----
+   Input: a list of items.
+     layer: { kind:'layer', type, ...fields, out:[C,H,W]|[F], params, repeat }
+       types: input | dense{units,act} | conv{filters,k,s,act} | bn | pool{pool:'max'|'avg',k,s} | gap | flatten | dropout{p} | act{fn} | other{label}
+     group: { kind:'group', name, repeat, residual, body:[items], shortcut:[layer items], act, out, note }
+   Output: an SVG string. Styling comes from .dg-* classes, so each page themes it with its own tokens. */
+const DG = { W: 240, H: 30, GAP: 14, PAD: 12, HEAD: 24, SC_W: 200, SC_GAP: 28 };
+const DG_CAT = { input: 'io', dense: 'dense', conv: 'conv', bn: 'norm', pool: 'pool', gap: 'pool', flatten: 'reshape', dropout: 'norm', act: 'act', other: 'reshape' };
+function dgLabel(n) {
+  const act = n.act && n.act !== 'none' ? ` · ${n.act}` : '';
+  switch (n.type) {
+    case 'input': return 'Input';
+    case 'dense': return `Dense ${n.units}${act}`;
+    case 'conv': return `Conv ${n.k}×${n.k}, ${n.filters}${n.s > 1 ? ` /${n.s}` : ''}${act}`;
+    case 'bn': return 'BatchNorm';
+    case 'pool': return `${n.pool === 'avg' ? 'AvgPool' : 'MaxPool'} ${n.k}${n.s && n.s !== n.k ? ` /${n.s}` : ''}`;
+    case 'gap': return 'Global avg pool';
+    case 'flatten': return 'Flatten';
+    case 'dropout': return `Dropout ${n.p}`;
+    case 'act': return n.fn ? String(n.fn).replace(/_/g, ' ') : 'Activation';
+    default: return n.label || n.type || 'layer';
+  }
+}
+const dgShape = s => Array.isArray(s) && s.length ? s.join('×') : '';
+function renderDiagram(items, opts = {}) {
+  const els = []; let maxX = 0;
+  const E = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const edge = (a, b) => els.push(`<path class="dg-edge" d="M${a.x},${a.y} L${b.x},${b.y}" marker-end="url(#dg-arrow)"/>`);
+  function node(n, x, y, w) {
+    const cat = DG_CAT[n.type] || 'reshape';
+    const rep = n.repeat > 1 ? ` ×${n.repeat}` : '';
+    const tip = dgLabel(n) + (n.params ? ` · ${Number(n.params).toLocaleString('en-US')} params` : '');
+    els.push(`<g class="dg-node dg-${cat}"><title>${E(tip)}</title><rect x="${x}" y="${y}" width="${w}" height="${DG.H}" rx="5"/>` +
+      `<rect class="dg-stripe" x="${x}" y="${y}" width="4" height="${DG.H}" rx="2"/>` +
+      `<text class="dg-label" x="${x + 12}" y="${y + 19}">${E(dgLabel(n) + rep)}</text>` +
+      `<text class="dg-shape" x="${x + w - 8}" y="${y + 19}" text-anchor="end">${E(dgShape(n.out))}</text></g>`);
+    maxX = Math.max(maxX, x + w);
+  }
+  function place(list, x, y, ctx) {
+    let maxW = 0;
+    for (const it of list) {
+      if (it.kind !== 'group') {
+        const cx = x + DG.W / 2;
+        if (ctx.prev) edge(ctx.prev, { x: cx, y });
+        node(it, x, y, DG.W); ctx.prev = { x: cx, y: y + DG.H };
+        y += DG.H + DG.GAP; maxW = Math.max(maxW, DG.W);
+        continue;
+      }
+      const top = y, bx = x + DG.PAD, cx = bx + DG.W / 2;
+      const start = els.length;                                   // container + skip path get inserted here, behind the nodes
+      const skipFrom = { x: cx, y: ctx.prev ? (ctx.prev.y + top) / 2 : top };
+      if (ctx.prev) edge(ctx.prev, { x: cx, y: top });
+      ctx.prev = null;
+      y = top + DG.HEAD;
+      const r = place(it.body || [], bx, y, ctx);
+      y = r.y; let w = DG.PAD + Math.max(r.w, DG.W) + DG.PAD;
+      if (it.residual) {
+        const sc = it.shortcut || [], hasSc = sc.length > 0;
+        const skipX = bx + DG.W + DG.SC_GAP + (hasSc ? DG.SC_W / 2 : 0);
+        const addY = y + 4;
+        if (ctx.prev) edge(ctx.prev, { x: cx, y: addY - 12 });
+        let sy = top + DG.HEAD;
+        for (const s of sc) { node(s, skipX - DG.SC_W / 2, sy, DG.SC_W); sy += DG.H + DG.GAP; }
+        els.splice(start, 0, `<path class="dg-skip" d="M${skipFrom.x},${skipFrom.y} H${skipX} V${addY} H${cx + 12}" marker-end="url(#dg-arrow)"/>`);
+        els.push(`<g class="dg-add"><title>add: body output + skip path</title><circle cx="${cx}" cy="${addY}" r="12"/><text x="${cx}" y="${addY + 5}" text-anchor="middle">+</text></g>`);
+        ctx.prev = { x: cx, y: addY + 12 };
+        y = addY + 12 + DG.GAP;
+        w = Math.max(w, DG.PAD + DG.W + DG.SC_GAP + (hasSc ? DG.SC_W : 0) + DG.PAD);
+        if (it.act && it.act !== 'none') {
+          edge(ctx.prev, { x: cx, y }); node({ type: 'act', fn: it.act, out: it.out }, bx, y, DG.W);
+          ctx.prev = { x: cx, y: y + DG.H }; y += DG.H + DG.GAP;
+        }
+      }
+      const bottom = y - DG.GAP + DG.PAD;
+      const name = `${it.name || 'Block'}${it.repeat > 1 ? ` ×${it.repeat}` : ''}${it.note ? ` ${it.note}` : ''}`;
+      els.splice(start, 0, `<g class="dg-group${it.residual ? ' dg-res' : ''}"><rect x="${x}" y="${top}" width="${w}" height="${bottom - top}" rx="8"/><text x="${x + 10}" y="${top + 16}">${E(name)}</text></g>`);
+      maxX = Math.max(maxX, x + w); maxW = Math.max(maxW, w);
+      y = bottom + DG.GAP;
+    }
+    return { y, w: maxW };
+  }
+  if (!items || !items.length) return '<svg class="dg" xmlns="http://www.w3.org/2000/svg" width="240" height="40"><text class="dg-label" x="8" y="24">Nothing to draw yet.</text></svg>';
+  const r = place(items, 8, 8, { prev: null });
+  const W = maxX + 8, H = r.y - DG.GAP + 8;
+  return `<svg class="dg" xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Model diagram">` +
+    (opts.style ? `<style>${opts.style}</style>` : '') +
+    `<defs><marker id="dg-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>${els.join('')}</svg>`;
+}
+/* CSS for the diagram with literal colours, for a standalone .svg export. v = {nodeBg,nodeLine,ink,muted,edge,groupBg,groupLine,io,dense,conv,pool,norm,act,reshape,font,mono} */
+function dgCss(v) {
+  return `.dg-node rect{fill:${v.nodeBg};stroke:${v.nodeLine};stroke-width:1}.dg-node .dg-stripe{stroke:none}` +
+    `.dg-label{font:500 12px ${v.font};fill:${v.ink}}.dg-shape{font:11px ${v.mono};fill:${v.muted}}` +
+    `.dg-edge{stroke:${v.edge};stroke-width:1.5;fill:none}#dg-arrow path{fill:${v.edge}}` +
+    `.dg-skip{stroke:${v.conv};stroke-width:1.5;stroke-dasharray:4 3;fill:none}` +
+    `.dg-group rect{fill:${v.groupBg};stroke:${v.groupLine};stroke-width:1}.dg-group.dg-res rect{stroke:${v.conv};stroke-dasharray:5 3}` +
+    `.dg-group text{font:600 10.5px ${v.font};fill:${v.muted};letter-spacing:.06em;text-transform:uppercase}` +
+    `.dg-add circle{fill:${v.nodeBg};stroke:${v.conv};stroke-width:1.5}.dg-add text{font:600 14px ${v.mono};fill:${v.conv}}` +
+    `.dg-io .dg-stripe{fill:${v.io}}.dg-dense .dg-stripe{fill:${v.dense}}.dg-conv .dg-stripe{fill:${v.conv}}.dg-pool .dg-stripe{fill:${v.pool}}` +
+    `.dg-norm .dg-stripe{fill:${v.norm}}.dg-act .dg-stripe{fill:${v.act}}.dg-reshape .dg-stripe{fill:${v.reshape}}`;
+}
+/* ---- end model diagram renderer ---- */
+
+/* ---------- loading ---------- */
+function normalize(rows) {
+  return rows.map((r, i) => {
+    const o = { ...r };
+    o._id = i + 1;
+    for (const k of ['params', 'epochs', 'batch', 'lr', 'train_examples', 'attempts', 'final_loss', 'train_acc', 'test_acc', 'seconds'])
+      if (o[k] !== undefined && o[k] !== '') o[k] = Number(o[k]);
+    o.gap = (o.train_acc != null && o.test_acc != null) ? o.train_acc - o.test_acc : null;
+    o.history = Array.isArray(o.history) ? o.history : [];
+    o.graph = Array.isArray(o.graph) && o.graph.length ? o.graph : null;
+    o.design = o.design && Array.isArray(o.design.blocks) ? o.design : null;
+    o.tag = o.tag || '';
+    return o;
+  });
+}
+function parseCSV(text) {
+  const rows = []; let row = [], field = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else q = false; } else field += c; }
+    else if (c === '"') q = true;
+    else if (c === ',') { row.push(field); field = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; row.push(field); rows.push(row); row = []; field = ''; }
+    else field += c;
+  }
+  if (field || row.length) { row.push(field); rows.push(row); }
+  const [head, ...body] = rows.filter(r => r.length > 1);
+  return body.map(r => Object.fromEntries(head.map((h, i) => [h, r[i]])));
+}
+function loadText(text, name) {
+  let rows;
+  const t = text.trim();
+  if (!t) { toast('That file is empty'); return; }
+  if (name.endsWith('.csv') || (!t.startsWith('{') && !t.startsWith('['))) rows = parseCSV(text);
+  else if (t.startsWith('[')) rows = JSON.parse(t);
+  else rows = t.split('\n').filter(l => l.trim()).map(l => JSON.parse(l));
+  setRuns(rows, name);
+  if (!rows.some(r => r.history && r.history.length)) toast('CSV loaded: per-epoch curves need the .jsonl file');
+}
+function setRuns(rows, name) {
+  runs = normalize(rows); sourceName = name;
+  selected.clear(); detailId = null;
+  // start with the three most recent runs on the chart so the page is readable at rest
+  for (const r of runs.slice(-3).reverse()) toggleSelect(r._id, true, true);
+  const wanted = +(location.hash.match(/run=(\d+)/) || [])[1];
+  if (wanted && runs.some(r => r._id === wanted)) detailId = wanted;
+  const ds = [...new Set(runs.map(r => r.dataset))].sort();
+  $('#fDataset').innerHTML = '<option value="">all</option>' + ds.map(d => `<option>${esc(d)}</option>`).join('');
+  $('#empty').hidden = true; $('#app').hidden = false;
+  const last = runs[runs.length - 1];
+  $('#src').textContent = `${name} · ${runs.length} run${runs.length === 1 ? '' : 's'}${last ? ' · last ' + when(last.timestamp) : ''}`;
+  renderAll();
+}
+
+/* ---------- selection ---------- */
+function toggleSelect(id, on, quiet) {
+  if (on === undefined) on = !selected.has(id);
+  if (on) {
+    if (selected.has(id)) return;
+    if (selected.size >= MAX_SERIES) { if (!quiet) toast(`Up to ${MAX_SERIES} runs can be compared at once`); return; }
+    const used = new Set(selected.values());
+    let slot = 1; while (used.has(slot)) slot++;
+    selected.set(id, slot);
+  } else selected.delete(id);
+}
+const byId = id => runs.find(r => r._id === id);
+
+/* ---------- filtering & sorting ---------- */
+function visibleRuns() {
+  const ds = $('#fDataset').value, fw = $('#fFw').value, q = $('#fQ').value.trim().toLowerCase();
+  let out = runs.filter(r => (!ds || r.dataset === ds) && (!fw || r.framework === fw) &&
+    (!q || `${r.tag} ${r.model_name} ${r.architecture} ${r.model_file} ${r.dataset}`.toLowerCase().includes(q)));
+  const k = sort.key, d = sort.dir;
+  out.sort((a, b) => {
+    const x = a[k], y = b[k];
+    if (x == null && y == null) return 0; if (x == null) return 1; if (y == null) return -1;
+    return (typeof x === 'number' ? x - y : String(x).localeCompare(String(y))) * d;
+  });
+  return out;
+}
+
+/* ---------- rendering ---------- */
+function renderAll() { renderTiles(); renderTable(); renderChart(); renderLegend(); renderDetail(); }
+
+function renderTiles() {
+  const vis = visibleRuns();
+  const withAcc = vis.filter(r => r.test_acc != null);
+  const best = withAcc.length ? withAcc.reduce((a, b) => b.test_acc > a.test_acc ? b : a) : null;
+  const models = new Set(vis.map(r => r.model_name)), datasets = new Set(vis.map(r => r.dataset));
+  const time = vis.reduce((s, r) => s + (r.seconds || 0), 0);
+  $('#tiles').innerHTML = `
+    <div class="tile"><div class="k">Runs</div><div class="v">${vis.length}</div><div class="sub">${models.size} model${models.size === 1 ? '' : 's'} · ${datasets.size} dataset${datasets.size === 1 ? '' : 's'}</div></div>
+    <div class="tile"><div class="k">Best test accuracy</div><div class="v">${best ? pct(best.test_acc) : '–'}</div><div class="sub">${best ? `#${best._id} ${esc(best.model_name)} on ${esc(best.dataset)}${best.tag ? ' · ' + esc(best.tag) : ''}` : 'no runs'}</div></div>
+    <div class="tile"><div class="k">Median test accuracy</div><div class="v">${withAcc.length ? pct(median(withAcc.map(r => r.test_acc))) : '–'}</div><div class="sub">across the runs shown</div></div>
+    <div class="tile"><div class="k">Training time</div><div class="v">${secs(time)}</div><div class="sub">total across the runs shown</div></div>`;
+  $('#count').textContent = `${vis.length} of ${runs.length} runs shown`;
+}
+function median(a) { const s = [...a].sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; }
+
+function renderTable() {
+  const vis = visibleRuns();
+  const accs = vis.map(r => r.test_acc).filter(v => v != null);
+  const lo = Math.min(...accs), hi = Math.max(...accs), span = hi - lo || 1;
+  const tb = $('#table tbody');
+  tb.innerHTML = vis.map(r => {
+    const slot = selected.get(r._id);
+    const pos = r.test_acc == null ? null : ((r.test_acc - lo) / span * 100);
+    return `<tr data-id="${r._id}" class="${detailId === r._id ? 'open' : ''}">
+      <td><input type="checkbox" ${slot ? 'checked' : ''} aria-label="Compare run ${r._id}"></td>
+      <td class="num">${slot ? `<span class="sw" style="background:var(--s${slot})"></span>` : ''}${r._id}</td>
+      <td>${esc(when(r.timestamp))}</td>
+      <td>${r.tag ? `<span class="tag">${esc(r.tag)}</span>` : `<span class="arch" title="${esc(r.architecture)}">${esc(r.architecture)}</span>`}</td>
+      <td>${esc(r.model_name)}</td>
+      <td><span class="fw">${esc(r.framework)}</span></td>
+      <td>${esc(r.dataset)}</td>
+      <td class="num">${num(r.params)}</td>
+      <td class="num">${num(r.epochs)}</td>
+      <td class="num">${r.lr ?? '–'}</td>
+      <td class="num">${pos == null ? '' : `<span class="strip" title="position between the lowest and highest test accuracy shown"><i style="left:${pos.toFixed(1)}%"></i></span>`}${pct(r.test_acc)}</td>
+      <td class="num">${pct(r.train_acc)}</td>
+      <td class="num ${r.gap > 0.05 ? 'gap-hi' : ''}" title="train minus test: a large gap means overfitting">${r.gap == null ? '–' : (r.gap >= 0 ? '+' : '') + (r.gap * 100).toFixed(1)}</td>
+      <td class="num">${secs(r.seconds)}</td>
+    </tr>`;
+  }).join('');
+  for (const th of document.querySelectorAll('#table thead th')) {
+    th.classList.toggle('sorted', th.dataset.k === sort.key);
+    th.classList.toggle('asc', th.dataset.k === sort.key && sort.dir === 1);
+  }
+}
+
+function niceTicks(lo, hi, n = 5) {
+  const raw = (hi - lo) / n, p = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1, 2, 2.5, 5, 10].map(m => m * p).find(s => s >= raw);
+  const start = Math.ceil(lo / step) * step, out = [];
+  for (let v = start; v <= hi + 1e-9; v += step) out.push(+v.toFixed(10));
+  return { ticks: out, step };
+}
+function seriesList() {
+  return [...selected.entries()].map(([id, slot]) => {
+    const r = byId(id); if (!r) return null;
+    const pts = r.history.filter(h => h[metric] != null && !isNaN(h[metric])).map(h => ({ x: +h.epoch, y: +h[metric] }));
+    return { id, slot, run: r, pts, name: `#${r._id} ${r.model_name}${r.tag ? ' · ' + r.tag : ''}` };
+  }).filter(Boolean);
+}
+let chartState = null;
+function renderChart() {
+  const wrap = $('#chart'); const tip = $('#tip');
+  wrap.querySelectorAll('svg, .empty').forEach(e => e.remove());
+  const all = seriesList(), series = all.filter(s => s.pts.length);
+  if (!series.length) {
+    const msg = !all.length ? 'Tick runs in the table to plot their curves.' : `The selected runs have no per-epoch ${METRIC_LABEL[metric].toLowerCase()} recorded.`;
+    wrap.insertAdjacentHTML('beforeend', `<div class="empty">${msg}</div>`); chartState = null; return;
+  }
+  const W = wrap.clientWidth - 28 || 800, H = 320;
+  const labelRoom = series.length <= 4 ? 150 : 24;
+  const m = { l: 52, r: labelRoom, t: 18, b: 34 };
+  const xs = series.flatMap(s => s.pts.map(p => p.x)), ys = series.flatMap(s => s.pts.map(p => p.y));
+  const xmin = Math.min(...xs), xmax = Math.max(...xs);
+  let ymin = Math.min(...ys), ymax = Math.max(...ys);
+  if (metric === 'loss') { ymin = 0; ymax = ymax * 1.05 || 1; }
+  else { const pad = Math.max((ymax - ymin) * 0.15, 0.01); ymin = Math.max(0, ymin - pad); ymax = Math.min(1, ymax + pad); if (ymax - ymin < 0.02) { ymin = Math.max(0, ymin - 0.01); ymax = Math.min(1, ymax + 0.01); } }
+  const yt = niceTicks(ymin, ymax, 5); ymin = Math.min(ymin, yt.ticks[0] ?? ymin);
+  const X = x => xmax === xmin ? m.l + (W - m.l - m.r) / 2 : m.l + (x - xmin) / (xmax - xmin) * (W - m.l - m.r);
+  const Y = y => m.t + (1 - (y - ymin) / (ymax - ymin)) * (H - m.t - m.b);
+  const xt = xmax - xmin <= 12 ? Array.from({ length: xmax - xmin + 1 }, (_, i) => xmin + i) : niceTicks(xmin, xmax, 8).ticks.filter(Number.isInteger);
+  const fmtY = v => metric === 'loss' ? v.toFixed(v < 1 ? 2 : 1) : (v * 100).toFixed(v * 100 % 1 ? 1 : 0) + '%';
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${METRIC_LABEL[metric]} per epoch for ${series.length} runs">`;
+  svg += `<g class="grid">${yt.ticks.map(v => `<line x1="${m.l}" x2="${W - m.r}" y1="${Y(v)}" y2="${Y(v)}"/>`).join('')}</g>`;
+  svg += `<g class="axis"><line x1="${m.l}" x2="${W - m.r}" y1="${H - m.b}" y2="${H - m.b}"/></g>`;
+  svg += yt.ticks.map(v => `<text x="${m.l - 8}" y="${Y(v) + 4}" text-anchor="end">${fmtY(v)}</text>`).join('');
+  svg += xt.map(v => `<text x="${X(v)}" y="${H - m.b + 16}" text-anchor="middle">${v}</text>`).join('');
+  svg += `<text class="ylabel" x="${m.l}" y="${m.t - 6}">${METRIC_LABEL[metric]}</text>`;
+  svg += `<text x="${(m.l + W - m.r) / 2}" y="${H - 4}" text-anchor="middle">epoch</text>`;
+  svg += '<g class="series">' + series.map(s => {
+    const d = s.pts.map((p, i) => (i ? 'L' : 'M') + X(p.x).toFixed(1) + ',' + Y(p.y).toFixed(1)).join(' ');
+    return `<path d="${d}" style="stroke:var(--s${s.slot})" data-id="${s.id}"/>` + (s.pts.length === 1 ? `<circle cx="${X(s.pts[0].x)}" cy="${Y(s.pts[0].y)}" r="4" style="fill:var(--s${s.slot})"/>` : '');
+  }).join('') + '</g>';
+  if (series.length <= 4) {          // direct labels at the line ends, nudged apart so they never overlap
+    const labels = series.map(s => ({ s, y: Y(s.pts[s.pts.length - 1].y), x: X(s.pts[s.pts.length - 1].x) })).sort((a, b) => a.y - b.y);
+    for (let i = 1; i < labels.length; i++) if (labels[i].y - labels[i - 1].y < 14) labels[i].y = labels[i - 1].y + 14;
+    for (let i = labels.length - 1; i >= 0; i--) if (labels[i].y > H - m.b - 4) labels[i].y = H - m.b - 4 - (labels.length - 1 - i) * 14;
+    svg += labels.map(l => `<text class="dlabel" x="${W - m.r + 8}" y="${l.y + 4}">${esc(l.s.name.length > 22 ? l.s.name.slice(0, 21) + '…' : l.s.name)}</text>`).join('');
+  }
+  svg += `<g class="crosshair" id="cross"></g><rect id="hover" x="${m.l}" y="${m.t}" width="${W - m.l - m.r}" height="${H - m.t - m.b}" fill="transparent"/></svg>`;
+  wrap.insertAdjacentHTML('beforeend', svg);
+  chartState = { series, X, Y, W, H, m, xmin, xmax, fmtY };
+  const hover = wrap.querySelector('#hover'), cross = wrap.querySelector('#cross');
+  const epochs = [...new Set(xs)].sort((a, b) => a - b);
+  hover.addEventListener('mousemove', e => {
+    const rect = wrap.querySelector('svg').getBoundingClientRect();
+    const px = (e.clientX - rect.left) * W / rect.width;
+    const frac = (px - m.l) / (W - m.l - m.r);
+    const xv = xmin + frac * (xmax - xmin);
+    const ep = epochs.reduce((a, b) => Math.abs(b - xv) < Math.abs(a - xv) ? b : a);
+    const rows = series.map(s => ({ s, p: s.pts.find(p => p.x === ep) })).filter(r => r.p).sort((a, b) => b.p.y - a.p.y);
+    cross.innerHTML = `<line x1="${X(ep)}" x2="${X(ep)}" y1="${m.t}" y2="${H - m.b}"/>` + rows.map(r => `<circle cx="${X(ep)}" cy="${Y(r.p.y)}" r="4.5" style="fill:var(--s${r.s.slot})"/>`).join('');
+    tip.innerHTML = `<div class="t">epoch ${ep}</div>` + rows.map(r => `<div class="r"><i style="background:var(--s${r.s.slot})"></i>${esc(r.s.name)}<b>${fmtY(r.p.y)}</b></div>`).join('');
+    tip.style.display = 'block';
+    const tx = (e.clientX - rect.left) + 14, ty = (e.clientY - rect.top) + 8;
+    tip.style.left = Math.min(tx, rect.width - tip.offsetWidth - 8) + 'px'; tip.style.top = ty + 'px';
+  });
+  hover.addEventListener('mouseleave', () => { cross.innerHTML = ''; tip.style.display = 'none'; });
+}
+function renderLegend() {
+  const all = seriesList();
+  $('#legend').innerHTML = all.length ? all.map(s => `<button class="chip" data-id="${s.id}" title="Remove from chart"><i style="background:var(--s${s.slot})"></i>${esc(s.name)} <span class="x">×</span></button>`).join('')
+    : '<span class="none">No runs selected.</span>';
+}
+function builderHref(design) {
+  const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(design)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  // serve.py's /dashboard -> its builder at /; results/dashboard.html -> ../index.html; a published copy -> the builder beside it
+  const base = location.pathname.endsWith('/dashboard') ? '/' : location.pathname.includes('/results/') ? '../index.html' : 'index.html';
+  return `${base}#design=${b64}`;
+}
+function renderDetail() {
+  const el = $('#detail'); const r = byId(detailId);
+  if (!r) { el.innerHTML = '<div class="empty">Select a run to see its settings, epoch-by-epoch numbers and the model source.</div>'; return; }
+  const hasTest = r.history.some(h => h.test_acc != null);
+  el.innerHTML = `<div class="panel-head"><h2>Run #${r._id}${r.tag ? ' · ' + esc(r.tag) : ''}</h2><span class="hint">${esc(when(r.timestamp))}</span></div>
+    <div class="body">
+      <dl class="kv">
+        <dt>model</dt><dd>${esc(r.model_name)} <span class="fw">${esc(r.framework)}</span></dd>
+        <dt>file</dt><dd>${esc(r.model_file)}</dd>
+        <dt>dataset</dt><dd>${esc(r.dataset)} · ${num(r.train_examples)} train examples</dd>
+        <dt>input</dt><dd>${esc(r.input_shape)}</dd>
+        <dt>parameters</dt><dd>${num(r.params)}</dd>
+        <dt>training</dt><dd>${num(r.epochs)} epochs · batch ${r.batch} · lr ${r.lr}${r.attempts > 1 ? ` · ${r.attempts} attempts` : ''}</dd>
+        <dt>result</dt><dd>test ${pct(r.test_acc)} · train ${pct(r.train_acc)} · loss ${r.final_loss ?? '–'}</dd>
+        <dt>time</dt><dd>${secs(r.seconds)} on ${esc(r.device)}</dd>
+      </dl>
+      <h3>Diagram</h3>
+      ${r.graph ? `<div class="dgwrap">${renderDiagram(r.graph)}</div>` : `<div style="color:var(--muted);font-size:12px">No diagram was recorded for this run. Runs logged after the diagram feature was added include one.</div>`}
+      <h3>Layer list</h3>
+      <div class="arch">${esc(r.architecture || '–')}</div>
+      ${r.history.length ? `<h3>Epochs</h3><div class="tablewrap"><table><thead><tr><th class="num">ep</th><th class="num">loss</th><th class="num">train</th>${hasTest ? '<th class="num">test</th>' : ''}</tr></thead><tbody>
+        ${r.history.map(h => `<tr><td class="num">${h.epoch}</td><td class="num">${h.loss ?? '–'}</td><td class="num">${pct(h.train_acc)}</td>${hasTest ? `<td class="num">${pct(h.test_acc)}</td>` : ''}</tr>`).join('')}
+      </tbody></table></div>` : ''}
+      ${r.model_source ? `<h3>Model source</h3><details><summary>Show the file as it was when this run happened</summary><pre>${esc(r.model_source)}</pre></details>` : ''}
+      <div class="actions">
+        ${r.design ? `<a class="btn" href="${builderHref(r.design)}" target="_blank" rel="noopener" title="Reopen this exact design in the builder">Open in builder</a>` : ''}
+        ${r.model_source ? `<button class="btn" id="copySrc">Copy source</button>` : ''}
+      </div>
+    </div>`;
+  const cp = el.querySelector('#copySrc');
+  if (cp) cp.onclick = () => navigator.clipboard.writeText(r.model_source).then(() => toast('Source copied'), () => toast('Copy failed: select the text and copy it manually'));
+}
+
+/* ---------- events ---------- */
+$('#btnOpen').onclick = () => $('#file').click();
+$('#file').addEventListener('change', e => { const f = e.target.files[0]; if (!f) return; f.text().then(t => loadText(t, f.name)); e.target.value = ''; });
+for (const ev of ['dragover', 'dragenter']) document.addEventListener(ev, e => { e.preventDefault(); $('#empty').classList.add('over'); });
+document.addEventListener('dragleave', e => { if (!e.relatedTarget) $('#empty').classList.remove('over'); });
+document.addEventListener('drop', e => { e.preventDefault(); $('#empty').classList.remove('over'); const f = e.dataTransfer.files[0]; if (f) f.text().then(t => loadText(t, f.name)); });
+$('#fDataset').onchange = $('#fFw').onchange = () => { renderTiles(); renderTable(); };
+$('#fQ').oninput = () => { renderTiles(); renderTable(); };
+$('#table thead').addEventListener('click', e => {
+  const th = e.target.closest('th'); if (!th || !th.dataset.k) return;
+  if (sort.key === th.dataset.k) sort.dir = -sort.dir; else sort = { key: th.dataset.k, dir: th.dataset.k === 'timestamp' || th.dataset.k === '_id' || th.dataset.k === 'test_acc' || th.dataset.k === 'train_acc' ? -1 : 1 };
+  renderTable();
+});
+$('#table tbody').addEventListener('click', e => {
+  const tr = e.target.closest('tr'); if (!tr) return;
+  const id = +tr.dataset.id;
+  if (e.target.type === 'checkbox') { toggleSelect(id, e.target.checked); renderTable(); renderChart(); renderLegend(); return; }
+  detailId = detailId === id ? null : id; renderTable(); renderDetail();
+  history.replaceState(null, '', detailId ? '#run=' + detailId : location.pathname);
+});
+$('#legend').addEventListener('click', e => { const c = e.target.closest('.chip'); if (!c) return; toggleSelect(+c.dataset.id, false); renderTable(); renderChart(); renderLegend(); });
+document.querySelectorAll('[data-metric]').forEach(b => b.onclick = () => { metric = b.dataset.metric; document.querySelectorAll('[data-metric]').forEach(x => x.setAttribute('aria-pressed', x === b)); renderChart(); });
+let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(renderChart, 120); });
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('on'), 2200); }
+
+/* ---------- boot: embedded data (written by train_model.py --dashboard) ---------- */
+try {
+  const embedded = JSON.parse($('#runs-data').textContent || '[]');
+  if (Array.isArray(embedded) && embedded.length) setRuns(embedded, 'results/experiments.jsonl');
+} catch (err) { console.warn('embedded data unreadable', err); }
+</script>
+</body>
+</html>
