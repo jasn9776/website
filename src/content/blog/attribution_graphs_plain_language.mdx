@@ -15,98 +15,369 @@ export const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 - **Interactive explainer:** <a href={`${base}/interactive/transcoders.html`}>Transcoders and attribution graphs</a>, a visual primer on SAEs, transcoders, replacement models and attribution graphs
 - **Code:** <a href="https://github.com/jasn9776/attribution-graph-triage">jasn9776/attribution-graph-triage</a> on GitHub
 
-# When should you not trust an attribution graph? — one-page summary
+## The short version
 
-**Jason Soo** · November 2026
-Full version: `writeup.md` · Plain-language version: `writeup_plain.md`
+- There is a popular method for explaining why a language model produced a particular word. It
+  works maybe a quarter of the time and costs hours per attempt. Nobody knows in advance which
+  quarter.
+- The tooling already computes a quality score for each attempt. I tested whether that score, or
+  anything cheap about the prompt, predicts success.
+- **It doesn't.** On the model I tested first, the score barely varies between wildly different
+  kinds of prompt, and the thing it varies with most is how *long* the prompt is — not how
+  interesting it is.
+- **Then it got more interesting.** I ran the same test on a second model, and most of my findings
+  changed. The score's behaviour turns out to be a property of the specific model-and-toolkit
+  pairing, not of the method.
+- That second result is the useful one. A quality score you'd have to re-calibrate for every new
+  setup costs more to validate than the work it was meant to save.
 
-**The question.** Attribution graphs are the leading method for explaining why a language model
-produced a particular output. Their authors report satisfying insight on roughly a quarter of
-attempts, at a cost of hours each, with no way to tell in advance which quarter. The tooling already
-computes a per-graph quality score — **replacement score**, the share of traced influence running
-through interpretable features rather than through unexplained error nodes. Does it, or anything
-cheap about the prompt, predict whether a graph is worth reading?
+I registered 15 predictions in advance, before collecting any data. **Eight of them failed.** All
+15 are reported below.
 
-**What I did.** 255 prompts in 8 categories, each probing a weakness the method's authors document
-but never quantify; every category validated against model behaviour before any graph was built, two
-rebuilt when the check failed and one dropped. Attributed on **Gemma-2-2B**, again on
-**Llama-3.2-1B**, plus three matched-frame dictionary arms — about 700 graphs, **zero failures** in
-either 255-prompt corpus. 40 graphs rated blind for whether a mechanism could be stated in one
-sentence. Pre-registered before data collection: **15 predictions, 8 failed.** Free-tier compute
-throughout.
+---
 
-### Result 1 — there is no usable pre-flight check
+## What this is about
 
-On Gemma, replacement score spans **0.036** across all eight prompt categories, while a
-content-preserving manipulation — padding the frame around the *same fact* — moves it **0.032** in
-**27 of 27** matched pairs (p = 1.5×10⁻⁸). Out-of-category predictive R² is **0.067**, and the one
-outcome that does transfer (+0.275) correlates **−0.69** with token count: it is prompt length in
-disguise. Correlation with human ratings: **+0.243**, not significant at n = 40.
+### Attribution graphs
 
-### Result 2 — and almost none of it transfers
+When a language model answers a question, you can try to trace *why*. One leading method builds an
+**attribution graph**: a diagram that follows the output backwards through the network to the input,
+showing which internal components carried the signal.
 
-| | Gemma-2-2B | Llama-3.2-1B |
+The components aren't raw neurons — they're **features**, which are more interpretable. A feature
+might correspond to something like "this text is about a capital city" or "an answer is expected
+here." So a good attribution graph reads like a chain: *this word activated a "Texas" feature,
+which activated an "Austin" feature, which produced the answer.*
+
+This method has produced real discoveries — multi-step reasoning, a model planning ahead while
+writing poetry, a model concealing a goal.
+
+### The problem
+
+The researchers who built it report that it gave them satisfying insight on roughly **a quarter**
+of the prompts they tried, at a cost of a few hours of human effort each.
+
+So: pick a prompt, spend an afternoon, and three times in four you come away with nothing you can
+state. There was no way to tell beforehand which it would be.
+
+### The opening
+
+The tooling already computes a score for every graph, called the **replacement score**.
+
+Here's what it means. To build the graph, the method replaces each messy layer of the network with
+a set of readable features. Those features can't capture everything, so the leftovers get bundled
+into "error" nodes — honest placeholders for *we couldn't express this part*. The replacement score
+is the fraction of the traced influence that ran through readable features rather than through the
+leftovers. A score of 0.75 means three-quarters of the explanation went through things that have
+names.
+
+The method's authors note this score could be useful "to flag prompts our method performs poorly
+on" — then never develop it. It's reported as a single average per dataset, to compare toolkits.
+Nobody had tested it per-prompt, as a way to decide where to spend an afternoon.
+
+### Three questions
+
+1. Do cheap, easily measured properties of a prompt predict whether its graph will be worth reading?
+2. Does the replacement score track whether a human can actually extract a mechanism from the graph?
+3. Does any answer to 1 and 2 survive changing the model?
+
+---
+
+## What I did
+
+**255 prompts in 8 categories**, each chosen to probe a weakness the method's authors describe but
+never quantify: obfuscated text, factual recall, well-known vs obscure people, multi-step questions,
+code, arithmetic, grammar agreement, and copying patterns.
+
+Every category was validated before any graph was built — does the model actually do the task this
+category is named for? Two categories were rebuilt when the check failed, and one was dropped
+entirely after two failed designs.
+
+**Then I built a graph for every prompt, on two different models**, and measured each one. About 700
+graphs in total, including follow-up runs. Plus a human rating exercise: 40 graphs, rated blind,
+scored 0 to 2 for whether a mechanism could be stated in one sentence.
+
+All of it on free cloud compute, which was deliberate — the point is a check anyone can run.
+
+---
+
+## What's confirmed
+
+These either survived a controlled manipulation or replicated across models.
+
+### 1. The score responds to prompt length, not just content
+
+This is the strongest result in the project.
+
+I asked the same factual question in a short frame and a long frame — same fact, same answer, same
+model, only the padding around it changed. **In 27 out of 27 pairs, the longer version scored
+higher.** Not one reversal.
+
+The effect is as large as the entire difference between the eight prompt categories. Padding a
+prompt moves its score by about as much as switching from arithmetic to code.
+
+The direction held in every model and toolkit I tried.
+
+### 2. It's not because longer prompts have more features
+
+My first explanation was mechanical: more words means more internal features, so more routes for
+the signal to travel. More *paths*, not more *thinking*.
+
+I tested this across three different toolkits, holding the length change fixed at about 4.8 added
+words. If the effect were really about feature count, adjusting for features added should make the
+three agree.
+
+**It made them disagree more** — the spread between setups went from 3.5× to 6.3×. And the toolkit
+with the *fewest* features per word had the *strongest* effect, which is backwards.
+
+I had previously estimated that about half the length effect was feature count. That estimate is
+withdrawn. My own later data killed it.
+
+### 3. A graph can be highly readable and tell you nothing
+
+The clearest case: prompts about well-known versus obscure people.
+
+These score at the very top once you adjust for length — on **both** models. And a blind rater
+scored them 0 ("no mechanism I can state") in four of six cases, with **not one** scored 2.
+
+The graphs show the model *formatting* an answer without showing it *retrieving* one. Whether the
+person is real or invented makes no difference to the score.
+
+So coverage and insight come apart. The score measures whether the computation can be *expressed*
+in readable features — and that's easiest when there's barely any computation to express.
+
+### 4. The second quality score is worse than the first
+
+The tooling also computes a "completeness" score. It discriminates between prompt types even less
+than the replacement score does — on both models. One of the few predictions that held cleanly
+twice.
+
+### 5. The measurements themselves are solid
+
+Worth stating separately, because every criticism below is about *interpretation*, not arithmetic:
+
+- 255 graphs on each model, **zero failures** either time
+- my metrics match the official library's to 7 decimal places
+- two completely different computational backends agree to 4 decimal places on the same prompts
+- re-running the same graph gives answers that differ in the 5th decimal place
+
+### 6. The numbers change a lot when the model changes
+
+Running the same 255 prompts on a second model moved nearly everything:
+
+| | Model A (Gemma-2-2B) | Model B (Llama-3.2-1B) |
 |---|---|---|
-| between-category range | 0.036 | **0.142** |
-| variance explained by category | 24% | **63%** |
-| rank of induction prompts (of 8) | 1st | **5th** |
-| within-pair length slope | +0.0458 | **+0.0087** |
+| spread of scores across prompt types | 0.036 | **0.142** |
+| share of variance explained by prompt type | 24% | **63%** |
+| rank of copying prompts (of 8) | 1st | **5th** |
+| strength of the length effect | strong | **5× weaker** |
 
-So "statistically structured but practically flat" is a property of **one model-and-dictionary
-pairing**, not of the method. A practitioner told "the metric is flat, don't triage on it" would be
-wrong on Llama. This is the stronger argument against per-prompt triage, because it does not depend
-on the effects being small: a score requiring re-validation per setup costs more than the tracing it
-was meant to triage.
+On the first model the score barely distinguished prompt types. On the second it distinguishes them
+quite clearly. **That these two setups disagree is firmly established.** What it means is discussed
+under "not confirmed" below.
 
-### What replicates — directions, not magnitudes
+---
 
-- **Replacement score rises with prompt length**, content held fixed, in every setup tested; the
-  magnitude varies 3.5×, the direction never flips.
-- **Not explained by feature count.** Across three dictionaries at a fixed +4.78-token manipulation,
-  normalising by features added makes the spread *worse* (3.51× → 6.31×), and the lowest-density
-  dictionary has the strongest effect.
-- **Coverage and insight come apart.** Known/unknown entity prompts top the length-adjusted ranking
-  on **both** models, were rated 0 in four of six cases and never rated 2. The graph shows a model
-  formatting an answer without showing it retrieving one.
-- **Completeness is the weaker of the two scores** on both models.
-- **The measurements hold:** metrics match the library to 1.1×10⁻⁶, two attribution backends agree to
-  1×10⁻⁴ on the same prompts.
+## What's not confirmed
 
-### Ruled out
+Things that may be true, that I could not establish.
 
-Direct residual-stream influence bypassing all features is **9.5%** of the score, not the 37% I first
-estimated from the graph viewer's displayed edges — a fourfold self-inflicted error, and the reason
-any edge-summing quantity must come from the adjacency matrix. Corruption does not raise replacement;
-the apparent rise is fragmentation into more tokens, and conditional on length corruption slightly
-lowers it. Documented blind spots do not predict where error concentrates: obfuscated text is
-third-*lowest*, induction the *least* concentrated of eight.
+### Whether the score predicts what a human gets out of a graph
 
-### Not established
+This was question 2, and it's the one that mattered most.
 
-Whether the score tracks human readability anywhere — all 40 ratings are Gemma per-layer, one
-non-blind rater, a median of 262 s against the hours the original work describes. Whether Llama's
-sharper signal is real: `code_completion` carries half of it and is unvalidated on that model.
-Whether "it depends on the model" is a law rather than two data points (rank agreement +0.48, ns).
-What the length effect acts through — feature count is refuted, path length is a three-point hunch,
-registered as a prediction and unrun.
+The correlation between replacement score and my blind ratings was **+0.24, not statistically
+significant** at 40 graphs. Worse, the threshold I'd registered in advance ("absolute value below
+0.4") would have been satisfied by a result of zero, or by a negative one. It tested the wrong
+thing.
 
-### Corrections made in place
+And this exists for **one model and one toolkit only**. Nothing in the second-model work touches it.
+Given how much else moved between models, assuming it carries over would be unwarranted.
 
-An early draft asserted that obfuscation *raises* the score, citing a test never run; caught on
-challenge and removed. A proposed mechanism for the length effect was retracted when later data
-refuted it. Induction's reported superlative is partly length — rank 1 raw, rank 3 adjusted. Two
-registered falsification rules tested whether *any* signal exists rather than whether it is large
-enough to act on. A validity gate I registered was not applied to the one category that failed it;
-correcting that may flip one verdict, and the recomputation is owed.
+### Whether the second model's clearer signal is real
 
-### Practical upshot
+The score's bigger spread on model B rests heavily on one category — code. Remove code prompts and
+the spread falls from 0.142 to 0.063, and the variance explained from 63% to 40%.
 
-Don't triage on replacement score, and don't assume what it does on one model. If you report it
-per-prompt, report token count beside it — on this evidence they cannot be separated. Expect
-dictionary family to matter more than you would guess: a cross-layer dictionary on the same model
-gave a 3.2× stronger length response and *lower* replacement, contradicting the published
-comparison.
+Code prompts score far lower on model B (0.60) than on model A (0.74), where they were unremarkable.
+That's consistent with a plainer explanation: **model B's toolkit may simply have a gap where code
+is concerned** — a dictionary that can't express code tokens well. That would be a fact about
+toolkit training coverage, not about prompt types.
 
-The open question: **is there any cheap property that predicts how readable a graph is rather than
-how well-covered it is, and does it survive a change of model?** Nothing measured here does the
-first; almost nothing does the second.
+I read through model B's actual code completions informally and they look like reasonable code. But
+no rated check against fixed criteria was run, so **this category remains unvalidated on model B**,
+along with two others. The question stays open.
+
+### Whether "it depends on the model" is a general rule
+
+Two models is two data points. That these two differ is established. That the score's behaviour is
+*generally* model-dependent is a reasonable inference from two points, not a demonstrated law.
+
+The rank agreement between the two models' orderings is +0.48 — moderate, and not statistically
+significant at eight categories.
+
+### Whether documented weaknesses predict anything
+
+The method's authors describe specific blind spots. I predicted an ordering of categories from them.
+
+On model A the prediction correlated **+0.07** with reality — essentially nothing. On model B, **+0.57**
+— quite well. Neither is statistically significant at eight categories. The two point estimates are
+far apart and the test can't tell them apart from each other or from zero.
+
+### What the length effect actually works through
+
+Feature count is ruled out (above). The best remaining candidate is how many steps the signal
+takes to reach the input — shorter chains, stronger effect — which held across all three toolkits.
+
+But that's three data points, and I noticed the pattern after seeing the data. So I registered it
+as a prediction for a future run rather than reporting it as a finding. That run needs about 48 GB
+of memory and hasn't happened.
+
+### Everything about the newer toolkit type at scale
+
+There are two families of these toolkits. I only ran the full 255-prompt corpus with the older
+kind. The newer kind was tested on 66 prompts — enough to show the length effect survives, not
+enough for anything about categories.
+
+---
+
+## What's ruled out
+
+Things I believed, that the data killed.
+
+**"Much of the score bypasses the readable features entirely."** A word's representation enters the
+network at the start and is never removed, so the output can read it directly with no feature in
+between — influence that counts toward the score while explaining nothing. I estimated this at 37%.
+
+Computed properly, it's **9.5%**. My estimate came from reading the graph's *displayed* top
+connections, and the display shows only a handful of the strongest links while thousands of small
+ones carry most of the weight. A 4× error, entirely self-inflicted.
+
+**"Longer prompts score higher because they have more input nodes."** No — splitting the score by
+path length shows the *direct* portion slightly *falls* with length while the feature-mediated
+portion rises in 26 of 27 pairs. Padding raises the interpretable part.
+
+**"Corrupting text raises the score."** It looks like it does. But corruption shatters words into
+character fragments, so the prompt gets longer. Once you account for length, corruption slightly
+*lowers* the score. A designed experiment entirely swallowed by its own side effect on word count.
+
+**"Errors concentrate where the documented blind spots predict."** Obfuscated text was predicted to
+concentrate error on corrupted words; it's third-*lowest*. Copying prompts were predicted to
+concentrate it at the copy source; they're the *least* concentrated of all eight.
+
+---
+
+## What this means if you use these tools
+
+**Don't use the replacement score to choose which prompts to investigate.** On the first model it
+varies by 0.036 across every prompt type tried, moves by 0.032 when you pad a prompt without
+changing what it asks, and rates highest a category a blind rater found uniformly useless.
+
+**Don't assume what it does on one model.** On the second model it behaves quite differently. Both
+of those are facts about a model-and-toolkit pairing, not about the method.
+
+**If you report it per-prompt, report word count next to it.** On this evidence they can't be
+separated in any setup I tested.
+
+**Expect the toolkit to matter more than you'd guess.** Swapping toolkit families on the *same*
+model changed the length effect by 3.2× and contradicted the published comparison between them.
+
+**Measure on the underlying numbers, not on what the viewer draws.** That's where my 4× error came
+from.
+
+---
+
+## What I got wrong
+
+Listed because a project that only reports its successes isn't worth reading.
+
+- **A fabricated claim.** An early draft asserted that obfuscating text *raises* the score, citing
+  a per-rung analysis that was never run. The number quoted belonged to a different test entirely.
+  Caught on direct challenge, removed.
+- **The 4× direct-path error** described above.
+- **A mechanism retracted.** I proposed feature count as the route for the length effect, then my
+  own later data refuted it.
+- **An overstated superlative.** I reported copying prompts as scoring highest of all eight
+  categories. True as stated — but they're also the longest prompts, and adjusting for that drops
+  them from 1st to 3rd. Part of the lead was the length effect this project itself discovered.
+- **Two registered falsification rules that tested the wrong thing.** Both asked whether *any*
+  signal exists. With 255 prompts and a very low noise floor, "nothing reaches significance" was a
+  bar only a broken instrument could clear. The project's actual question was whether the signal is
+  *large enough to act on*.
+- **A rule I wrote and then didn't follow.** I registered, in advance, that any category where the
+  model fails the task more than 30% of the time gets excluded from two of the tests. One category
+  came in at 32.5%. I included it anyway. Correcting this might flip one verdict; the recomputation
+  is still owed.
+- **Three wrong feasibility estimates.** Graphics memory overstated by 3×, main memory never checked
+  at all though it was the binding constraint, and disk space misread by 20× — which triggered a
+  reset that destroyed two runs' output.
+
+---
+
+## Limits worth knowing
+
+**The rating budget was a tenth of the original work's.** The method's authors describe hours per
+graph; my median was 262 seconds. So the ratings measure whether a mechanism is *apparent to a
+calibrated rater on a budget*, which is narrower than whether one is *there*. The bias runs toward
+lower ratings.
+
+**One rater, not blind to the hypotheses.** I measured my own consistency (0.89 agreement on
+hidden duplicates, 9 of 10 identical) but there's no second human. Two AI assistants also rated,
+but using criteria I wrote and one helped write, so their agreement measures whether the criteria
+are *articulable*, not whether they're *correct*.
+
+**The audit is the part I'd keep.** Giving an independent judge the graph, my grade and my written
+reason, and asking whether each follows from the last, found that **12% of my ratings were
+defensible but rested on an unsupported reason**, and the judge disagreed outright with 30%. Five of
+eight disagreements were the same ambiguous rule. I changed no ratings — the criteria were fixed in
+advance, so the ambiguity is reported as a finding about the rubric.
+
+**Coverage isn't correctness.** These scores measure whether a graph *covers* the computation, not
+whether it covers it *correctly*. A graph can be well-covered, readable, and wrong.
+
+**Small numbers throughout.** 40 graphs for anything involving ratings, with only 6 in the top
+scoring bin. 8 for every category-ranking correlation. 3 for the toolkit comparison. 2 for
+everything about model dependence.
+
+**The second model's categories are under-tested.** Three of eight have no validity evidence on it,
+and one of those drives half the headline difference.
+
+---
+
+## What I'd do next
+
+In order of value:
+
+1. **Run the rating exercise on a second model.** Every human-facing result is from one model and
+   one toolkit, and after watching everything else move between setups there's no reason to think
+   this one is the exception. The expensive one, and the real gap.
+2. **Settle the code question.** Run the 29 code prompts through the second model's *other* toolkit.
+   Same model, different toolkit — that isolates the variable. Roughly 29 graphs.
+3. **Test the path-length explanation** for the length effect. Needs more memory, not more time.
+4. **Build prompts that vary feature count and word count independently.** Nothing has done this
+   within a single model.
+5. **Add a second human rater**, turning self-consistency into actual reliability.
+
+The question I'd most like someone else to answer: **is there any cheap property that predicts how
+readable a graph is, rather than how well-covered it is — and does it survive changing the model?**
+Nothing I measured does the first. Almost nothing I measured does the second.
+
+---
+
+## Where the details are
+
+| | |
+|---|---|
+| `writeup.md` | the full technical write-up, with every number and test |
+| `preregistration*.md` | predictions registered before data collection, append-only, with 40+ dated deviation entries |
+| `README.md` | repository guide and how to reproduce |
+| `NOTES.md` | environment gotchas that cost me time |
+| `data/`, `analysis/` | the corpus, per-graph metrics, ratings with written reasoning |
+
+**Method and metrics** are from Anthropic's circuit-tracing work (Ameisen, Lindsey, Pearce, Gurnee
+et al.), using the `circuit-tracer` library. Toolkits: GemmaScope, and community releases by
+`mntss`. Feature descriptions: Neuronpedia.
+
+This project was carried out in extended collaboration with Claude (Anthropic), including the
+rating criteria and two of the three rating streams. That dependence is disclosed in full in the
+technical write-up.
