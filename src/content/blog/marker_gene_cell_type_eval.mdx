@@ -54,6 +54,12 @@ Note: AI was used to mark most responses, but occasionally spot checked by manua
 |---|---|---|---|---|
 | Opus 5.5 (High effort) (23-09-2026) *| 40-42 | 85-89% | 0 | Run three times (more notes in article) |
 
+### (hardest mode — top 10 marker genes removed - incomplete not all results shown)
+| Model | Correct / 47 | % | Duplicates | Notes |
+|---|---|---|---|---|
+| Opus 5.5 (High effort) (23-09-2026) *| 27 | 57% | 0 | Estimated ~38/47 (~81%) under a hungarian matching scheme |
+| Sonnet 5 (High effort) (23-09-2026) *| 24 | 51% | 0 | Estimated ~36/47 (~77%) under a hungarian matching scheme |
+
 
 \* indicates the run was made later than on the week of May 14th. (Those models weren't released then)
 
@@ -166,7 +172,9 @@ Grok Heavy also doesn't show much improvement over free Grok (results not shown)
 
 ## What I'd do next
 
-- Due to recent model improvements, moving to top 10+ marker genes removed may be required.
+- Due to recent model improvements, moving to top 10+ marker genes removed may be required. **This has been started with Opus 5.5 and Sonnet 5. Both showing quite signficiant degradation 81->57 and 81->51 respectively, although they would likely do better under a Hungarian matcher as estimated by the AI judge **
+
+- Implement a Hungarian Matcher (this is so that swaps between two cell types will cause one error rather than two, wheras the current approach may over penalise swaps): (AI- generated definition): A Hungarian matcher is an algorithm that solves the assignment problem — given N items on each side (here, model answers and ground-truth labels) and a cost or match score for each possible pairing, it finds the one-to-one assignment that maximizes total matches (or minimizes total cost) in polynomial time. In your context it would take all 47 model answers and all 47 truth labels and find the permutation that counts the most exact matches, so a clean swap between two cases collapses to one error instead of two.
 
 *Code / eval harness: not public yet.*
 
@@ -179,3 +187,4 @@ This article was written by hand, however, AI (Claude Opus 4.7-8 as the main mod
 
 18-08-2026 — Initial draft uploaded.\
 23-09-2026 - Added Analysis of the latest Opus 5.5 models, showing impressive ability to maintain accuracy even when top 5 markers are removed
+15-11-2026 - Added Results with top 10 genes excluded on Opus 5.5 and Sonnet 5

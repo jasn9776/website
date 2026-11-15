@@ -10,76 +10,92 @@ export const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
 # When should you not trust an attribution graph?
 
-**Jason Soo** · 8 October 2026
+**Jason Soo** · 23 October 2026
 
-*Pre-registered. 255 attribution graphs on Gemma-2-2B, free-tier compute.*
+*Pre-registered. Two 255-graph corpora, two models, three dictionaries, free-tier compute.*
 
 ---
 
 ## Links to Explainer and Summary
 
+- **Research summary:** <a href={`${base}/blog/attribution_graphs_summary`}>Can we predict when to trust an attribution graph?</a>, a short one-page summary of this article
+- **Plain Language Summary:** <a href={`${base}/blog/attribution_graphs_plain_language`}>Transcoders and attribution graphs</a>, a plain language summary of this article
+- **Archived version of article before adding other models:** <a href={`${base}/blog/attribution_graphs_archived`}>archived (old) version</a>, archived version
 - **Interactive explainer:** <a href={`${base}/interactive/transcoders.html`}>Transcoders and attribution graphs</a>, a visual primer on SAEs, transcoders, replacement models and attribution graphs
-- **Research summary:** <a href={`${base}/blog/attribution_graphs_trust`}>Can we predict when to trust an attribution graph?</a>, a shorter version of this article
 - **Code:** <a href="https://github.com/jasn9776/attribution-graph-triage">jasn9776/attribution-graph-triage</a> on GitHub
 
 ## Epistemic status
 
-Pre-registered on 16 September 2026, before any corpus data was collected, in an append-only log
-with 30+ dated deviation entries. Five predictions were registered; **three failed**. All five are
-reported below against their stated thresholds.
+Pre-registered on 16 September 2026, before any data was collected, in an append-only log with 40+
+dated deviation entries. **Fifteen predictions were registered across three stages; eight failed.**
+All fifteen are reported below against their stated thresholds.
 
-What I am confident in: the measurements. 255 of 255 graphs attributed without a single failure,
-metrics validated against the library's own implementation to 1.1×10⁻⁶, and a controlled
-manipulation whose effect appears in 27 of 27 matched items.
+| stage | predictions | failed |
+|---|---|---|
+| Main corpus, Gemma-2-2B (255 graphs) | P1–P5 | 3 |
+| Cross-dictionary arms (Llama, matched frames) | C0–C4 | 3 |
+| Category replication (Llama, 255 graphs) | D1–D5 | 2 |
+
+What I am confident in: the measurements. Roughly 700 attributions in all — two full 255-prompt
+corpora with **zero failures in either**, plus three 66-graph matched-frame arms — with metrics
+validated against the library's own implementation to 1.1×10⁻⁶, two attribution backends agreeing to
+1×10⁻⁴ on the same prompts, and a controlled manipulation whose direction appears in every arm.
 
 What the reader should discount: anything resting on the 40 human ratings. One rater, not blind to
 the hypotheses, a median of 262 seconds per graph against the hours the original work describes, and
 criteria developed in discussion with an LLM assistant — which also rated, so agreement between
-those streams is not independent convergence.
+those streams is not independent convergence. **Those ratings exist only for Gemma-2-2B with
+per-layer transcoders**, and nothing in the cross-model work touches them.
 
-One model, one size, one dictionary family, bf16 on a free Kaggle T4.
-
-**Two of my own claims are corrected inside this document rather than quietly removed:** an estimate
-of the direct-path share that was wrong by roughly fourfold, and a proposed mechanism for the length
-effect that my own data contradicts.
+Three claims are corrected inside this document rather than quietly removed: an estimate of the
+direct-path share that was wrong by fourfold, a proposed mechanism for the length effect that my own
+later data refutes, and a superlative about induction that turns out to be partly an artefact of
+prompt length.
 
 ---
 
 ## What I found
 
-No usable pre-flight check for attribution-graph quality exists on this model. The search was
-pre-registered and the negative result is the headline.
+**There is no usable pre-flight check for attribution-graph quality on Gemma-2-2B.** That search was
+pre-registered and the negative result was the original headline.
 
-**Replacement score barely moves across prompt types.** Eight categories span 0.036, from 0.709
-(arithmetic) to 0.746 (induction). Completeness spans 0.008 and is, for triage purposes, a constant.
+**The more useful finding is that almost none of it transfers.** Running the same corpus on a second
+model, and the same prompts under a cross-layer dictionary, moves nearly every headline number:
 
-**It moves more when you pad the prompt than when you change the task.** Across 27 facts posed in a
-short and a long frame, replacement score rose with frame length in 27 of 27 cases (Wilcoxon
-p = 1.5×10⁻⁸), by an average of 0.032 — comparable to the entire between-category range. About half
-of that is feature count; the corpus cannot resolve the other half, for a reason worth reading.
+| claim | Gemma-2-2B | Llama-3.2-1B | |
+|---|---|---|---|
+| replacement's between-category range | 0.036 | **0.142** | 3.9× |
+| category eta² on replacement | 0.238 | **0.626** | 2.6× |
+| induction's rank by replacement (of 8) | 1st | **5th** | inverted |
+| length effect, within-pair slope | +0.0458 | **+0.0087** | 5× weaker |
+| predicted-vs-observed category ranking | +0.071 | **+0.571** | underpowered, n = 8 |
 
-**Its ranking inverts on one category.** Induction has the highest mean replacement score of the
-eight, and every rated induction graph scored 0 — the explanation those graphs give is "the token
-appeared earlier", which is complete, well-covered and circular.
+So the central claim of the original analysis — that replacement score is *statistically structured
+but practically flat*, and therefore useless for choosing prompts — is **a property of Gemma-2-2B
+with GemmaScope transcoders, not of the method.** On Llama-3.2-1B the metric spans 0.142 across
+prompt types, over half the published gap between dictionary families, and category explains 63% of
+its variance. A practitioner who read "the metric is flat, don't triage on it" would be wrong there.
 
-**It does not track human readability.** Spearman +0.243 (p = 0.13, n = 40), with mean replacement
-non-monotonic in rating: 0.731, 0.729, 0.755 for grades 0, 1 and 2.
+**What does generalise is thinner, and it is mostly about directions rather than sizes:**
 
-**The predictors that carry the signal are about the prompt's shape.** Of the four cheap prompt
-properties, token count (+0.018 logit points per token) and a token-frequency proxy (−0.033) reach
-significance at
-p < 10⁻⁴. Next-token entropy (p = 0.10) and top-1 probability (p = 0.13) do not — but they are
-near-collinear at r = −0.958, so neither is individually identified and their separate p-values cannot
-be read as "these contribute nothing". A joint test of the two was not run; until it is, their
-contribution is undetermined rather than absent.
+- **Replacement score rises with prompt length**, in every arm tested, with content held fixed. The
+  magnitude varies 3.5× between dictionaries and the direction never flips.
+- **It is not explained by feature count.** Across three dictionaries at a fixed +4.78-token
+  manipulation, normalising the effect by features added makes the spread *worse* (3.51× → 6.31×),
+  and the dictionary with the *fewest* features per token has the *strongest* effect. An earlier
+  estimate that about half the effect was feature count does not survive this.
+- **Coverage and insight come apart**, and the robust example is not the one I first reported.
+  Known/unknown entity prompts top the length-adjusted ranking on **both** models and were rated 0 in
+  four of six cases, with no graph ever rated 2.
+- **Completeness is less discriminative than replacement** on both models (P4 and D5).
+- **The matched-frame design cannot separate tokens from features**: `r(d_tok, d_feat)` is 0.9994 to
+  0.9998 in every arm.
 
-**What structure exists does not transfer.** Category explains 21–47% of variance depending on
-outcome. Leave-one-category-out R² is positive for three of six outcomes, but above 0.07 for only one
-— the share of error falling at the read-out position — and that one correlates −0.69 with token
-count.
+And one measurement result worth as much as any finding: **two attribution backends agree to 1×10⁻⁴**
+on mean replacement over the same prompts, so none of the above is a library artefact.
 
-The corpus, the 255 graphs with per-prompt metrics, the ratings with their written reasoning, and
-the pre-registration are all released.
+The corpus, 510 graphs with per-prompt metrics, the ratings with their written reasoning, and the
+pre-registration with its full deviation log are all released.
 
 ---
 
@@ -88,38 +104,32 @@ the pre-registration are all released.
 Circuit tracing via attribution graphs is the leading method for working out how a language model
 produced a particular output. Two things are true of it at once.
 
-It produces genuinely new findings — multi-step reasoning, forward planning in poetry, a model with
-a hidden goal. And its authors report that it gave satisfying insight on roughly a quarter of the
+It produces genuinely new findings — multi-step reasoning, forward planning in poetry, a model with a
+hidden goal. And its authors report that it gave satisfying insight on roughly a quarter of the
 prompts they tried, at a cost of a few hours of human effort per graph.
 
-So: a high failure rate, expensive attempts, and no way to tell in advance which bucket you are in.
-A researcher picks a prompt, spends an afternoon, and three times in four comes away without a
+So: a high failure rate, expensive attempts, and no way to tell in advance which bucket you are in. A
+researcher picks a prompt, spends an afternoon, and three times in four comes away without a
 mechanism they can state.
 
 The tooling already computes two quality scores for every graph. Replacement score measures the
 fraction of end-to-end influence from input tokens to output that flows through interpretable
 features rather than through error nodes. Completeness is a softer, per-node version. The methods
-paper notes these are useful "to flag prompts our method performs poorly on" — and then never
-develops that use. They are reported as dataset-wide averages for comparing replacement models —
-cross-layer transcoders against per-layer transcoders against raw MLP neurons, at matched cost —
-never as a per-prompt instrument, and nobody has tested whether they predict a human's success at
-reading a particular graph.
+paper notes these are useful "to flag prompts our method performs poorly on" — then never develops
+that use. They are reported as dataset-wide averages for comparing replacement models, never as a
+per-prompt instrument, and nobody had tested whether they predict a human's success at reading a
+particular graph.
 
-That gap is what this project addresses. Two questions:
+**Two questions, and a third that the first two forced:**
 
 - Do cheap prompt-side properties — token count, next-token entropy, top-1 probability, token
   frequency, prompt category — predict attribution-graph quality?
 - Does replacement score track whether a human can actually extract a mechanism from the graph?
-
-Both answers are useful. A working predictor gives practitioners a check that costs milliseconds
-instead of hours. A null result documents that the field's headline quality metric does not support
-the use its own authors suggested for it.
+- **Does any answer to those questions survive a change of model or dictionary?**
 
 ---
 
 ## What replacement score measures
-
-This matters for reading the results, so briefly.
 
 An attribution graph is built on a local replacement model: each MLP is swapped for a transcoder,
 which re-expresses that MLP's output as a sparse sum of interpretable features; whatever the
@@ -127,8 +137,7 @@ transcoder fails to reconstruct is injected as an error node; and attention patt
 normalisation denominators are frozen at the values they took on this prompt. What remains is linear,
 so contributions add and every edge carries an exact coefficient.
 
-The graph then has four kinds of node, and two of them are asymmetric in a way that drives
-everything below:
+The graph has four kinds of node, two of them asymmetric in a way that drives everything below:
 
 | Node | Incoming | Outgoing |
 |---|---|---|
@@ -137,20 +146,19 @@ everything below:
 | token embedding | **none** | yes |
 | logit | yes | none |
 
-Influence is computed by pushing mass backwards from the logits one edge at a time. The graph is a
-DAG, so the series terminates — and it can only terminate at a node with no inputs. There are
-exactly two such kinds: token embeddings and error nodes. Hence **replacement score is the embedding
-share.**
+Influence is pushed backwards from the logits one edge at a time. The graph is a DAG, so the series
+terminates — and it can only terminate at a node with no inputs. There are exactly two such kinds.
+Hence **replacement score is the embedding share**, and its complement is the error share: across the
+corpus, replacement ≈ 1 − total error mass to three decimal places.
 
 One consequence often reached for: a token's embedding enters the residual stream at layer 0 and is
 never removed, so the unembedding can read it at layer 25 with no feature in between, and that mass
-counts toward replacement while explaining nothing. I measured that path exactly and it is **9.5%**
-of the score — real, but small, and progressively diluted by the normalisation denominators as the
-residual stream grows. It is **not** why the metric misbehaves; see the correction below.
+counts toward replacement while explaining nothing. I measured that path exactly and it is **9.5%** of
+the score — real, but small, and progressively diluted by the normalisation denominators. It is *not*
+why the metric misbehaves; see the correction below.
 
 What matters is the framing. Replacement score measures **coverage** — can this computation be
 expressed in features — and coverage is easiest to achieve when there is little computation to cover.
-Induction is the clean demonstration.
 
 ---
 
@@ -159,12 +167,12 @@ Induction is the clean demonstration.
 255 prompts, 8 categories, each grounded in a limitation the methods paper documents qualitatively
 but never quantifies.
 
-| Category | n | Grounded in | Validated by |
+| Category | n | Grounded in | Validated by (Gemma) |
 |---|---|---|---|
-| Obfuscated text (4 corruption rungs) | 44 | reconstruction-error blind spot | 11 complete ladders; entropy non-monotonic in corruption, reported |
+| Obfuscated text (4 corruption rungs) | 44 | reconstruction-error blind spot | 11 complete ladders; entropy non-monotonic, reported |
 | Factual recall | 40 | published success case | answers 89% with a `Fact:` prefix on short frames |
 | Known vs unknown entity | 32 | inactive-feature / suppression blind spot | round birth years 5/16 vs 16/16, Fisher p = 6.8×10⁻⁵ |
-| Multi-hop | 32 | longer chains, error accumulation | answers 94%; cities that are their own state capital removed |
+| Multi-hop | 32 | longer chains, error accumulation | answers 94%; own-state-capital cities removed |
 | Code completion | 29 | untested territory | — |
 | Two-digit arithmetic | 28 | published success case | correct 96% |
 | Syntactic agreement | 26 | short mechanical control | 18/18 by verb-logit margin, no attraction errors |
@@ -175,18 +183,28 @@ when the check failed. Sentence-frame induction prompts turned out to be solved 
 the model predicted `ran` or `was` in 20 of 20 — so the category was rebuilt on bigram repetition.
 
 A ninth category, multiple choice, was dropped after two designs failed. Gemma-2-2B does not bind
-answers to option letters: the arrow format continued the option list (12/12 predicted `c`, which was
-not an option) and the answer format defaulted to `a` 75% of the time. A redesign as forced choice
-between two in-context words failed differently — 79% of choices went to the first-listed option,
-because repeating the stem created an induction pattern and in-context copying overrode factual
-knowledge. Per a rule fixed before the check, it was dropped rather than redesigned a third time.
+answers to option letters: the arrow format continued the option list (12/12 predicted `c`, not an
+option) and the answer format defaulted to `a` 75% of the time. A redesign as forced choice between
+two in-context words failed differently — 79% of choices went to the first-listed option, because
+repeating the stem created an induction pattern and in-context copying overrode factual knowledge.
+Per a rule fixed before the check, it was dropped rather than redesigned a third time.
 
-Prompt length was varied deliberately within category so that it is not confounded between categories
+Prompt length was varied deliberately within category so it is not confounded between categories
 (eta² = 0.131). That decision turned out to matter more than expected.
+
+**The category validations are Gemma results**, and that matters for everything in the replication
+section. Re-run on Llama-3.2-1B: induction, arithmetic, multi-hop and known/unknown entity all pass;
+the entity check replicates more cleanly than on Gemma (round years 3/16 known vs 15/16 unknown,
+Fisher p = 3.9×10⁻⁵). Factual recall fails a pooled 0.70 answer-rate gate at 0.675, but the failure
+is entirely one frame format — `capital_short` 12/12, `capital_long` 11/12, `sport_short` 3/4,
+**`capital_med` 1/12** — so restricted to short and long frames it is 26/28 = 0.93. Code completion,
+obfuscated text and syntactic agreement have **no validity evidence on Llama at all**: their expected
+answers are undefined, and the Gemma-specific checks (verb-logit margins, the entropy ladder) were
+not reproduced.
 
 ---
 
-## The five pre-registered results
+## The five pre-registered results, on Gemma-2-2B
 
 | | Prediction | Threshold | Observed | |
 |---|---|---|---|---|
@@ -196,150 +214,108 @@ Prompt length was varied deliberately within category so that it is not confound
 | **P4** | completeness even less discriminative than replacement | smaller range | 0.008 vs 0.036 | **HOLDS** |
 | **P5** | replacement vs human rating weakly positive | \|rho\| < 0.4 | +0.243 (p = 0.13) | **HOLDS** |
 
-Three failed, and each failed in a direction that sharpens rather than undermines the argument.
-
 **P5 holds, but its threshold was nearly vacuous and I should say so.** The prediction's text was
 "positive but weak"; the registered threshold was \|rho\| < 0.4, which an uncorrelated or negative
-result would also have satisfied. And +0.243 at p = 0.13 does not establish the positive direction.
-So the only thing P5 establishes is that replacement score is not *strongly* related to human
-readability. That is still the claim the paper needs, but it is weaker than a passing prediction
-sounds. Together with the two falsification rules discussed below, this is the third registered
-criterion that tested a bound rather than the quantity the project cared about — which I take to be
-the main methodological lesson here: a threshold written as \|x\| < k, with no direction and no
-effect-size floor, can be passed by a result that means nothing.
+result would also satisfy. And +0.243 at p = 0.13 does not establish the positive direction. So P5
+establishes only that replacement score is not *strongly* related to human readability. Together with
+the two falsification rules discussed later, this is the third registered criterion that tested a
+bound rather than the quantity the project cared about — the main methodological lesson here is that
+a threshold written as \|x\| < k, with no direction and no effect-size floor, can be passed by a
+result that means nothing.
 
-**P2 split.** The range is four times better than it had to be: 0.036 against a ceiling of 0.15.
-Replacement score discriminates between prompt types even less than predicted, which is the direction
-the prediction wanted. But eta² came in at 0.238, over its own ceiling of 0.20 by 0.038. The two
-measures disagree because eta² is a ratio — variance between categories divided by total variance —
-and within-category spread is smaller still (standard deviations 0.008 to 0.026), so entity graphs sit
-inside 0.024 of each other. Dividing a small number by a smaller one gives a large ratio: category
-accounts for about a quarter of the variance in a quantity that barely varies at all. The metric is
-statistically structured and practically flat at the same time, and a triage rule needs the second of
-those to be false. The substantive prediction is supported; the variance-ratio form of the test is
-not. For scale: Anthropic's published gap between per-layer and cross-layer dictionaries is 0.37 vs
-0.61 — nearly seven times the entire between-category spread here. The metric distinguishes methods,
-not prompts.
+**P2 split.** The range was four times better than it had to be — replacement discriminated even
+*less* than predicted, which is the direction the prediction wanted — but eta² came in over its own
+0.20 ceiling. The two disagree because eta² is a ratio and within-category spread is smaller still
+(standard deviations 0.008 to 0.026), so entity graphs sit inside 0.024 of each other. Category
+accounts for a quarter of the variance in a quantity that barely varies. For scale, the published gap
+between per-layer and cross-layer dictionaries is 0.37 vs 0.61 — seven times the entire
+between-category spread. **On Gemma, the metric distinguished methods, not prompts.** The replication
+section is where that sentence acquires its caveat.
 
-**P1 failed informatively.** The predicted ordering was not a guess; it was derived from the failure
-modes the methods paper itself documents — frozen QK for induction, reconstruction error for
-obfuscated text, suppression for unknown entities. Those limitations predict the metric's own ordering
-at rho = 0.07. The two largest errors run in opposite directions: induction was predicted 7th of 8 and
-ranks 1st; arithmetic was predicted 3rd and ranks last.
+**P1 failed informatively.** The predicted ordering was derived from the failure modes the methods
+paper documents — frozen QK for induction, reconstruction error for obfuscated text, suppression for
+unknown entities. Those limitations predicted the metric's own ordering at rho = 0.07. The two
+largest errors ran in opposite directions: induction was predicted 7th of 8 and ranked 1st;
+arithmetic was predicted 3rd and ranked last.
 
-**P3 was the narrowest miss.** Error location explains 44.4% of category variance against
-replacement's 23.8% — a ratio of 1.86 against a threshold of 2.0. More interesting than the miss: the
-mechanism proposed for P3 was wrong in two of three cases. Obfuscated text was predicted to
-concentrate error on corrupted tokens and is third-lowest in concentration; induction was predicted to
-concentrate at the copy source and is the least concentrated of all. The most concentrated categories
+**P3 was the narrowest miss** — 44.4% against 23.8%, a ratio of 1.86 against a threshold of 2.0 — and
+the *mechanism* proposed for it was wrong in two of three cases. Obfuscated text was predicted to
+concentrate error on corrupted tokens and is third-lowest in concentration; induction was predicted
+to concentrate at the copy source and is least concentrated of all. The most concentrated categories
 are entity and multi-hop, both dominated by error at the read-out position.
 
 ---
 
-## Replacement score responds to prompt length, with content held fixed
+## Replacement score responds to prompt length
 
-This was not predicted and is the strongest single result.
+Not predicted, and the most robust result in the project.
 
-Capital-city and state-capital facts from the factual-recall and multi-hop categories were posed in
-short, medium and long frames — same fact, same answer, same model, only the wording around it
-changing. **27 facts appear in both a short and a long frame**, and 12 of those also in a medium
-frame. Across the 27 matched short/long pairs, replacement score rose with frame length in **27 of
-27** cases: mean +0.032, median +0.020, Wilcoxon statistic 0 (not a single reversal),
-p = 1.5×10⁻⁸. Pairing is at the level of the fact, averaging within frame where a fact appears more
-than once.
+Capital-city and state-capital facts were posed in short, medium and long frames — same fact, same
+answer, same model, only the wording around it changing. **27 facts appear in both a short and a long
+frame**, 12 of those also in a medium frame. Across the 27 matched short/long pairs, replacement rose
+with frame length in **27 of 27** cases: mean +0.0323, median +0.020, Wilcoxon statistic 0 (not a
+single reversal), p = 1.5×10⁻⁸. Pairing is at the level of the fact.
 
-On the 12 items posed in all three frames the increase is monotonic:
-
-| Frame | Mean replacement |
-|---|---|
-| short | 0.7147 |
-| medium | 0.7378 |
-| long | 0.7703 |
-
+On the 12 items posed in all three frames the increase is monotonic — 0.7147 → 0.7378 → 0.7703,
 Friedman p = 6.1×10⁻⁶.
 
-Two things make this damaging for the triage use. **The effect is as large as the entire
-between-category range.** Padding a prompt moves the same fact by 0.032; the eight categories span
-0.036. Whatever you do to a prompt without changing what it asks moves the metric about as much as
-the difference between asking the model to do arithmetic and asking it to copy a nonce word.
+Two things made this damaging for the triage use *on Gemma*. The effect is as large as the entire
+between-category range: padding a prompt moves the same fact by 0.032 and the eight categories span
+0.036. And it is a controlled manipulation, not a correlation across prompts — the fact, the answer
+and the model are identical. The matched pairs also give a **larger** estimate than the
+cross-sectional regression: **+0.0458 logit/token** within a fact against +0.0133 across prompts,
+3.4× bigger, with R² 0.81. The controlled number is the one to quote.
 
-**And it is a controlled manipulation, not a correlation across different prompts.** The
-cross-sectional coefficient on token count (+0.0133 per token, p = 3×10⁻¹² on all 255 graphs) could
-be explained by longer prompts differing in other ways. The matched pairs cannot: the fact, the
-answer and the model are identical. They also give a **larger** estimate — **+0.0458 per token**
-within a fact, 3.4× the cross-sectional figure, with R² 0.81 across the 27 pairs. The controlled
-number is the one to quote; the cross-sectional one is attenuated by everything else that differs
-between prompts.
+**A note on units.** Every regression coefficient here is in **logit points per token** — +0.0133
+(simple regression, all 255), +0.018 (the four-predictor model), +0.0176 (fitted on the 211
+non-obfuscated prompts as a length-only null), +0.0458 (within matched pairs). All on the same scale,
+which is what makes those comparisons meaningful. The **raw mean differences** — +0.032 across pairs,
+the 0.036 between-category range, the frame means — are in **probability units**. At p ≈ 0.72 one
+logit point is worth about 0.2 in probability.
 
-**A note on units, since several numbers in this section are easy to confuse.** Replacement score is
-a proportion, so every *regression* coefficient below is in **logit points per token** — +0.0133
-(simple regression, all 255), +0.018 (Day 6's four-predictor model, all 255), +0.0176 (fitted on the
-211 non-obfuscated prompts, used as the length-only null for the corruption ladder), and +0.0458
-(within matched pairs, on the difference in logits). All four are on the same scale, which is what
-makes the 3.4× comparison meaningful; they differ because they come from different models and
-different contrasts. The **raw mean differences** — +0.032 across matched pairs, the 0.036
-between-category range, the 0.7147 → 0.7703 frame means — are in **probability units**, not logits.
-At p ≈ 0.72 one logit point is worth about 0.2 in probability, which is how +0.0458 logit per token
-over a mean 4.8 extra tokens gives roughly the observed +0.032.
+### The `Fact:` prefix is not driving it
 
-### What the effect acts through, and why this corpus cannot say
+Short frames carry a `Fact:` prefix and long frames do not, so the headline contrast changed format
+as well as length.
 
-My first guess was structural: each additional token adds an embedding node, which is a terminal for
-backward influence, so a longer prompt should collect more mass on embeddings whether or not any
-feature was involved. Splitting the score by path length on all 255 graphs says otherwise. Across the
-same 27 matched pairs, the direct share falls slightly with length (−0.009, positive in only 11 of 27,
-p = 0.05) while mediated replacement — the part that passed through at least one feature — rises in 26
-of 27 (+0.035, p = 3.0×10⁻⁸), slightly more than the raw score does. So padding a prompt raises the
-*feature-mediated* part of the score, not the residual-stream part.
+The obvious control does not work, and the reason is worth stating because it is easy to propose.
+Re-attributing the short frames *without* the prefix would not isolate format: the prefix is what
+makes those frames elicit an answer at all — `capital_short` answers 0.33 without it against 0.92
+with it. Stripping it compares graphs that explain a continuation against graphs that explain an
+answer, confounding format with task success. The experiment would produce a number and settle
+nothing.
 
-That leaves a second structural reading, which is the same story as my first guess one node type
-over: feature count also scales with token positions, so a longer prompt has more features for
-influence to pass through — more *routes*, not more *computation*.
+The control that works was already in the corpus, and the prefix distribution was checked rather than
+assumed: **0 of 12 medium frames and 0 of 27 long frames carry it**, against 26 of 33 short frames
+(the 7 `city_language` short prompts never had it). So **medium → long changes length with no change
+of format**.
 
-**Roughly half the length coefficient is feature count, and the corpus cannot resolve the rest.**
-Across all 255 graphs, replacement rises +0.0133 per token unconditionally; holding total feature
-count fixed it rises +0.0068 (p = 0.035), while holding length fixed each additional feature also
-raises it (p = 0.015). The two predictors correlate at 0.83 and jointly explain almost nothing more
-than either alone — R² 0.195 against 0.176 for length and 0.181 for features, which is the signature
-of two near-substitutable regressors. Feature *density* carries independent signal (features per
-token, p = 0.006, in the best-fitting model at R² 0.200), and it varies 583–1,649 across the corpus.
+- medium → long: **+0.0325** raw over 5 added tokens, 12/12 positive, Wilcoxon p = 4.9×10⁻⁴,
+  **0.0065 per token**
+- short → long: +0.0323 over 4.78 tokens, 27/27, **0.0068 per token**
 
-**The matched-frame design cannot adjudicate this at all, and the reason is instructive.**
-Lengthening a frame adds 4.8 tokens and 4,442 features — about 925 features per token, which is the
-corpus mean density of 913. The long frame is not denser, only longer. Tokens and features therefore
-move in lockstep within pairs (**r = 0.999**), and a model containing both is pure collinearity: the
-token coefficient flips sign and inflates eightfold, from +0.046 to −0.380. That is an artefact of
-the collinearity, not a finding, and I am recording it here precisely so that nobody quotes it. The
-design that best isolates the length manipulation is the one least able to say what the manipulation
-acts through.
-
-So this is not an open question for want of effort. It is unanswerable on this corpus by this design,
-and the honest summary is: about half routing, with wide uncertainty, and no way to pin down the
-remainder without a manipulation that changes feature count and token count independently.
-
-One confound to note: short frames carry the `Fact:` prefix and long ones do not, so frame length is
-entangled with format. The medium frames give a three-point monotonic trend in the same direction,
-which makes length the more parsimonious explanation, but the confound is real — and it is resolvable
-cheaply, which is the uncomfortable part. Re-attributing the short frames without the prefix is about
-seven minutes of GPU time and would settle it. I am reporting it as an open confound rather than as a
-limitation of the design, because it is the former.
+Decomposing the ladder within the 12 three-frame items, the per-token effect is not constant:
+short → med is +0.0232 over 2 tokens (0.0116 per token, the leg where format changes) and med → long
+is +0.0325 over 5 tokens (0.0065 per token, format constant). Taking the clean leg as the length
+rate, length alone predicts 0.0455 of the 0.0557 full span — **roughly 82% length, about 18% format
+or nonlinearity in length**. At n = 12 with a two-token denominator on the first leg, that 18% is
+indicative rather than estimated.
 
 ### The corruption ladder is length too
 
-*Exploratory, and not pre-registered: P1 is a category ranking, and no per-rung test on replacement
-score was registered.*
+*Exploratory; no per-rung test on replacement was registered.*
 
 The obfuscation category is the corpus's one dose-response design: 11 base sentences at 4 corruption
-rungs each, every comparison within the same sentence. Raw, it looks like corruption raises
-replacement score — clean → character-substitution is +0.018, positive in 9 of 11 ladders, Friedman
-p = 0.018, Wilcoxon p = 0.0068.
+rungs, every comparison within the same sentence. Raw, corruption appears to raise replacement —
+clean → character-substitution is +0.018, positive in 9 of 11 ladders, Friedman p = 0.018, Wilcoxon
+p = 0.0068.
 
-It is length. Corruption fragments text into character-level tokens, so over the same contrast the
-prompts gain 10.4 tokens. A length coefficient fitted on the 211 **non**-obfuscated prompts
-(+0.0176 logit/token, p = 3×10⁻¹³) predicts a rise of +0.035 — twice what actually happened. Every
-rung comes in below its length-only prediction, monotonically: −0.0088, −0.0117, −0.0171.
+It is length. Corruption fragments text into character-level tokens, so the prompts gain 10.4 tokens
+over that contrast. A length coefficient fitted on the 211 **non**-obfuscated prompts (+0.0176
+logit/token, p = 3×10⁻¹³) predicts +0.035 — twice what happened. Every rung comes in below its
+length-only prediction, monotonically:
 
-| Rung | Tokens | Observed | Predicted from length alone | Residual |
+| Rung | Tokens | Observed | Predicted from length | Residual |
 |---|---|---|---|---|
 | clean | 5.6 | 0.7223 | 0.7223 | — |
 | typo | 6.8 | 0.7176 | 0.7264 | −0.0088 |
@@ -347,121 +323,175 @@ rung comes in below its length-only prediction, monotonically: −0.0088, −0.0
 | char substitution | 16.0 | 0.7403 | 0.7574 | −0.0171 |
 
 Within-ladder fixed effects agree: the rung coefficient flips from +0.0330 (p = 6×10⁻⁵) to −0.0229
-once token count enters, while length takes +0.0158 (p = 0.013). The two routes also agree in
-magnitude — −0.0229 logit per rung over three rungs is about −0.014 in probability units at p ≈ 0.72,
-against the observed −0.0171 residual. The typo rung is the cleanest single case: +1.2 tokens, and
-replacement *falls* 0.0047.
+once token count enters, while length takes +0.0158 (p = 0.013). So corruption does not raise
+replacement; the apparent rise is fragmentation into more tokens, and conditional on length
+corruption slightly lowers it. How much is not identified — r(rung, tokens) = 0.897, n = 11.
 
-So corruption does not raise replacement score; the apparent rise is fragmentation into more tokens,
-and conditional on length corruption slightly lowers it. How much is not identified: r(rung, tokens) =
-0.897, and the rung coefficient's interval spans zero in both directions. n = 11.
-
-This is the third demonstration of the length effect and the sharpest, because here a deliberately
-designed manipulation is entirely absorbed by its own side-effect on token count.
+A designed manipulation entirely absorbed by its own side-effect on token count is the sharpest
+illustration of the length effect in the corpus.
 
 ---
 
-## How much of the metric bypasses the features — a correction
+## What the length effect acts through: not feature count
 
-A token's embedding enters the residual stream at layer 0 and is never removed, so the unembedding can
-read it at layer 25 with no feature in between. That path counts toward replacement score and explains
-nothing. I first estimated its size by parsing the logit's displayed top edges on the 40 rated graphs:
-mean share 0.372, correlating +0.56 with replacement score. Recomputing it exactly — from the full
-influence vector, splitting replacement by path length, with no thresholding and no top-k — gives a
-much smaller number.
+My first guess was structural: each additional token adds an embedding node, a terminal for backward
+influence, so a longer prompt should collect more mass on embeddings whether or not any feature was
+involved. Splitting the score by path length on all 255 graphs says otherwise. Across the same 27
+pairs the **direct** share *falls* slightly with length (−0.009, positive in 11 of 27) while
+**mediated** replacement rises in **26 of 27** (+0.035, p = 3.0×10⁻⁸). So padding raises the
+feature-mediated part, not the residual-stream part.
 
-| | parsed from displayed edges | computed exactly |
-|---|---|---|
-| mean direct share | 0.372 | **0.095** (median 0.091, range 0.023–0.184) |
-| correlation with replacement | +0.556 | +0.157 Pearson, +0.124 Spearman (p = 0.05) |
-| correlation with human rating | +0.033 | −0.089 |
+That leaves a second structural reading, one node type over: feature count also scales with token
+positions, so a longer prompt has more features to pass through — more *routes*, not more
+*computation*.
 
-**So the claim that much of the metric bypasses the features is wrong. About a tenth of it does.** The
-parsed estimate was inflated roughly fourfold, because the direct edge is nearly always among a
-logit's top few inputs while the thousands of small feature paths that carry most of the mass never
-appear in a truncated view. I have left the correction visible rather than quietly swapping the
-numbers. **The general lesson: any quantity that sums edge weights must come from the adjacency
-matrix, because a display threshold is not a random sample of edges.**
+**Within the corpus, that reading looked about half right.** Replacement rises +0.0133 per token
+unconditionally and +0.0068 holding total feature count fixed (p = 0.035), while holding length fixed
+each additional feature also raises it (p = 0.015). The two correlate at 0.83 and jointly explain
+almost nothing more than either alone — R² 0.195 against 0.176 and 0.181. Feature *density* carries
+independent signal (p = 0.006) and varies 583–1,649 across the corpus.
 
-What replaces it is more interesting, though weaker than it first looks. Splitting replacement into a
-direct part (mass reaching an embedding in one step) and a mediated part (through at least one
-feature):
+**The matched-frame design cannot adjudicate this, and the reason is instructive.** Lengthening a
+frame adds 4.78 tokens and 4,442 features — about 925 per token, the corpus mean density. Tokens and
+features move in lockstep within pairs (**r = 0.999**), and a model containing both is pure
+collinearity: the token coefficient flips sign and inflates eightfold, from +0.046 to −0.380. That is
+an artefact, recorded here precisely so nobody quotes it.
 
-| | Spearman with human rating | mean by rating 0 / 1 / 2 |
-|---|---|---|
-| replacement score | +0.243 (p = 0.13) | 0.731 / 0.729 / 0.755 |
-| mediated replacement | +0.297 (p = 0.06) | 0.656 / 0.664 / 0.672 |
-| direct share | −0.089 (p = 0.59) | 0.103 / 0.089 / 0.110 |
+### Three dictionaries refute it
 
-Removing the direct component leaves the correlation with readability essentially unchanged — Δρ =
-0.054 on n = 40, both p > 0.05 — but monotonic, where raw replacement dips at rating 1. I would not
-lean on either half of that. Mediated replacement is close to an affine rescaling of the total (direct
-share is 9.5% and varies only 0.023–0.184), so little reranking is arithmetically possible; and the
-monotonic trend is three steps of 0.008 against within-category standard deviations of 0.008–0.026,
-with only **6 graphs** in the top rating bin. Note also that mediated's spread across ratings (0.016)
-is *smaller* than raw's (0.024): monotonic and less discriminative at once.
+Running the same prompts under different dictionaries supplies what the within-corpus design could
+not: the token delta is pinned at **+4.78 in every arm** while feature density varies threefold.
 
-At category level the reshuffle is larger — code completion rises from 5th to 1st and obfuscated from
-7th to 2nd, while induction falls from 1st to 6th and factual recall from 4th to 7th. But that is
-reshuffling means which span 0.036 in total, using a component that varies more between graphs than
-the categories differ from each other. The sharpest version: P1 re-scored on mediated replacement
-gives Spearman −0.524 (p = 0.18, n = 8), against +0.071 on raw. The documented failure modes do not
-merely fail to predict the metric — once the interpretable part is isolated, they predict it
-substantially backwards. That is exploratory, not a re-test of P1, and eight categories is a small n.
+| arm | dictionary | features / added token | per-token effect | per-feature effect | mean path |
+|---|---|---|---|---|---|
+| Gemma-2-2B | GemmaScope per-layer | 929.8 | 0.00677 | 7.28×10⁻⁶ | 3.152 |
+| Llama-3.2-1B | per-layer | 544.5 | 0.00196 | 3.59×10⁻⁶ | 3.453 |
+| Llama-3.2-1B | **cross-layer** | **302.8** | **0.00687** | 2.27×10⁻⁵ | **2.760** |
 
-**The honest puzzle this leaves:** the length effect runs entirely through the component I have just
-called the interpretable one. Either longer prompts really do more feature-mediated computation, or
-"passed through a feature" is no more meaningful than "reached an embedding" — a single generic
-formatting feature satisfies it. On the primary outcome this resolves about halfway: holding feature
-count fixed, length still predicts replacement (p = 0.035), so routing is part of the story and not
-all of it. But the two cannot be separated further on this corpus, for the reason given in the length
-section — the frame manipulation moves tokens and features in lockstep at r = 0.999. **The semantic
-reading of the direct/mediated split should not be treated as established.**
+If the length effect were feature count, normalising each arm by features added should make the arms
+agree. **It does the opposite: the spread is 3.51× per token and 6.31× per feature.** Density has no
+monotonic relation to the effect either — the lowest-density arm has the strongest effect and the
+middle arm the weakest.
 
-Replacement scores recomputed in this pass agree with the corpus run to a median of 7.2×10⁻⁵, with
-95.1% inside the 3.4×10⁻⁴ re-attribution ceiling; the two exceedances are consistent with a Kaggle
-image change between sessions rather than a change in method.
+**The within-corpus numbers stand as facts. Their mechanistic reading is withdrawn.** The "about
+half" estimate came from a between-prompt regression inside one dictionary plus a two-arm comparison
+in which density and effect happened to co-vary; the third arm breaks it.
+
+What *does* order with the effect, across all three arms and within Llama alone, is **mean path
+length** — shorter paths, stronger effect. One story is that influence reaching embeddings in fewer
+hops lets added tokens contribute terminal mass more directly instead of dissipating into error
+nodes. But n = 3, the correlate was chosen after seeing the data, and one point is a different model.
+So it is registered rather than reported:
+
+> **C5, registered before any Gemma cross-layer arm is run.** If path length rather than feature
+> density drives the length effect, a Gemma cross-layer arm should show mean path length below 3.152
+> **and** a per-token effect at or above 0.00677. Short paths with a weak effect would make the
+> path-length ordering a coincidence on three points.
 
 ---
 
-## The inversion
+## The cross-dictionary arms: C0–C4
 
-Induction has the highest mean replacement score of the eight categories, at 0.7455. Every rated
-induction graph scored 0.
+*Registered before any transcoder was loaded. Same 27 matched facts, same +4.78-token manipulation.*
 
-That is not a contradiction, and understanding why is the point of the project.
+| | Prediction | Threshold | Observed | |
+|---|---|---|---|---|
+| **C0** | the length effect replicates on a second model with per-layer transcoders | ≥ 24 of 27 | 21/27 | **FAILS** |
+| **C1** | it survives the cross-layer transcoder | ≥ 24 of 27 | **27/27** | **HOLDS** |
+| **C2** | the cross-layer slope is *smaller*, same model | CLT < PLT | +0.0281 vs +0.0087, **3.2× larger** | **FAILS, backwards** |
+| **C3** | cross-layer replacement is higher | CLT > PLT | 0.7133 vs 0.7366, lower | **FAILS** |
+| **C4** | cross-layer path length is shorter | CLT < PLT | 2.7597 vs 3.4533 | **HOLDS** |
 
-An induction prompt is `snerrik yolvantz snerrik yolvantz snerrik`. The model predicts `yol` with
-p = 0.95. The graph traces the prediction cleanly back to the prompt: two raw token embeddings at the
-earlier occurrences of `yol`, a handful of features, almost nothing lost to error. Coverage is
-excellent.
+**C0.** The direction holds (Wilcoxon p = 1×10⁻⁴) but little else: the slope is +0.0087 logit/token
+against Gemma's +0.0458, with R² 0.148 against 0.807. On the 22 pairs the model answered in both
+frames the slope loses significance entirely (+0.0077, p = 0.152). So what remains of the effect on
+Llama's per-layer dictionary is concentrated in prompts where the model did something other than the
+task. **Both backends agree on this**, so it is not a library artefact.
 
-And the explanation is: it predicted `yol` because `yol` appeared earlier. Which you knew from reading
-the prompt.
+**C1 and C2.** The cross-layer transcoder gives 27/27 and survives the answered-only restriction
+(22/22, p = 8×10⁻⁴) where the per-layer arm does not. Its slope is 3.2× the per-layer arm's on the
+same model and backend, where I predicted smaller — it rescues the effect from failing to holding.
+Reproduced on an independent re-run: slope +0.0280 → +0.0281, replacement 0.7134 → 0.7133, path
+length identical.
 
-The mechanism you actually want — how the model knew to look at that earlier token rather than any
-other — is the induction head's query-key computation, matching the current token against its previous
-occurrence and copying what followed. That computation was frozen into a constant before attribution
-began, so **it is not in these graphs and no amount of looking at them will find it.** Anthropic say
-as much about their own version of this case, calling it arguably a regression against earlier methods
-that could at least identify induction heads.
+**C3 and C4.** The published per-layer/cross-layer replacement gap (0.61 vs 0.37) does **not**
+reproduce — cross-layer replacement is slightly lower here. The path-length difference does (2.3 vs
+3.7 published; 2.76 vs 3.45 observed). C4 holding while C3 fails is reassuring about the setup rather
+than worrying: the dictionary behaves as advertised structurally even though the headline metric does
+not move as advertised.
 
-**That is a statement about this method as configured, not about attribution graphs in general**, and
-the distinction matters because it bounds how far the inversion generalises. Attention is frozen here
-because the local replacement model needs linearity; approaches that attribute *through* attention —
-QK attribution, and replacement models that decompose attention heads rather than freezing them —
-target exactly this failure. If a method recovers the QK computation, induction stops being a category
-where coverage is high and insight is nil, and the inversion reported below would be specific to
-frozen-attention attribution. The inversion is still the right warning for anyone using
-`circuit-tracer` as it ships, which is the method this project set out to characterise, but it should
-not be read as a permanent property of the approach.
+**Backend equivalence, measured.** Cross-layer attribution works only on the TransformerLens backend
+— the nnsight backend raises `MissedProviderError` on cross-layer decoders, because such a decoder
+writes into several downstream layers and that backend's hook injection misses a module. So a
+same-backend per-layer baseline was run and the two backends compared directly: **mean replacement
+0.7365 vs 0.7366**, mean path length 3.4500 vs 3.4533 — inside the 3.4×10⁻⁴ re-attribution ceiling.
 
-So the metric's best-scoring category is the one where a human learns least, because high coverage
-there reflects a trivial computation rather than a legible one. Arithmetic shows the mirror image:
-lowest replacement score, and the graphs explain the model predicting a line break rather than a sum,
-because the model does not do the arithmetic.
+**A Gemma cross-layer arm is not feasible on free compute**, and the reason is structural rather than
+a tuning failure. TransformerLens holds cross-layer decoders in CPU RAM and streams them, so the
+426k Gemma dictionary needs 28.5 GB of transcoders plus 5.2 GB of bf16 model = **33.7 GB against
+31.5 GB available**. `lazy_decoder=True` is already the default. The only backend that supports
+cross-layer transcoders is the one that cannot fit Gemma's in RAM. It needs ~48 GB of RAM; the GPU is
+not the constraint — the 20.4 GB Llama cross-layer set peaked at **7.0 GB** of VRAM. **So the
+dictionary question is answered on Llama-3.2-1B only**, which matters because C0 shows the effect is
+strongly model-dependent.
 
-The full picture across the 40 rated graphs:
+---
+
+## Coverage without insight
+
+This is the project's qualitative finding, and the version I first reported needs correcting.
+
+### What I claimed
+
+Induction had the highest mean replacement score of the eight categories, at 0.7455, and **every
+rated induction graph scored 0**. An induction prompt is `snerrik yolvantz snerrik yolvantz snerrik`;
+the model predicts `yol` at p = 0.95; the graph traces it cleanly to two raw embeddings at the
+earlier occurrences with almost nothing lost to error. Coverage is excellent and the explanation is
+*it predicted `yol` because `yol` appeared earlier* — which you knew from reading the prompt.
+
+The mechanism you actually want — how the model knew to look at *that* token — is the induction
+head's query-key computation, frozen into a constant before attribution began. It is not in these
+graphs and no amount of looking at them will find it. Anthropic say as much about their own version
+of this case, calling it arguably a regression against earlier methods that could at least identify
+induction heads.
+
+**That is a statement about this method as configured, not about attribution graphs in general.**
+Attention is frozen because the local replacement model needs linearity; approaches that attribute
+*through* attention — QK attribution, and replacement models that decompose attention heads rather
+than freezing them — target exactly this failure.
+
+### Two corrections
+
+**The superlative is partly prompt length.** Induction prompts are the longest category on both
+models — 13.1 tokens on Gemma and 15.0 on Llama, against 8.4–12.1 for everything else. Partialling
+out token count demotes Gemma's induction from **rank 1 to rank 3** of eight. So "the highest mean
+replacement score of the eight categories" is true raw and misleading as a mechanism claim: part of
+the lead is the length effect this project itself discovered.
+
+**And it does not replicate.** On Llama-3.2-1B induction ranks **5th** of eight, raw and
+length-adjusted alike. Induction passed its manipulation check on that model (it does copy nonce
+bigrams), so this is a real test, not a broken category. The inversion's replacement-score half is
+Gemma-specific.
+
+### The robust example is entity, not induction
+
+| | Gemma, length-adjusted | Llama, length-adjusted | human ratings (0/1/2) |
+|---|---|---|---|
+| **known/unknown entity** | **1st** (+0.0674) | **1st** (+0.1945) | **4 / 2 / 0** |
+| induction | 3rd (+0.0294) | 5th (+0.0915) | 5 / 0 / 0 |
+
+Known/unknown entity tops the length-adjusted ranking on **both** models, has the lowest total error
+mass on Llama (0.254), and was rated 0 in four of six cases with **no graph ever rated 2**. Known and
+unknown entities are also indistinguishable by replacement score (0.742 vs 0.745), and the reason is
+the same in both: the graph shows the model *formatting* an answer without showing it *retrieving*
+one, whether or not the person is real.
+
+That is a cleaner demonstration of coverage-without-insight than induction, because it survives
+length adjustment and replicates across models. Induction remains the more vivid illustration — 5/5
+zeros, and a crisp mechanical explanation in frozen QK — but it is Gemma-specific and partly length,
+and should be presented that way.
+
+The full rating picture across the 40 rated Gemma graphs:
 
 | Category | 0 | 1 | 2 |
 |---|---|---|---|
@@ -475,62 +505,151 @@ The full picture across the 40 rated graphs:
 | induction | 5 | 0 | 0 |
 
 All six top ratings are geographic factual recall or multi-hop — entity → country or state → answer,
-the shape of the published Dallas→Austin circuit. Nothing else in the corpus produced one.
+the shape of the published Dallas→Austin circuit. Nothing else produced one. Code completion produced
+no 0s and no 2s, every graph a 1, because the feature labels available for code tokens were too
+implausible to name an intermediate — a property of the feature descriptions, not of the graphs.
 
-Two smaller observations from the same table. Known and unknown entity graphs are indistinguishable by
-replacement score (0.742 vs 0.745) and both mostly rate 0: the graph shows the model formatting an
-answer without showing it retrieving one, whether or not the person is real. And code completion
-produced no 0s and no 2s — every graph a 1 — because the feature labels available for code tokens were
-too implausible to name an intermediate. That ceiling is a property of the feature descriptions, not of
-the graphs.
+---
+
+## Does the category picture generalise? D1–D5
+
+*Registered before the Llama corpus run. 255 graphs, per-layer transcoders, 0 failures.*
+
+| | Prediction | Threshold | Llama | Gemma | |
+|---|---|---|---|---|---|
+| **D1** | range stays small | < 0.15 | **0.1418** | 0.0363 | HOLDS, marginally |
+| **D2** | category still explains > 1/5 of variance | eta² ≥ 0.20 | **0.6255** | 0.2383 | HOLDS |
+| **D3** | the induction inversion replicates | top 3 of 8 | **rank 5** | rank 1 | **FAILS** |
+| **D4** | documented failure modes still fail to predict the ranking | \|Spearman\| < 0.4 | **+0.571** (p = 0.139) | +0.071 | **FAILS** |
+| **D5** | completeness still flatter than replacement | smaller range | 0.0303 vs 0.1418 | 0.008 vs 0.036 | HOLDS |
+
+**D1 holds on the letter and fails on the spirit.** 0.1418 against a 0.15 ceiling is a 5% margin, and
+the range is 3.9× Gemma's. Combined with eta² of 0.626 — category explaining 63% of variance against
+24% — the claim the original analysis rested on, *statistically structured but practically flat*, does
+not hold on Llama. A 0.14 spread across prompt types is over half the published gap between
+dictionary families. **On this model replacement score does discriminate between prompt types in a
+way that could plausibly be acted on.**
+
+One category carries about half of that. `code_completion` sits at 0.6038 against Gemma's 0.7357,
+with the highest total error mass of any category (0.396) — plausible for code under a 1B base model
+and its per-layer dictionary. Excluding it, the range is **0.0627** and eta² **0.3972** — still 1.7×
+Gemma on both measures, so the finding survives the outlier but is much less dramatic. Both numbers
+are reported because they support different sentences.
+
+**D4's +0.571 is not established.** At n = 8, p = 0.139 — neither +0.571 nor Gemma's +0.071 is
+distinguishable from zero, nor from each other. The point estimate is much higher and the test is
+underpowered; that is the whole claim.
+
+**The two models' category rankings agree at Spearman +0.476** (p = 0.233) raw, and about +0.50
+length-adjusted. Moderate, not significant at n = 8, and unchanged by length adjustment — so length
+is not what makes the models disagree.
+
+A secondary pass with task failures removed (234 of 255 prompts) changes almost nothing: eta² 0.6228
+against 0.6255, identical range, only factual recall and multi-hop moving rank. None of this rides on
+prompts where the model failed its task.
+
+**A registered rule I did not apply, and it may change D4's verdict.** The pre-registration fixed a
+validity gate before the run: a category whose answer rate falls below 0.70 is *excluded* from D3 and
+D4. `factual_recall` came in at 0.675 pooled, and the table above includes it. The failure is one
+frame format rather than the category — `capital_med` answers 1 of 12 against 26 of 28 for short and
+long frames — which is an argument for the gate having been written at the wrong granularity, not for
+ignoring it. D3 is unaffected: dropping the category leaves induction at rank 4 of 7, still outside
+the top 3. **D4 is not.** `factual_recall` is observed rank 2 and was predicted high, so removing a
+concordant pair should pull rho down, possibly under the 0.4 threshold — which would flip D4 from
+FAILS to HOLDS. That recomputation is owed and has not been run, so D4 is reported as computed with
+this attached.
+
+The same rule says nothing about a category with **no defined expected answer**, and three of the
+eight are in that position on Llama: `code_completion`, `obfuscated` and `syntactic_agreement` have no
+validity evidence on this model at all. All three sit inside the rankings being tested,
+`code_completion` drives half the range, and `syntactic_agreement` ranks 4th with nothing validating
+it. They were included by default because the gate did not cover them.
+
+And the length adjustment is a single global linear fit on token count pooled across categories, so
+the slope it removes is a between-prompt slope that itself contains between-category length
+differences. Crude; read the adjusted ranks as "length explains some of this", not as calibrated
+effects.
+
+---
+
+## How much of the metric bypasses the features — a correction
+
+A token's embedding enters the residual stream at layer 0 and is never removed, so the unembedding
+can read it at layer 25 with no feature in between. I first estimated that path's size by parsing the
+logit's displayed top edges on the 40 rated graphs. Recomputing it exactly — from the full influence
+vector, splitting replacement by path length, no thresholding and no top-k — gives a much smaller
+number:
+
+| | parsed from displayed edges | computed exactly |
+|---|---|---|
+| mean direct share | 0.372 | **0.095** (median 0.091, range 0.023–0.184) |
+| correlation with replacement | +0.556 | +0.157 Pearson, +0.124 Spearman |
+| correlation with human rating | +0.033 | −0.089 |
+
+**So the claim that much of the metric bypasses the features is wrong. About a tenth of it does.**
+The parsed estimate was inflated roughly fourfold, because the direct edge is nearly always among a
+logit's top few inputs while the thousands of small feature paths carrying most of the mass never
+appear in a truncated view. The correction is left visible rather than quietly swapped. **The general
+lesson: any quantity that sums edge weights must come from the adjacency matrix, because a display
+threshold is not a random sample of edges.**
+
+Splitting replacement into direct and mediated parts:
+
+| | Spearman with human rating | mean by rating 0 / 1 / 2 |
+|---|---|---|
+| replacement score | +0.243 (p = 0.13) | 0.731 / 0.729 / 0.755 |
+| mediated replacement | +0.297 (p = 0.06) | 0.656 / 0.664 / 0.672 |
+| direct share | −0.089 (p = 0.59) | 0.103 / 0.089 / 0.110 |
+
+Removing the direct component leaves the correlation essentially unchanged — Δρ = 0.054 on n = 40,
+both p > 0.05 — but monotonic, where raw replacement dips at rating 1. I would not lean on either
+half. Mediated replacement is close to an affine rescaling of the total, so little reranking is
+arithmetically possible; the monotonic trend is three steps of 0.008 against within-category standard
+deviations of 0.008–0.026, with only **6 graphs** in the top rating bin. Mediated's spread across
+ratings (0.016) is also *smaller* than raw's (0.024): monotonic and less discriminative at once.
+
+At category level the reshuffle is larger — code completion rises from 5th to 1st, induction falls
+from 1st to 6th — but that is reshuffling means spanning 0.036 using a component that varies more
+between graphs than the categories differ. **P1 re-scored on mediated replacement gives Spearman
+−0.524** (p = 0.18, n = 8): once the interpretable part is isolated, the documented failure modes
+predict the ordering substantially backwards. Exploratory, not a re-test, and eight categories is a
+small n.
 
 ---
 
 ## So does a triage rule exist?
 
-No — but **neither pre-registered falsification rule fired**, and the negative headline is therefore a
-judgement rather than a verdict.
+No — and there are now two independent arguments, neither of which is the one I registered.
+
+### The registered rules did not fire
 
 Section 5 set out two routes to a null. The first: category explains under 10% of variance in every
 outcome **and** nothing survives multiple-comparison correction. Category explains 21% to 47%, and 47
 of 66 tested terms survive Benjamini–Hochberg. The second: leave-one-category-out R² at or below zero
-for **all** outcomes. Three of six are positive. My analysis script evaluated both rules and printed
+for **all** outcomes. Three of six are positive. My analysis script evaluated both and printed
 `NULL RESULT HEADLINE: False`.
 
-For clarity about what the 47 are: six outcomes were each tested against eleven terms — seven category
-dummies, each comparing one category against arithmetic as the reference, and the four cheap continuous
-predictors. That is 66 questions of the form "does A differ from B" or "does X move with Y", and 47
-came back yes. The count is partly an artefact of the reference choice, since arithmetic is the lowest
-category on the primary outcome and contrasts against an extreme are easier to detect; and the six
-outcomes are strongly correlated with each other, so the effective number of independent tests is well
-below 66.
+For clarity about the 47: six outcomes were each tested against eleven terms — seven category dummies
+comparing one category against arithmetic as reference, and the four cheap continuous predictors. So
+66 questions of the form "does A differ from B" or "does X move with Y", and 47 came back yes. The
+count is partly an artefact of the reference choice, since arithmetic is the lowest category on the
+primary outcome and contrasts against an extreme are easier to detect; and the six outcomes are
+strongly correlated, so the effective number of independent tests is well below 66.
 
-I am reporting the negative conclusion anyway, on three grounds the rules did not encode:
+**The rules were badly specified.** Both asked whether *any* signal exists. The project's question is
+whether the signal is large enough and portable enough to decide where to spend an afternoon — which
+Section 6.1 of the same document had already insisted on. With 255 graphs and a noise floor of
+5×10⁻⁵, "nothing reaches significance" was a bar only a broken instrument could clear. What I should
+have written was a threshold on the quantities that matter: a null if the best out-of-category R²
+falls below about 0.15, or if the between-category range of the primary outcome falls below 0.05. Both
+would have fired. I am recording that the criteria I registered tested the wrong thing, not
+retrofitting better ones.
 
-- **The effects are far too small to act on.** The entire between-category range is 0.036, and padding
-  a prompt without changing what it asks moves the same fact by 0.032.
-- **The one outcome that transfers is prompt length in disguise.** Final-position error share reaches
-  leave-one-category-out R² = 0.275 and correlates −0.691 with token count; length alone explains
-  47.7% of its variance, more than the fitted model recovers out of category. The share is a ratio
-  over positions, so a shorter prompt concentrates error at the read-out position for arithmetic
-  rather than mechanistic reasons.
-- **The usable model does not survive the honest test.** R² 0.299 in-sample, 0.067 out of category.
-
-The rules were badly specified, and that is worth saying plainly. Both asked whether *any* signal
-exists. The project's question is whether the signal is large enough and portable enough to decide
-where to spend an afternoon — which Section 6.1 of the same document had already insisted on, in
-requiring effect sizes rather than p-values alone. With 255 graphs and a noise floor of 5×10⁻⁵,
-"nothing reaches significance" was a bar that could only have been cleared by a broken instrument. What
-I should have written was a threshold on the quantities that matter: a null if the best out-of-category
-R² falls below about 0.15, or if the between-category range of the primary outcome falls below 0.05.
-Both would have fired. I am not retrofitting those as the registered criteria — I am recording that the
-ones I registered tested the wrong thing.
-
-The transfer table, which is where the substance is:
+### Argument one: the structure does not transfer across prompt types
 
 | Outcome | Category eta² | Leave-one-category-out R² |
 |---|---|---|
-| final-position error share | 0.431 | +0.275 |
+| final-position error share | 0.431 | **+0.275** |
 | replacement score (logit) | 0.238 | +0.067 |
 | total error mass | 0.242 | +0.053 |
 | completeness (logit) | 0.210 | −0.143 |
@@ -538,78 +657,87 @@ The transfer table, which is where the substance is:
 | mean path length | 0.470 | −0.535 |
 
 **The ordering inverts.** The outcomes with the most in-sample category structure generalise worst.
-Mean path length has the highest eta² and the worst out-of-category R²; its structure is
-category-specific in a way four continuous predictors cannot reconstruct for a type they have never
-seen.
+The one that transfers appreciably — final-position error share — correlates **−0.691 with token
+count**, and length alone explains 47.7% of its variance, more than the fitted model recovers out of
+category. The share is a ratio over positions, so a shorter prompt concentrates error at the read-out
+position for arithmetic rather than mechanistic reasons. **The only rule that generalises is prompt
+length in disguise.**
 
-One more result worth recording, since it points at the only direction I would still look. Cheap
-continuous predictors beat the category label in-sample — R² 0.299 versus 0.238 — driven by token count
-(+0.018 logit points per token) and the token-frequency proxy (−0.033), both at p < 10⁻⁴. That is the
-practically relevant model, because a practitioner has a prompt and not a category. But the same
-model's out-of-category R² is 0.067, a fourfold drop, which is the gap the two cross-validation
-schemes exist to expose. A model combining category and the continuous predictors is uninformative for
-inference: maximum VIF 23.1 against a pre-set threshold of 5, because entropy and top-1 probability
-are near-collinear at r = −0.958. Those two reach nothing individually (p = 0.10 and p = 0.13), but
-at that correlation each t-test asks only whether one adds anything given the other, so their joint
-contribution is **undetermined** rather than absent. A joint test was not run.
+Cheap continuous predictors beat the category label in-sample — R² 0.299 against 0.238, driven by
+token count (+0.018 logit/token) and a token-frequency proxy (−0.033), both at p < 10⁻⁴. That is the
+practically relevant model, since a practitioner has a prompt and not a category. Out of category it
+drops fourfold to **0.067**. A model combining both is uninformative for inference: maximum VIF 23.1
+against a pre-set threshold of 5, because entropy and top-1 probability are near-collinear at
+r = −0.958. Those two reach nothing individually (p = 0.10 and p = 0.13), but at that correlation
+each t-test asks only whether one adds anything given the other, so their joint contribution is
+**undetermined** rather than absent. A joint test was not run.
+
+### Argument two: it does not transfer across models either
+
+This one is new, and it is the stronger of the two.
+
+Even if a practitioner calibrated a rule on one model, the quantities it would rest on move when the
+model or the dictionary changes: the between-category range by 3.9×, category eta² by 2.6×, the
+length slope by 3.5×, and the ranking of prompt types enough to move induction from 1st to 5th. A
+per-prompt instrument whose behaviour is a property of the model-and-dictionary pairing cannot be
+used as a general instrument — it would have to be re-validated per setup, which costs more than the
+tracing it was meant to triage.
+
+**That is a better argument against per-prompt triage than the original null**, because it does not
+depend on the Gemma effects being small. It would hold even if they were large.
 
 ---
 
 ## The human rating, and what it cost to do honestly
 
 40 graphs drawn from eight quantile bins of replacement score, 10 re-inserted as unmarked duplicates,
-50 presentations in randomised order, rated blind to every metric. Three-point scale: 2 for a causal
-path I could state in one sentence naming the intermediate features, 1 for a meaningful feature but no
-path, 0 for neither.
+50 presentations in randomised order, rated blind to every metric. Three-point scale: **2** for a
+causal path statable in one sentence naming the intermediate features, **1** for a meaningful feature
+but no path, **0** for neither.
 
-The criteria were developed on practice graphs drawn from outside the rated sample and frozen in a file
+Criteria were developed on practice graphs from outside the rated sample and frozen in a file
 committed before rating began. Two mechanical checks before awarding a 2: the trace must report at
 least one cross-position edge, and a named feature must sit at a non-final token position. A crossing
-without an intermediate is routing, not computation; an intermediate without a crossing is the read-out
-token elaborating itself.
+without an intermediate is routing, not computation; an intermediate without a crossing is the
+read-out token elaborating itself.
 
-**What the rater saw.** Not the library's pruned graph viewer — the pre-registration said that, and
-D3.11 corrected it before rating began. Each presentation was the backward-reachable subgraph from the
-single top-1 logit, selected by recursively taking each node's top four incoming edges to a depth of
-four, with a weight floor that only trims beyond the top three. Three properties of that choice bear on
-the results. It is **edge-weight selection, not influence-based pruning** — no node threshold was
-applied, so the picture is not "the most influential nodes". Because the top three inputs always
-survive, **the diagram can display a complete path that carries almost no influence**; the rubric
-handles this by excluding magnitude from the rating and flagging weak chains in the written reason, but
-"the graph showed a path" is partly a property of the viewer. And a depth of four against a corpus mean
-path length of 3.7 hops means **longer graphs were truncated more often** — and path length is the
-outcome with the highest category eta² (0.470), so the truncation is unevenly distributed across
-categories.
+**What the rater saw.** Not the library's pruned viewer — the pre-registration said that and D3.11
+corrected it before rating began. Each presentation was the backward-reachable subgraph from the
+single top-1 logit, selected by recursively taking each node's top four incoming edges to depth four,
+with a weight floor that only trims beyond the top three. Three properties bear on the results. It is
+**edge-weight selection, not influence-based pruning** — no node threshold was applied, so the
+picture is not "the most influential nodes". Because the top three inputs always survive, **the
+diagram can display a complete path carrying almost no influence**; the rubric handles this by
+excluding magnitude from the rating and flagging weak chains in the written reason, but "the graph
+showed a path" is partly a property of the viewer. And depth four against a corpus mean path length
+of 3.7 means **longer graphs were truncated more often** — and path length is the outcome with the
+highest category eta² (0.470), so that truncation is unevenly distributed across categories.
 
-**Reliability.** Intra-rater quadratic weighted kappa on the duplicates: 0.889, 9 of 10 pairs
+**Reliability.** Intra-rater quadratic weighted kappa on the duplicates: **0.889**, 9 of 10 pairs
 identical. The single disagreement is traceable — the same graph rated 0 at presentation 20 and 1 at
-presentation 45, spanning a criterion I articulated mid-run and recorded at the time.
+presentation 45, spanning a criterion articulated mid-run and recorded at the time.
 
-Two further streams, both exploratory. An LLM rated the same 50 from the stored text with the same
-written rubric (kappa with me: 0.68); a second LLM audited my stated reasoning against each graph.
-Neither is independent evidence: both were given criteria I wrote, and one of them helped write them.
-Agreement measures whether the criteria are articulable, not whether they are shared.
+Two further streams, both exploratory (registered as D3.11 before any rating). An LLM rated the same
+50 from the stored text with the same written rubric (kappa with me: **0.68**); a second LLM audited
+my stated reasoning against each graph. Neither is independent evidence: both were given criteria I
+wrote, and one helped write them. Agreement measures whether the criteria are **articulable**, not
+whether they are **shared**. Both ran only after all 50 human ratings were recorded, in batches of
+ten pasted into fresh chats, with **no duplicate pair sharing a batch**. Presentations within a batch
+share context, so LLM ratings are not independent across presentations; reported, not corrected.
 
-The audit is the part I would keep. Giving a judge the graph, the rubric, my grade and my written
-reason, and asking separately whether the reason follows from the graph and whether the grade follows
-from the reason, produced a number rating studies rarely report: **12% of ratings were defensible but
-rested on an unsupported reason.** The judge disagreed outright on 30%.
+**The audit is the part I would keep.** Giving a judge the graph, the rubric, my grade and my written
+reason, and asking *separately* whether the reason follows from the graph and whether the grade
+follows from the reason, produced a number rating studies rarely report: **12% of ratings were
+defensible but rested on an unsupported reason.** The judge disagreed outright on **30%**.
 
-And the disagreements were not scattered. Five of the eight flagged cases are the same rule conflict —
-a legible but generic feature at the read-out position with no crossing, which one clause admits as a 1
-and the precedence rule sends to 0. The same boundary produced the human–LLM kappa gap and a systematic
-split between the two LLM streams on arithmetic prompts. Three independent signals, one
-under-specified rule.
+And the disagreements were not scattered. **Five of the eight flagged cases are the same rule
+conflict** — a legible but generic feature at the read-out position with no crossing, which one
+clause admits as a 1 and the precedence rule sends to 0. The same boundary produced the human–LLM
+kappa gap and a systematic split between the two LLM streams on arithmetic prompts. Three independent
+signals, one under-specified rule.
 
-My own notes caught it too, though less often than a first pass through them suggests. Many reasons
-open with "no crossings so either 0 or 1" or "three crosses so could be any rating" — that is the
-mechanical check doing its job and narrowing the range before the finer judgement, not hesitation.
-Genuine deliberation shows up in about five of the fifty, where "borderline" appears after the evidence
-has been weighed. The clearest is a reason that records me resolving to 0 on the error rule, rereading
-the criterion, and landing on 1.
-
-I did not revise any rating. The criteria were fixed in advance and the ambiguity is reported as a
-finding about the rubric, not corrected after the fact.
+No rating was revised. The criteria were fixed in advance and the ambiguity is reported as a finding
+about the rubric, not corrected after the fact.
 
 ---
 
@@ -617,143 +745,155 @@ finding about the rubric, not corrected after the fact.
 
 **The rating budget is a tenth of what the original work describes.** Anthropic report a few hours per
 graph; my median was 262 seconds, and the 5-minute cap was exceeded on 18 of 50 presentations. So the
-ratings do not measure whether a mechanism exists in a graph — they measure whether one is apparent to
-a calibrated rater within a bounded budget. That is the quantity a triage rule serves, since triage
-decides where to spend the hours, but it is narrower than the question the ~25% figure answers and the
-two are not directly comparable. The bias runs toward lower ratings, so +0.243 is plausibly a lower
-bound. Two results are untouched: the frame-length effect involves no ratings, and the induction
-inversion does not depend on effort, since those graphs are legible and circular rather than
-incompletely explored.
+ratings do not measure whether a mechanism *exists* in a graph — they measure whether one is
+*apparent to a calibrated rater within a bounded budget*. That is the quantity a triage rule serves,
+but it is narrower than the question the ~25% figure answers and the two are not directly comparable.
+The bias runs toward lower ratings, so +0.243 is plausibly a lower bound. Two results are untouched:
+the frame-length effect involves no ratings, and the induction cases are legible and circular rather
+than incompletely explored.
 
-**Frozen attention, per-layer transcoders.** Two dictionary-and-method choices bound everything here.
-Attention patterns are frozen, so no QK computation appears in any graph — the induction inversion is
-a property of frozen-attention attribution, and methods that attribute through attention may not share
-it. And cross-layer transcoders score substantially higher (published 0.61 vs
-0.37) and produce shorter paths (2.3 vs 3.7 hops) by collapsing chains of near-duplicate features.
-Several graphs I rated 1 showed a legible feature embedded in exactly such a chain. Whether the
-metric's failure to track readability survives the better dictionary family is the most important open
-question this work leaves. The length effect follows from the residual stream and should be
-dictionary-independent — though if it runs through the mediated component for the reason I cannot yet
-rule out (feature count scaling with positions), a dictionary that mediates differently may behave
-differently.
+**The ratings exist for one model and one dictionary.** P5, the audit, the kappa, the rating
+distribution and the coverage-without-insight argument are all Gemma-2-2B with GemmaScope per-layer
+transcoders. **Nothing in the cross-model work touches them.** Whether the metric tracks human
+readability under a cross-layer dictionary, or on another model, is untested — and given how much
+else moved, assuming it transfers would be unwarranted. That re-run would need a fresh sample, the
+viewer re-pointed at cross-layer features, feature labels that may not exist for that dictionary, and
+a rater who has not already seen the per-layer versions.
+
+**Frozen attention.** No QK computation appears in any graph, so the induction result is a property of
+frozen-attention attribution and methods that attribute through attention may not share it.
 
 **One rater, not blind to the hypotheses.** Intra-rater consistency is measured; inter-rater
-reliability is not. The LLM streams are not a substitute — they applied my rubric, and one helped write
-it.
+reliability is not. The LLM streams are not a substitute — they applied my rubric, and one helped
+write it.
 
 **Coverage is not correctness.** These metrics measure whether a graph covers the computation, not
 whether it covers it correctly. The replacement model is an approximation whose perturbation effects
 degrade with depth; whether an edge is causal in the real model needs per-graph intervention
-experiments, which were scoped out in advance. A graph can be well-covered, readable, and wrong.
+experiments, scoped out in advance. **A graph can be well-covered, readable, and wrong.**
+
+**The second model's categories are under-validated.** Code completion, obfuscated text and
+syntactic agreement have no validity evidence on Llama, and all three sit inside D3's and D4's
+rankings — with code completion driving half the between-category range. Factual recall's pooled
+answer rate fails its gate because of one frame format, and **the registered exclusion rule was not
+applied to it**, which may flip D4's verdict; the seven-category recomputation is owed.
 
 **Feature labels were truncated in the display** — 48 characters in the text trace, 34 in the diagram.
-This is distinct from the general caveat that Neuronpedia descriptions are automated: at least one
-rating turned on a label the viewer had cut off, which the audit flagged. A presentation artefact, and
-an avoidable one.
+At least one rating turned on a label the viewer had cut off, which the audit flagged. A presentation
+artefact, and an avoidable one.
 
-**One model, one size, bf16, free-tier hardware.** Gemma-2-2B with GemmaScope transcoders on a Kaggle
-T4.
-
-**n = 40 for everything involving the ratings**, with six graphs in the top bin. No distinction resting
-on those six should be leaned on.
+**n = 40 for everything involving the ratings**, with six graphs in the top bin; n = 8 for every
+category-ranking correlation; n = 3 for the dictionary comparison; n = 12 for the format control. No
+distinction resting on those should be leaned on.
 
 **Smaller things, recorded rather than smoothed.** The first rating's written reason concludes 0 while
-the recorded grade is 1 — a transcription error; recomputing P5 with it as 0 gives +0.217 (p = 0.18)
-against +0.243, and the prediction holds either way. Three ratings include interrupted time. An
-entity-category criterion was articulated at presentation 48 and applied inconsistently before that.
-The error rule does not specify how far down a chain it propagates, and I noted during rating that I
-had not applied it consistently. The corruption-ladder analysis above pairs rungs by a grouping
-recovered from row order rather than from an explicit ladder identifier.
+the recorded grade is 1 — a transcription error; recomputing P5 with it as 0 gives +0.217 (p = 0.18),
+and the prediction holds either way. Three ratings include interrupted time. An entity-category
+criterion was articulated at presentation 48 and applied inconsistently before that. The error rule
+does not specify how far down a chain it propagates, and I noted during rating that I had not applied
+it consistently. The corruption-ladder analysis pairs rungs by a grouping recovered from row order
+rather than an explicit identifier. Pre-run VRAM, RAM and disk estimates for the extension arms were
+all wrong — the first by 3× in one direction, the last by 20× — and a disk-quota overrun cost two
+arms' raw outputs, which had to be re-run.
 
 ---
 
 ## What this means in practice
 
-**Don't use replacement score to choose which prompts to trace.** It varies by 0.036 across every
-prompt type tried here, moves by 0.032 when you pad a prompt without changing what it asks, and ranks
-highest the category a blind rater found uniformly uninformative. None of that makes it a bad metric —
-it was built to compare dictionaries, and it does that well. It was never developed as a per-prompt
-instrument, and this is evidence for why.
+**Don't use replacement score to choose which prompts to trace, and don't assume what it does on one
+model.** On Gemma-2-2B it varies by 0.036 across every prompt type tried, moves 0.032 when you pad a
+prompt without changing what it asks, and ranked highest a category a blind rater found uniformly
+uninformative. On Llama-3.2-1B it spans 0.142 and category explains 63% of its variance. Both of
+those are facts about a model-and-dictionary pairing, not about attribution graphs.
 
-**Report it per-prompt with length alongside.** If replacement scores are compared across prompts
-anywhere, token count belongs in the same table. On the evidence here they are not separable.
+**If you report it per-prompt, report token count beside it.** On this evidence they are not
+separable, in any arm.
 
-**Error location is roughly twice as discriminative** — eta² 0.444 against 0.238 — but it does not
-transfer out of category, so it is a better descriptive variable rather than a better triage signal.
+**Expect dictionary family to matter more than you would guess.** A cross-layer transcoder on the same
+model produced a 3.2× stronger length response, 20% shorter paths, and *slightly lower* replacement —
+the last contradicting the published comparison.
 
-**The graph can be well-covered and empty.** The clearest case: a graph whose entire explanation is
-that a token appeared earlier in the prompt, traced cleanly, with almost nothing lost to error.
-Coverage and insight come apart, and they come apart systematically rather than at random.
+**The graph can be well-covered and empty.** The most robust case is known/unknown entity: top of the
+length-adjusted ranking on both models, rated 0 in four of six cases, never rated 2. The graph shows a
+model formatting an answer without showing it retrieving one.
 
 **Measure on the adjacency matrix, not on what the viewer drew.** My own fourfold error came from
-parsing displayed edges. Display thresholds are not random samples.
+parsing displayed edges.
 
-**For anyone building a rating protocol for attribution graphs**, the boundary that broke mine is worth
-knowing in advance: a legible but generic feature sitting at the read-out position with no
-cross-position edge. Three independent measurements found the same ambiguity. An explicit rule for that
-case is the first thing a second version needs.
+**For anyone building a rating protocol**, the boundary that broke mine is worth knowing in advance: a
+legible but generic feature at the read-out position with no cross-position edge. Three independent
+measurements found the same ambiguity. An explicit rule for that case is the first thing a second
+version needs.
 
 ---
 
 ## What I would run next
 
-**The same corpus with cross-layer transcoders.** The single most important check. If the metric tracks
-readability once near-duplicate feature chains are collapsed, the negative result here is about the
-dictionary family rather than about the metric. Roughly two hours of compute.
+**The rating protocol on cross-layer graphs, or on a second model.** The expensive one and the real
+gap. Every human-facing result is Gemma per-layer, and after watching the metric's category
+behaviour, length response and category ranking all move between setups, there is no reason to assume
+P5 is the exception.
 
-**A manipulation that moves feature count and token count independently.** This is what the
-routing-vs-computation question needs, and no amount of reanalysis substitutes for it. The frame
-ladder adds features at exactly average density, so it cannot separate them; what would is a pair of
-prompts matched on token count but differing in feature density — the corpus spans 583 to 1,649
-features per token, so such pairs exist in principle and could be constructed deliberately. Until
-then, "about half routing" is the ceiling of what can be said.
+**A Gemma cross-layer arm, to test C5.** Does path length rather than feature density drive the
+length effect? Needs ~48 GB of RAM rather than a bigger GPU, so about an hour on a rented box.
 
-**A joint test of entropy and top-1 probability.** Also already-collected data, also two lines. Their
-individual coefficients are uninformative at r = −0.958, so the claim that prompt-confidence measures
-contribute nothing is currently unsupported in either direction.
+**A manipulation that moves feature count and token count independently within a model.** The arms
+did this between dictionaries; nothing has done it within one. The corpus spans 583 to 1,649 features
+per token, so prompts matched on token count but differing in density could be constructed
+deliberately.
 
-**The `Fact:` prefix control** — about seven minutes of GPU, as above.
+**D4 recomputed on the seven gated categories, and a joint test of entropy and top-1 probability.**
+Both are minutes of work on already-collected data, and the first may flip a registered verdict.
+On the second: their individual coefficients are uninformative at r = −0.958, so the claim that
+prompt-confidence measures contribute nothing is currently unsupported in either direction.
 
 **An hour each on ten graphs** — five rated 0, five rated 2 — to measure how many 0s convert under the
-budget the original work describes. That bounds the largest limitation directly, and ten hours buys a
-number rather than a caveat.
+budget the original work describes. Ten hours buys a number rather than a caveat.
 
-**A second human rater**, which would turn intra-rater consistency into inter-rater reliability. The
-LLM streams cannot do this.
+**A second human rater**, which would turn intra-rater consistency into inter-rater reliability.
 
-**Whether the length effect holds on another model.** If padding a prompt raises replacement score on
-Llama-3.2-1B too, it is structural rather than a Gemma quirk.
-
-The open question I would most like answered by someone else: is there any cheap property that predicts
-*readability* rather than *coverage*? Nothing I measured does. The six graphs I could read all had the
-same shape — entity at a content position, concept built across layers, carried to the read-out token —
-and whether a prompt will produce that shape may simply not be visible from the prompt.
+The open question I would most like answered by someone else: **is there any cheap property that
+predicts readability rather than coverage, and does it survive a change of model?** Nothing I measured
+does the first, and almost nothing I measured does the second.
 
 ---
 
 ## Reproducing this
 
-Everything runs on a free Kaggle notebook. That was deliberate: the point is a check anyone can apply,
-not one that needs a cluster. The full corpus run took 72 minutes, mean 18.1 s per graph, peak 12.5 GB
-GPU.
+Everything ran on free Kaggle notebooks. That was deliberate: the point is a check anyone can apply.
 
-Released: the 255-prompt corpus with cheap predictors and task success, per-graph metrics, the
-pre-registration with its full deviation log, the rating manifest and criteria committed before rating,
-all three rating streams with their written reasoning, and the viewer used to display the graphs.
+```
+Main corpus   google/gemma-2-2b, bf16, GemmaScope per-layer, nnsight backend
+              255 graphs, 72 min, 18.1 s/graph, 12.5 GB VRAM peak
+Arms          meta-llama/Llama-3.2-1B, bf16, transformerlens backend
+              per-layer (mntss/transcoder-Llama-3.2-1B, 17.3 GB)
+              cross-layer (mntss/clt-llama-3.2-1b-524k, 20.4 GB, 7.0 GB VRAM peak)
+              255 graphs per-layer + 66 per arm on the matched frames
+Not feasible  mntss/clt-gemma-2-2b-426k, 28.5 GB -> needs ~48 GB RAM
+Noise floor   ~5e-05 on replacement (bf16 re-attribution)
+```
+
+Metrics reproduce the library's `compute_graph_scores` to **1.1×10⁻⁶** while also recording the
+per-(layer, position) error decomposition, which the library's scalar metrics do not expose.
+Influence comes from iterating the Neumann series rather than inverting `(I − A)`: the graph is a DAG,
+so the series terminates exactly. The direct/mediated split records each step's contribution
+separately and was verified against a hand-computed synthetic DAG.
+
+**The viewer is part of the method, not a convenience** — the rating asks whether a person can read a
+graph, so what they were shown matters. Edge selection is top-k first and threshold second: weights
+are row-normalised, so a high fan-in node (the logit has thousands of inputs) has tiny weights
+throughout and a fixed threshold empties the graph.
 
 ### Environment findings worth knowing
 
-These cost most of a day each and are not documented anywhere I could find.
+**Node layout.** Nodes are `[features | errors | tokens | logits]`, errors layer-major, logits last in
+the order of `logit_probabilities`. Locating logits structurally — as nodes with no outgoing edges —
+also catches dead features and silently mis-orders the probabilities. That cost a day and one wrong
+finding. Take the layout from the graph. Re-validate it per model: layer count changes the arithmetic.
 
-**Node layout.** Nodes are laid out `[features | errors | tokens | logits]`, errors stored layer-major,
-logits last in the order of `logit_probabilities`. Locating logits structurally — as nodes with no
-outgoing edges — also catches dead features and silently mis-orders the probabilities. That cost me a
-day and one wrong published finding. Take the layout from the graph.
-
-**Structural zeros.** Exactly two kinds of error node carry zero influence: BOS at every layer, and the
-last layer at every non-final position, since an error injected after the final attention layer has no
-path to the read-out token. Predicting all 30 from the architecture and matching them exactly is a cheap
-check that your indexing is right.
+**Structural zeros.** Exactly two kinds of error node carry zero influence: BOS at every layer, and
+the last layer at every non-final position. Predicting all 30 from the architecture and matching them
+exactly is a cheap check that your indexing is right.
 
 **Error at the final token position is usually the largest, not zero.** I believed the opposite for a
 week; it was an artefact of the logit mis-ordering above.
@@ -761,33 +901,41 @@ week; it was an artefact of the logit mis-ordering above.
 **Measure on the full graph.** The direct-path share parsed from displayed edges was 0.372; computed
 exactly it is 0.095.
 
+**The nnsight backend cannot do cross-layer transcoders.** `MissedProviderError` on a cross-layer
+decoder, which writes into several downstream layers. Use TransformerLens — and note the two backends
+agree to 1×10⁻⁴ on per-layer graphs, so switching is safe for these quantities.
+
+**RAM, not VRAM, is the constraint on TransformerLens.** It holds decoders in CPU RAM and streams
+them, so transcoders plus the bf16 model must fit in RAM. A 20.4 GB cross-layer set peaked at 7.0 GB
+of VRAM and ran fine; a 28.5 GB one killed a 31.5 GB-RAM kernel outright, with no catchable
+exception. And a smaller *model* does not give a smaller transcoder: size goes as features × d_model
+× layers, so Qwen-3 0.6B's per-layer set (18.8 GB, 28 layers) is larger than Llama-1B's (17.3 GB).
+
+**`shutil.disk_usage` lies on Kaggle.** It reported 1,145.8 GB free against an enforced ~60 GB session
+quota. Check the sidebar, and write results to `/kaggle/working`, not `/kaggle/temp` — the latter is
+wiped with the session.
+
 **`prune_graph` dominates runtime** — 115 s of a 172 s per-graph total at four thresholds. A
 node-influence threshold curve ranks graphs identically (Spearman 1.000, 1.000, 1.000, 0.994 across 32
 graphs) at negligible cost.
 
-**Re-attribution noise is larger than a single short prompt suggests:** median 9×10⁻⁵, up to 3.4×10⁻⁴,
-and it does not scale simply with graph size. Graph structure is fully deterministic; only the bf16
-arithmetic wobbles.
+**Re-attribution noise** is median 9×10⁻⁵, up to 3.4×10⁻⁴, and does not scale simply with graph size.
+Graph structure is fully deterministic; only the bf16 arithmetic wobbles.
 
-**fp32 does not fit on a T4**, and system RAM rather than VRAM is the binding constraint during load —
-use `backend="nnsight"`, which skips the TransformerLens state-dict conversion. The P100 is unusable at
-sm_60.
-
-**Python 3.13 breaks the install path.** A pinned `huggingface_hub` satisfies `circuit-tracer` but
-leaves `diffusers` importing a symbol it no longer exports, and `nnsight` imports `diffusers`
-transitively. Uninstall or stub it.
+**Python 3.13 breaks the install path.** A pinned `huggingface_hub` leaves `diffusers` importing a
+symbol it no longer exports, and `nnsight` imports `diffusers` transitively. Uninstall or stub it.
 
 **Watch out for a pandas column named `head`** — it shadows `DataFrame.head()` under attribute access,
-and cost me a check that reported 0% agreement where the true figure was 18/18.
+and cost me a check that reported 0% agreement where the truth was 18/18.
 
 ---
 
 ## Credits
 
 Method and metrics: Ameisen, Lindsey, Pearce, Gurnee et al., Anthropic. Library: `circuit-tracer`
-(Hanna, Piotrowski, Lindsey, Ameisen — Anthropic / Decode Research). Transcoders: GemmaScope. Feature
-descriptions: Neuronpedia.
+(Hanna, Piotrowski, Lindsey, Ameisen — Anthropic / Decode Research). Per-layer transcoders:
+GemmaScope. Llama and cross-layer transcoders: `mntss`. Feature descriptions: Neuronpedia.
 
-Corpus construction, analysis and this write-up were carried out in extended collaboration with Claude
-(Anthropic), including the rating criteria and two of the three rating streams. The dependence this
-creates is disclosed in the rating section above and in the pre-registration (D3.11).
+Corpus construction, analysis and this write-up were carried out in extended collaboration with
+Claude (Anthropic), including the rating criteria and two of the three rating streams. The dependence
+this creates is disclosed in the rating section above and in the pre-registration (D3.11).
